@@ -1,0 +1,86 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/claude-code/main/schemas/settings.schema.json",
+  "_comment": "Dos Apes Super Agent Framework - We ain't monkeying around with code!",
+  
+  "contextFiles": [
+    ".claude/ORCHESTRATOR.md"
+  ],
+  
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ \"$(git branch --show-current 2>/dev/null)\" != \"main\" ] || { echo 'Cannot edit on main branch. Create a feature branch first.' >&2; exit 1; }",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command", 
+            "command": "npx prettier --write \"$CLAUDE_FILE_PATH\" 2>/dev/null || true",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/stop.sh 2>/dev/null || exit 0",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  },
+  
+  "permissions": {
+    "allowedTools": {
+      "Bash": {
+        "allowedCommands": [
+          "git *",
+          "npm *",
+          "npx *",
+          "node *",
+          "cat *",
+          "ls *",
+          "find *",
+          "grep *",
+          "wc *",
+          "head *",
+          "tail *",
+          "mkdir *",
+          "cp *",
+          "mv *",
+          "rm *",
+          "touch *",
+          "echo *",
+          "sed *",
+          "awk *"
+        ]
+      },
+      "Read": { "allowed": true },
+      "Edit": { "allowed": true },
+      "Write": { "allowed": true },
+      "Grep": { "allowed": true },
+      "Glob": { "allowed": true }
+    }
+  },
+  
+  "environment": {
+    "DOS_APES_FRAMEWORK": "true",
+    "DOS_APES_VERSION": "1.0.0"
+  }
+}

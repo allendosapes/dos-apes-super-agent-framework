@@ -1,0 +1,44 @@
+{
+  "name": "dos-apes",
+  "version": "1.0.0",
+  "description": "Dos Apes Super Agent Framework - A unified AI coding agent system combining GSD, VibeKanban, Ralph Wiggum, and Claude Code best practices",
+  "main": "index.js",
+  "bin": {
+    "dos-apes": "./bin/cli.js"
+  },
+  "scripts": {
+    "test": "node test/test.js"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "ai-coding",
+    "agent-framework",
+    "spec-driven-development",
+    "context-engineering",
+    "ralph-wiggum",
+    "vibekanban",
+    "gsd",
+    "dos-apes",
+    "super-agent"
+  ],
+  "author": "Dos Apes Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dos-apes/dos-apes"
+  },
+  "homepage": "https://github.com/dos-apes/dos-apes#readme",
+  "bugs": {
+    "url": "https://github.com/dos-apes/dos-apes/issues"
+  },
+  "files": [
+    "bin/",
+    "framework/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir /s /b \"C:\\\\Projects\\\\dos-apes\")",
+      "Bash(xargs:*)"
+    ]
+  }
+}
