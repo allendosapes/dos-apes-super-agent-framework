@@ -1,7 +1,7 @@
 # Quick Setup Guide
 
 Get Dos Apes running in 2 minutes.
-
+git branch -M main
 ---
 
 ## Prerequisites
@@ -24,7 +24,7 @@ git clone https://github.com/YOUR-ORG/dos-apes.git
 cd dos-apes
 
 # Copy framework to your project
-cp -r framework/ /path/to/your/project/.claude/
+mkdir -p /path/to/your/project/.claude && cp -r framework/* /path/to/your/project/.claude/
 ```
 
 ### Option 2: Direct Download
@@ -45,7 +45,7 @@ mkdir my-new-app && cd my-new-app
 git init
 
 # 3. Copy Dos Apes framework
-cp -r /path/to/dos-apes/framework .claude/
+mkdir -p .claude && cp -r /path/to/dos-apes/framework/* .claude/
 
 # 4. Create your PRD (or use template)
 cp .claude/templates/PRD-TEMPLATE.md ./requirements.md
@@ -55,7 +55,7 @@ cp .claude/templates/PRD-TEMPLATE.md ./requirements.md
 claude
 
 # 6. Run Dos Apes
-/apes:build --prd requirements.md --ralph
+/apes-build --prd requirements.md --ralph
 ```
 
 ### For Existing Projects (Brownfield)
@@ -65,17 +65,17 @@ claude
 cd my-existing-app
 
 # 2. Copy Dos Apes framework
-cp -r /path/to/dos-apes/framework .claude/
+mkdir -p .claude && cp -r /path/to/dos-apes/framework/* .claude/
 
 # 3. Start Claude Code
 claude
 
 # 4. Map your codebase
-/apes:map
+/apes-map
 
 # 5. Add features or fix bugs
-/apes:feature "Add dark mode support"
-/apes:fix "Login fails with special characters"
+/apes-feature "Add dark mode support"
+/apes-fix "Login fails with special characters"
 ```
 
 ---
@@ -119,6 +119,8 @@ my-project/
 │   │   ├── PRD-TEMPLATE.md
 │   │   ├── user-story-template.md
 │   │   └── ...
+│   ├── skills/              # Domain knowledge (optional)
+│   │   └── README.md
 │   └── ORCHESTRATOR.md      # Master orchestration spec
 ├── .planning/               # Created during execution
 │   ├── PROJECT.md
@@ -134,13 +136,19 @@ my-project/
 
 | Command | What It Does |
 |---------|--------------|
-| `/apes:build --prd file.md --ralph` | Full autonomous build |
-| `/apes:map` | Analyze existing codebase |
-| `/apes:feature "description"` | Add a feature |
-| `/apes:fix "description"` | Fix a bug |
-| `/apes:status` | Show current progress |
-| `/apes:resume` | Continue from last state |
-| `/apes:verify` | Run verification suite |
+| `/apes-help` | Show all commands and usage |
+| `/apes-build --prd file.md --ralph` | Full autonomous build |
+| `/apes-init --prd file.md` | Initialize project from PRD |
+| `/apes-plan [phase]` | Create detailed task plan for a phase |
+| `/apes-execute [phase]` | Execute phase with agent orchestration |
+| `/apes-map` | Analyze existing codebase |
+| `/apes-feature "description"` | Add a feature |
+| `/apes-fix "description"` | Fix a bug |
+| `/apes-refactor "description"` | Refactor existing code |
+| `/apes-status` | Show current progress |
+| `/apes-resume` | Continue from last state |
+| `/apes-verify` | Run verification suite |
+| `/apes-handoff` | Create handoff for session break |
 
 ---
 
@@ -148,26 +156,14 @@ my-project/
 
 ### Claude Code Settings
 
-Add to your `.claude/settings.json`:
+The framework includes a pre-configured `settings.json` that gets copied to `.claude/settings.json`. It includes:
 
-```json
-{
-  "hooks": {
-    "stop": [".claude/hooks/stop.sh"],
-    "postToolUse": {
-      "Edit": [".claude/hooks/format.sh"],
-      "Write": [".claude/hooks/format.sh"]
-    }
-  },
-  "permissions": {
-    "allow": [
-      "Bash(npm:*)",
-      "Bash(git:*)",
-      "Bash(npx:*)"
-    ]
-  }
-}
-```
+- **Context Files**: Automatically loads ORCHESTRATOR.md
+- **Pre-tool Hooks**: Prevents edits on main branch
+- **Post-tool Hooks**: Auto-formats code after edits
+- **Permissions**: Pre-approved npm, git, and common commands
+
+To customize, edit `.claude/settings.json` after installation.
 
 ### Customizing Agents
 
@@ -180,6 +176,12 @@ Edit agent files in `.claude/agents/` to customize:
 
 Edit files in `.claude/standards/` to match your team's preferences.
 
+### Skills (Optional)
+
+Skills are domain knowledge documents that teach Claude project-specific patterns. The framework includes a starter `skills/` directory with documentation.
+
+To add project-specific skills, create files in `.claude/skills/` following the format in `.claude/skills/README.md`.
+
 ---
 
 ## Verification
@@ -191,7 +193,7 @@ Test that setup works:
 claude
 
 # Check commands are available
-/apes:help
+/apes-help
 
 # Should see list of available commands
 ```
@@ -211,12 +213,12 @@ chmod +x .claude/hooks/*.sh
 
 ### "Context too long"
 - The framework manages context automatically
-- For very large codebases, use `/apes:map` first to create summaries
+- For very large codebases, use `/apes-map` first to create summaries
 
 ### Build failures
 ```bash
 # Run verification to see what's failing
-/apes:verify
+/apes-verify
 
 # Check gate status
 .claude/hooks/gate-check.sh G4

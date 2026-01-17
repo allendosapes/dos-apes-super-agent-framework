@@ -27,7 +27,7 @@ echo "=== Current Plan ==="
 if [ -f ".planning/PLAN.md" ]; then
     head -50 .planning/PLAN.md
 else
-    echo "No active plan. Run /apes:plan [phase] to create one."
+    echo "No active plan. Run /apes-plan [phase] to create one."
 fi
 ```
 
@@ -65,8 +65,8 @@ Based on current state, suggest:
 
 | Status | Suggestion |
 |--------|------------|
-| No plan | `/apes:plan [phase]` |
-| Plan exists, not started | `/apes:execute` |
+| No plan | `/apes-plan [phase]` |
+| Plan exists, not started | `/apes-execute` |
 | Task in progress | Continue current task |
-| Phase complete | `/apes:plan [next-phase]` |
+| Phase complete | `/apes-plan [next-phase]` |
 | All phases complete | 🎉 Ship it! |

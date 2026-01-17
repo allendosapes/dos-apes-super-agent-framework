@@ -10,9 +10,9 @@ allowed-tools: Bash, Read, Grep
 ## Usage
 
 ```bash
-/apes:verify              # Full verification
-/apes:verify --quick      # Build + types only
-/apes:verify --browser    # Include browser check prompt
+/apes-verify              # Full verification
+/apes-verify --quick      # Build + types only
+/apes-verify --browser    # Include browser check prompt
 ```
 
 ---

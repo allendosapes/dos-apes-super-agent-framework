@@ -8,7 +8,7 @@ allowed-tools: Read, Edit, Write, Bash, Grep, Glob
 **The "hands off" command. Feed it a PRD, walk away, come back to a shipped product.**
 
 ```bash
-/apes:build --prd requirements.md --ralph --max-iterations 500
+/apes-build --prd requirements.md --ralph --max-iterations 500
 ```
 
 ## Arguments
@@ -262,7 +262,7 @@ For Phase 1 (Foundation), typically:
 ### [ORCHESTRATOR] Start Execution Loop
 
 ```
-/apes:execute 1 --ralph --max-iterations [remaining]
+/apes-execute 1 --ralph --max-iterations [remaining]
 ```
 
 This triggers the full agent orchestration:
@@ -304,7 +304,7 @@ IF phases_complete < total_phases:
   status: executing
   
   # Continue execution
-  /apes:execute [N+1] --ralph
+  /apes-execute [N+1] --ralph
   
 ELSE:
   # All done!
@@ -395,7 +395,7 @@ Progress saved:
 - State: .planning/STATE.md
 
 To continue:
-/apes:resume
+/apes-resume
 ```
 
 ### Blocked by Error
@@ -409,20 +409,20 @@ Issue: [description]
 See: .planning/ISSUES.md
 
 To retry after fixing:
-/apes:resume
+/apes-resume
 ```
 
 ### Recovery
 
 ```bash
 # Continue from where we left off
-/apes:resume
+/apes-resume
 
 # Or retry the failed task
-/apes:retry
+/apes-retry
 
 # Or skip and continue
-/apes:skip --confirm
+/apes-skip --confirm
 ```
 
 ---
@@ -432,7 +432,7 @@ To retry after fixing:
 ```bash
 $ claude
 
-> /apes:build --prd ./docs/courseware-prd.md --ralph
+> /apes-build --prd ./docs/courseware-prd.md --ralph
 
 [ORCHESTRATOR] Loading PRD...
 [ORCHESTRATOR] Creating PROJECT.md...

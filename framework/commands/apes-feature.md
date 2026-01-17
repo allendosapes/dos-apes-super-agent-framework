@@ -50,7 +50,7 @@ fi
 ```bash
 # Check if codebase documents exist
 if [ ! -d ".planning/codebase" ]; then
-  echo "Codebase not mapped. Run /apes:map first."
+  echo "Codebase not mapped. Run /apes-map first."
   exit 1
 fi
 ```

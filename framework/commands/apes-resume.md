@@ -100,7 +100,7 @@ Position: Phase [N], Task [M]
 Status: [status]
 
 Recommended action:
-/apes:execute [or specific command based on state]
+/apes-execute [or specific command based on state]
 ```
 
 ## Continue Options
@@ -111,6 +111,6 @@ Based on restored state:
 |-------|------------------|
 | Task in progress | Continue implementing |
 | Task blocked | Resolve blocker first |
-| Task complete, more tasks | `/apes:execute` |
-| Phase complete | `/apes:plan [next]` |
+| Task complete, more tasks | `/apes-execute` |
+| Phase complete | `/apes-plan [next]` |
 | Verification failing | Fix issues first |

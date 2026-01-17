@@ -84,7 +84,7 @@ When resuming:
 ## Resume Command
 
 ```bash
-/apes:resume
+/apes-resume
 ```
 ```
 
@@ -115,5 +115,5 @@ Current position:
 - Branch: [branch]
 - [X] uncommitted changes
 
-Resume with: /apes:resume
+Resume with: /apes-resume
 ```

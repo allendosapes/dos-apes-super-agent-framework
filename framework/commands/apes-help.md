@@ -45,7 +45,7 @@ description: Show all Dos Apes commands and usage
 The main event. Feed it a PRD, walk away:
 
 ```bash
-/apes:build --prd requirements.md --ralph
+/apes-build --prd requirements.md --ralph
 ```
 
 This will:
@@ -65,28 +65,28 @@ This will:
 
 | Command | Purpose |
 |---------|---------|
-| `/apes:build` | **Full autonomous build from PRD to shipped product** |
-| `/apes:init` | Initialize project from PRD (without auto-execute) |
-| `/apes:plan [phase]` | Create detailed task plan for a phase |
-| `/apes:execute [phase]` | Execute phase with agent orchestration |
+| `/apes-build` | **Full autonomous build from PRD to shipped product** |
+| `/apes-init` | Initialize project from PRD (without auto-execute) |
+| `/apes-plan [phase]` | Create detailed task plan for a phase |
+| `/apes-execute [phase]` | Execute phase with agent orchestration |
 
 ### 🔧 Brownfield Commands
 
 | Command | Purpose |
 |---------|---------|
-| `/apes:map` | Analyze existing codebase |
-| `/apes:feature "desc"` | Add feature to existing project |
-| `/apes:fix "desc"` | Fix a bug |
-| `/apes:refactor "desc"` | Refactor existing code |
+| `/apes-map` | Analyze existing codebase |
+| `/apes-feature "desc"` | Add feature to existing project |
+| `/apes-fix "desc"` | Fix a bug |
+| `/apes-refactor "desc"` | Refactor existing code |
 
 ### 📊 State Commands
 
 | Command | Purpose |
 |---------|---------|
-| `/apes:status` | Show current position |
-| `/apes:verify` | Run full verification suite |
-| `/apes:resume` | Continue from last position |
-| `/apes:handoff` | Create handoff for session break |
+| `/apes-status` | Show current position |
+| `/apes-verify` | Run full verification suite |
+| `/apes-resume` | Continue from last position |
+| `/apes-handoff` | Create handoff for session break |
 
 ---
 
@@ -106,9 +106,9 @@ This will:
 
 | Level | Command | Human Involvement |
 |-------|---------|-------------------|
-| **Task** | `/apes:execute --task 1` | Review each task |
-| **Phase** | `/apes:execute 1 --ralph` | Review each phase |
-| **Product** | `/apes:build --ralph` | Review final product |
+| **Task** | `/apes-execute --task 1` | Review each task |
+| **Phase** | `/apes-execute 1 --ralph` | Review each phase |
+| **Product** | `/apes-build --ralph` | Review final product |
 
 ---
 
@@ -141,24 +141,24 @@ Work is delegated to specialized agents:
 
 ### Build New Product
 ```bash
-/apes:build --prd ./docs/requirements.md --ralph --max-iterations 500
+/apes-build --prd ./docs/requirements.md --ralph --max-iterations 500
 ```
 
 ### Add Feature to Existing
 ```bash
-/apes:map
-/apes:feature "Add dark mode with system preference detection"
-/apes:execute --ralph
+/apes-map
+/apes-feature "Add dark mode with system preference detection"
+/apes-execute --ralph
 ```
 
 ### Fix a Bug
 ```bash
-/apes:fix "Login fails with special characters in email"
+/apes-fix "Login fails with special characters in email"
 ```
 
 ### Continue After Break
 ```bash
-/apes:resume
+/apes-resume
 ```
 
 ---

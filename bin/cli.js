@@ -66,7 +66,7 @@ ${colors.green}╔════════════════════�
 ║                                                                 ║
 ║   ✅ Installation Complete!                                     ║
 ║                                                                 ║
-║   Verify: Start Claude Code and run /apes:help                  ║
+║   Verify: Start Claude Code and run /apes-help                  ║
 ║                                                                 ║
 ║   🦍🦍 Ready to ship!                                           ║
 ║                                                                 ║
@@ -270,7 +270,7 @@ No phases planned yet.
     if (projectType === 'brownfield') {
       print('', colors.reset);
       print('📋 Next step for brownfield project:', colors.yellow);
-      print('   Run /apes:map to analyze your codebase', colors.yellow);
+      print('   Run /apes-map to analyze your codebase', colors.yellow);
     }
   }
 
@@ -297,13 +297,13 @@ No phases planned yet.
   
   if (projectType === 'greenfield') {
     print('  1. Create your PRD document');
-    print('  2. Run: /apes:init --prd your-prd.md');
-    print('  3. Run: /apes:plan 1');
-    print('  4. Run: /apes:execute 1 --ralph');
+    print('  2. Run: /apes-init --prd your-prd.md');
+    print('  3. Run: /apes-plan 1');
+    print('  4. Run: /apes-execute 1 --ralph');
   } else {
-    print('  1. Run: /apes:map');
-    print('  2. Run: /apes:feature "Your feature description"');
-    print('  3. Or: /apes:fix "Bug description"');
+    print('  1. Run: /apes-map');
+    print('  2. Run: /apes-feature "Your feature description"');
+    print('  3. Or: /apes-fix "Bug description"');
   }
 
   print('', colors.reset);

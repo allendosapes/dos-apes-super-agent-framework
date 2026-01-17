@@ -249,7 +249,7 @@ If CLAUDE.md exists, merge findings. If not, create it:
 
 ### Auto-Context Loading
 
-These documents enable automatic context loading for `/apes:feature` and `/apes:fix`:
+These documents enable automatic context loading for `/apes-feature` and `/apes-fix`:
 
 ```
 Feature Request: "Add user notifications"

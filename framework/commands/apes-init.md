@@ -166,7 +166,7 @@ None
 - [Timestamp]: Project initialized
 
 ## Next Action
-Run `/apes:plan 1` to create Phase 1 task plan
+Run `/apes-plan 1` to create Phase 1 task plan
 ```
 
 ### Step 6: Create CLAUDE.md (if not exists)
@@ -221,8 +221,8 @@ Report:
 
 Next Steps:
 1. Review .planning/ROADMAP.md
-2. Run /apes:plan 1 to create Phase 1 plan
-3. Run /apes:execute 1 to start building
+2. Run /apes-plan 1 to create Phase 1 plan
+3. Run /apes-execute 1 to start building
 ```
 
 Output <promise>PROJECT_INITIALIZED</promise> when complete.

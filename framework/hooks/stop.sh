@@ -46,7 +46,7 @@ if [ "$STATUS" = "blocked" ]; then
   echo "═══════════════════════════════════════════════════════════════"
   echo ""
   echo "See .planning/ISSUES.md for details"
-  echo "Run /apes:resume after fixing"
+  echo "Run /apes-resume after fixing"
   echo ""
   exit 0  # Allow exit when blocked
 fi
@@ -110,7 +110,7 @@ CURRENT_ITER=$(grep "^current_iteration:" "$STATE_FILE" 2>/dev/null | awk '{prin
 if [ -n "$MAX_ITER" ] && [ -n "$CURRENT_ITER" ]; then
   if [ "$CURRENT_ITER" -ge "$MAX_ITER" ]; then
     echo "⚠️  Max iterations ($MAX_ITER) reached"
-    echo "Progress saved. Run /apes:resume to continue."
+    echo "Progress saved. Run /apes-resume to continue."
     echo ""
     exit 0  # Allow exit at max iterations
   fi

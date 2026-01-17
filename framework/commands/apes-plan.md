@@ -221,7 +221,7 @@ Task Overview:
 
 Saved to: .planning/PLAN.md
 
-Next: Run /apes:execute $1 to start implementation
+Next: Run /apes-execute $1 to start implementation
       Add --ralph for autonomous execution
 ```
 

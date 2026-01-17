@@ -479,7 +479,7 @@ RALPH_LOOP(max_iterations):
   
   # Max iterations reached
   OUTPUT "Max iterations reached. Progress saved in STATE.md"
-  OUTPUT "Run /apes:resume to continue"
+  OUTPUT "Run /apes-resume to continue"
 ```
 
 ### Stop Hook Integration
@@ -528,10 +528,10 @@ exit 1  # Block exit, re-feed prompt
 
 ## 7. EXECUTION COMMANDS
 
-### /apes:build - Full Autonomous Build
+### /apes-build - Full Autonomous Build
 
 ```bash
-/apes:build --prd [file] --ralph --max-iterations 500
+/apes-build --prd [file] --ralph --max-iterations 500
 ```
 
 This is the "hands off" command. It will:
@@ -548,9 +548,9 @@ This is the "hands off" command. It will:
 
 | Level | Command | Human Involvement |
 |-------|---------|-------------------|
-| Task | `/apes:task 1` | Review each task |
-| Phase | `/apes:execute 1 --ralph` | Review each phase |
-| Product | `/apes:build --ralph` | Review final product |
+| Task | `/apes-task 1` | Review each task |
+| Phase | `/apes-execute 1 --ralph` | Review each phase |
+| Product | `/apes-build --ralph` | Review final product |
 
 ---
 
@@ -654,10 +654,10 @@ IF phase fails to complete:
 
 ### Recovery Commands
 ```bash
-/apes:resume           # Continue from last state
-/apes:retry            # Retry failed task
-/apes:skip             # Skip blocked task (with human approval)
-/apes:rollback         # Rollback to last good state
+/apes-resume           # Continue from last state
+/apes-retry            # Retry failed task
+/apes-skip             # Skip blocked task (with human approval)
+/apes-rollback         # Rollback to last good state
 ```
 
 ---

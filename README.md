@@ -70,23 +70,24 @@ npx dos-apes
 
 ```bash
 # Full autonomous build
-/apes:build --prd requirements.md --ralph
+/apes-build --prd requirements.md --ralph
 
+/apes-build --prd claude/templates/next-gen-courseware-prd.md --ralph
 # Or describe what you want
-/apes:build --idea "Build a task management app with projects, tasks, and team collaboration"
+/apes-build --idea "Build a task management app with projects, tasks, and team collaboration"
 ```
 
 ### Add to Existing Project
 
 ```bash
 # Map your codebase
-/apes:map
+/apes-map
 
 # Add a feature
-/apes:feature "Add real-time notifications"
+/apes-feature "Add real-time notifications"
 
 # Fix a bug
-/apes:fix "Users can't upload files over 5MB"
+/apes-fix "Users can't upload files over 5MB"
 ```
 
 ---
@@ -96,7 +97,7 @@ npx dos-apes
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                                                                 │
-│  /apes:build --prd requirements.md --ralph                      │
+│  /apes-build --prd requirements.md --ralph                      │
 │                                                                 │
 │  1. INGEST                                                      │
 │     Parse PRD → PROJECT.md, ROADMAP.md, STATE.md                │
@@ -213,7 +214,7 @@ All state persists in `.planning/`:
 
 Resume anytime:
 ```bash
-/apes:resume
+/apes-resume
 ```
 
 ### 🚦 Quality Gates (Blocking)
@@ -265,29 +266,29 @@ Level 5: Browser      Manual verification
 
 | Command | Purpose |
 |---------|---------|
-| `/apes:build --prd [file]` | Full autonomous build from PRD |
-| `/apes:build --idea "[text]"` | Build from description |
-| `/apes:init --prd [file]` | Initialize without auto-execute |
-| `/apes:plan [phase]` | Plan a specific phase |
-| `/apes:execute [phase]` | Execute a phase |
+| `/apes-build --prd [file]` | Full autonomous build from PRD |
+| `/apes-build --idea "[text]"` | Build from description |
+| `/apes-init --prd [file]` | Initialize without auto-execute |
+| `/apes-plan [phase]` | Plan a specific phase |
+| `/apes-execute [phase]` | Execute a phase |
 
 ### Brownfield Commands
 
 | Command | Purpose |
 |---------|---------|
-| `/apes:map` | Analyze existing codebase |
-| `/apes:feature "[desc]"` | Add feature |
-| `/apes:fix "[desc]"` | Fix bug |
-| `/apes:refactor "[desc]"` | Refactor code |
+| `/apes-map` | Analyze existing codebase |
+| `/apes-feature "[desc]"` | Add feature |
+| `/apes-fix "[desc]"` | Fix bug |
+| `/apes-refactor "[desc]"` | Refactor code |
 
 ### State Commands
 
 | Command | Purpose |
 |---------|---------|
-| `/apes:status` | Show current position |
-| `/apes:verify` | Run verification suite |
-| `/apes:resume` | Continue from last state |
-| `/apes:handoff` | Create handoff document |
+| `/apes-status` | Show current position |
+| `/apes-verify` | Run verification suite |
+| `/apes-resume` | Continue from last state |
+| `/apes-handoff` | Create handoff document |
 
 ### Flags
 
@@ -305,9 +306,9 @@ Choose your comfort level:
 
 | Level | Command | You Review |
 |-------|---------|------------|
-| Task | `/apes:execute --task 1` | Each task |
-| Phase | `/apes:execute 1 --ralph` | Each phase |
-| Product | `/apes:build --ralph` | Final product |
+| Task | `/apes-execute --task 1` | Each task |
+| Phase | `/apes-execute 1 --ralph` | Each phase |
+| Product | `/apes-build --ralph` | Final product |
 
 ---
 
@@ -315,7 +316,7 @@ Choose your comfort level:
 
 ```bash
 $ claude
-> /apes:build --prd ./docs/product-requirements.md --ralph --max-iterations 500
+> /apes-build --prd ./docs/product-requirements.md --ralph --max-iterations 500
 
 [ORCHESTRATOR] Loading PRD...
 [ORCHESTRATOR] Creating PROJECT.md...

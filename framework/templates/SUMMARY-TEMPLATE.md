@@ -164,7 +164,7 @@ Logged to .planning/ISSUES.md for future consideration:
 
 1. **Fast scanning** - First ~30 lines, cheap to scan all summaries
 2. **Dependency graph** - `requires`/`provides`/`affects` create explicit links
-3. **Auto-context assembly** - `/apes:plan` can select relevant summaries automatically
+3. **Auto-context assembly** - `/apes-plan` can select relevant summaries automatically
 4. **Tech stack awareness** - Know what's already installed/configured
 5. **Pattern consistency** - Maintain established patterns across plans
 

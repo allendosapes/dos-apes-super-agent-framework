@@ -23,9 +23,9 @@ Add domain-specific skills for common use cases:
 
 Add commands for common workflows:
 
-- `/apes:deploy` - Deployment workflows
-- `/apes:migrate` - Database migrations
-- `/apes:audit` - Security/dependency audits
+- `/apes-deploy` - Deployment workflows
+- `/apes-migrate` - Database migrations
+- `/apes-audit` - Security/dependency audits
 
 **How to add:**
 1. Create `framework/commands/pathway-your-command.md`
@@ -75,7 +75,7 @@ npx dos-apes --local
 
 # Test commands
 claude
-> /apes:help
+> /apes-help
 ```
 
 ## PR Guidelines
