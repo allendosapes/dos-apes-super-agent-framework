@@ -189,6 +189,24 @@ This enables autonomous workflow without constant permission prompts while maint
 
 To customize, edit `.claude/settings.json` after installation.
 
+#### Long-Running Autonomous Tasks
+
+For fully autonomous builds where you don't want any interruptions:
+
+```bash
+# Option 1: Use pre-approved permissions (recommended)
+# Already configured in .claude/settings.json
+
+# Option 2: Don't ask for any permissions (use in sandboxed environments only)
+claude --permission-mode=dontAsk
+
+# Option 3: Accept all edits automatically
+claude --permission-mode=acceptEdits
+```
+
+**Warning:** Only use `--permission-mode=dontAsk` in isolated/sandboxed environments.
+The pre-configured permissions in settings.json provide a safer alternative.
+
 ### Customizing Agents
 
 Edit agent files in `.claude/agents/` to customize:
@@ -246,6 +264,54 @@ chmod +x .claude/hooks/*.sh
 
 # Check gate status
 .claude/hooks/gate-check.sh G4
+```
+
+---
+
+## Tips for Maximum Productivity
+
+### Investment ROI
+
+Setting up the framework takes 1-2 hours initially but saves 5-10 hours per feature after implementation.
+
+### Parallel Sessions
+
+Run multiple Claude instances simultaneously:
+- Use different terminal windows for different phases
+- Each instance has its own context window
+- Git worktrees prevent conflicts between parallel work
+
+### Model Selection
+
+The framework uses Opus for heavy lifting (architecture, implementation) and Sonnet for coordination. For maximum quality:
+- Let the framework choose models per agent
+- Override only if you need faster iteration on simple tasks
+
+### Verification is Key
+
+> "Give Claude a way to verify its work. If Claude has that feedback loop, it will 2-3x the quality of the final result."
+
+The framework includes 5-level verification:
+1. Build passes
+2. Types pass
+3. Lint passes
+4. Tests pass
+5. UI integration verified
+
+### MCP Integration
+
+For enhanced capabilities (Slack notifications, database queries, GitHub API), see the [MCP Guide](.claude/templates/MCP-GUIDE.md).
+
+### GitHub Actions
+
+The framework includes CI/CD templates:
+- `.claude/templates/github-workflows/ci.yml` - Standard CI pipeline
+- `.claude/templates/github-workflows/claude-docs.yml` - Auto-update CLAUDE.md on PRs
+
+Copy to your project:
+```bash
+mkdir -p .github/workflows
+cp .claude/templates/github-workflows/*.yml .github/workflows/
 ```
 
 ---

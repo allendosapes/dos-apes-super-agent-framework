@@ -298,6 +298,13 @@ Level 5: Browser      Manual verification
 | `--max-iterations N` | Limit iterations (default: 500) |
 | `--parallel` | Use git worktrees |
 
+### Claude Code Flags (for `claude` command)
+
+| Flag | Effect |
+|------|--------|
+| `--permission-mode=dontAsk` | Skip all permission prompts (sandboxed environments only) |
+| `--permission-mode=acceptEdits` | Auto-accept file edits |
+
 ---
 
 ## Autonomy Levels
