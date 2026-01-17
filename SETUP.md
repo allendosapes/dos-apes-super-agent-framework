@@ -161,7 +161,31 @@ The framework includes a pre-configured `settings.json` that gets copied to `.cl
 - **Context Files**: Automatically loads ORCHESTRATOR.md
 - **Pre-tool Hooks**: Prevents edits on main branch
 - **Post-tool Hooks**: Auto-formats code after edits
-- **Permissions**: Pre-approved npm, git, and common commands
+- **Permissions**: Pre-approved commands for uninterrupted workflow
+
+#### Pre-Approved Permissions
+
+The settings include comprehensive permissions so Claude doesn't stop to ask for approval on common, safe operations:
+
+**Git Operations:**
+- `git status`, `git diff`, `git log`, `git branch`
+- `git checkout`, `git add`, `git commit`, `git push`, `git pull`
+- `git merge`, `git rebase`, `git stash`, `git worktree`
+
+**Package Managers:**
+- `npm`, `npx`, `yarn`, `pnpm`, `bun`
+
+**Build & Test Tools:**
+- `node`, `tsc`, `tsx`, `vitest`, `jest`, `eslint`, `prettier`
+
+**File Operations:**
+- `cat`, `ls`, `find`, `grep`, `mkdir`, `cp`, `mv`, `rm`, `touch`
+- `head`, `tail`, `wc`, `sort`, `chmod +x`
+
+**Claude Tools:**
+- `Read`, `Edit`, `Write`, `Grep`, `Glob`, `Task`, `TodoWrite`, `WebFetch`
+
+This enables autonomous workflow without constant permission prompts while maintaining security for unknown commands.
 
 To customize, edit `.claude/settings.json` after installation.
 
