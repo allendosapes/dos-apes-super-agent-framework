@@ -5,6 +5,7 @@ Standards for building maintainable, performant frontend applications.
 ## Component Architecture
 
 ### Structure
+
 ```
 src/
 ├── components/
@@ -26,6 +27,7 @@ src/
 ```
 
 ### Component Design
+
 ```tsx
 // Single responsibility
 // Good: One purpose
@@ -60,21 +62,27 @@ function UserCard({ user }) {
 ## State Management
 
 ### Local State (useState)
+
 ```tsx
 // Simple, component-specific state
 function Counter() {
   const [count, setCount] = useState(0);
-  return <button onClick={() => setCount(c => c + 1)}>{count}</button>;
+  return <button onClick={() => setCount((c) => c + 1)}>{count}</button>;
 }
 ```
 
 ### Server State (React Query)
+
 ```tsx
 // Data from API
 function UserProfile({ userId }) {
-  const { data: user, isLoading, error } = useQuery({
-    queryKey: ['user', userId],
-    queryFn: () => fetchUser(userId)
+  const {
+    data: user,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["user", userId],
+    queryFn: () => fetchUser(userId),
   });
 
   if (isLoading) return <Spinner />;
@@ -87,15 +95,17 @@ function UpdateProfile() {
   const mutation = useMutation({
     mutationFn: updateUser,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user'] });
-    }
+      queryClient.invalidateQueries({ queryKey: ["user"] });
+    },
   });
 
   return (
-    <form onSubmit={(e) => {
-      e.preventDefault();
-      mutation.mutate(formData);
-    }}>
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        mutation.mutate(formData);
+      }}
+    >
       {/* form fields */}
     </form>
   );
@@ -103,29 +113,27 @@ function UpdateProfile() {
 ```
 
 ### Global State (Zustand)
+
 ```tsx
 // App-wide state
 const useAuthStore = create((set) => ({
   user: null,
   isAuthenticated: false,
   login: (user) => set({ user, isAuthenticated: true }),
-  logout: () => set({ user: null, isAuthenticated: false })
+  logout: () => set({ user: null, isAuthenticated: false }),
 }));
 
 // Usage
 function Header() {
   const { user, logout } = useAuthStore();
-  return (
-    <nav>
-      {user && <button onClick={logout}>Logout</button>}
-    </nav>
-  );
+  return <nav>{user && <button onClick={logout}>Logout</button>}</nav>;
 }
 ```
 
 ## Hooks
 
 ### Custom Hook Pattern
+
 ```tsx
 // Encapsulate reusable logic
 function useLocalStorage<T>(key: string, initialValue: T) {
@@ -143,11 +151,12 @@ function useLocalStorage<T>(key: string, initialValue: T) {
 
 // Usage
 function Settings() {
-  const [theme, setTheme] = useLocalStorage('theme', 'light');
+  const [theme, setTheme] = useLocalStorage("theme", "light");
 }
 ```
 
 ### Hook Rules
+
 1. Only call at top level
 2. Only call from React functions
 3. Name with "use" prefix
@@ -156,6 +165,7 @@ function Settings() {
 ## Error Handling
 
 ### Error Boundaries
+
 ```tsx
 class ErrorBoundary extends React.Component<Props, State> {
   state = { hasError: false, error: null };
@@ -179,15 +189,16 @@ class ErrorBoundary extends React.Component<Props, State> {
 // Usage
 <ErrorBoundary>
   <App />
-</ErrorBoundary>
+</ErrorBoundary>;
 ```
 
 ### Async Error Handling
+
 ```tsx
 function UserList() {
   const { data, error, isLoading } = useQuery({
-    queryKey: ['users'],
-    queryFn: fetchUsers
+    queryKey: ["users"],
+    queryFn: fetchUsers,
   });
 
   if (isLoading) return <Skeleton count={5} />;
@@ -209,18 +220,16 @@ function UserList() {
 ## Performance
 
 ### Memoization
+
 ```tsx
 // Expensive calculations
 const sortedItems = useMemo(
   () => items.sort((a, b) => a.name.localeCompare(b.name)),
-  [items]
+  [items],
 );
 
 // Callback stability
-const handleClick = useCallback(
-  (id: string) => selectItem(id),
-  [selectItem]
-);
+const handleClick = useCallback((id: string) => selectItem(id), [selectItem]);
 
 // Component memoization
 const ExpensiveComponent = memo(function Expensive({ data }) {
@@ -229,10 +238,11 @@ const ExpensiveComponent = memo(function Expensive({ data }) {
 ```
 
 ### Code Splitting
+
 ```tsx
 // Lazy load routes/components
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const Settings = lazy(() => import('./pages/Settings'));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Settings = lazy(() => import("./pages/Settings"));
 
 function App() {
   return (
@@ -247,8 +257,9 @@ function App() {
 ```
 
 ### List Virtualization
+
 ```tsx
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { useVirtualizer } from "@tanstack/react-virtual";
 
 function VirtualList({ items }) {
   const parentRef = useRef<HTMLDivElement>(null);
@@ -260,13 +271,13 @@ function VirtualList({ items }) {
   });
 
   return (
-    <div ref={parentRef} style={{ height: 400, overflow: 'auto' }}>
+    <div ref={parentRef} style={{ height: 400, overflow: "auto" }}>
       <div style={{ height: virtualizer.getTotalSize() }}>
         {virtualizer.getVirtualItems().map((virtualItem) => (
           <div
             key={virtualItem.key}
             style={{
-              position: 'absolute',
+              position: "absolute",
               top: 0,
               transform: `translateY(${virtualItem.start}px)`,
             }}
@@ -283,14 +294,15 @@ function VirtualList({ items }) {
 ## Forms
 
 ### Form Handling (React Hook Form)
+
 ```tsx
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 const schema = z.object({
-  email: z.string().email('Invalid email'),
-  password: z.string().min(8, 'Min 8 characters')
+  email: z.string().email("Invalid email"),
+  password: z.string().min(8, "Min 8 characters"),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -299,9 +311,9 @@ function LoginForm() {
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting }
+    formState: { errors, isSubmitting },
   } = useForm<FormData>({
-    resolver: zodResolver(schema)
+    resolver: zodResolver(schema),
   });
 
   const onSubmit = async (data: FormData) => {
@@ -310,9 +322,15 @@ function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
-      <Input {...register('email')} error={errors.email?.message} />
-      <Input {...register('password')} type="password" error={errors.password?.message} />
-      <Button type="submit" loading={isSubmitting}>Login</Button>
+      <Input {...register("email")} error={errors.email?.message} />
+      <Input
+        {...register("password")}
+        type="password"
+        error={errors.password?.message}
+      />
+      <Button type="submit" loading={isSubmitting}>
+        Login
+      </Button>
     </form>
   );
 }
@@ -321,36 +339,34 @@ function LoginForm() {
 ## Styling
 
 ### Tailwind CSS (Recommended)
+
 ```tsx
 // Utility-first
 <button className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
   Click me
-</button>
+</button>;
 
 // Component variants with cva
-import { cva, type VariantProps } from 'class-variance-authority';
+import { cva, type VariantProps } from "class-variance-authority";
 
-const buttonVariants = cva(
-  'px-4 py-2 rounded font-medium transition-colors',
-  {
-    variants: {
-      variant: {
-        primary: 'bg-blue-500 text-white hover:bg-blue-600',
-        secondary: 'bg-gray-200 text-gray-900 hover:bg-gray-300',
-        outline: 'border border-gray-300 hover:bg-gray-50'
-      },
-      size: {
-        sm: 'px-3 py-1 text-sm',
-        md: 'px-4 py-2',
-        lg: 'px-6 py-3 text-lg'
-      }
+const buttonVariants = cva("px-4 py-2 rounded font-medium transition-colors", {
+  variants: {
+    variant: {
+      primary: "bg-blue-500 text-white hover:bg-blue-600",
+      secondary: "bg-gray-200 text-gray-900 hover:bg-gray-300",
+      outline: "border border-gray-300 hover:bg-gray-50",
     },
-    defaultVariants: {
-      variant: 'primary',
-      size: 'md'
-    }
-  }
-);
+    size: {
+      sm: "px-3 py-1 text-sm",
+      md: "px-4 py-2",
+      lg: "px-6 py-3 text-lg",
+    },
+  },
+  defaultVariants: {
+    variant: "primary",
+    size: "md",
+  },
+});
 
 interface ButtonProps extends VariantProps<typeof buttonVariants> {
   children: React.ReactNode;
@@ -358,9 +374,7 @@ interface ButtonProps extends VariantProps<typeof buttonVariants> {
 
 function Button({ variant, size, children }: ButtonProps) {
   return (
-    <button className={buttonVariants({ variant, size })}>
-      {children}
-    </button>
+    <button className={buttonVariants({ variant, size })}>{children}</button>
   );
 }
 ```
@@ -368,30 +382,31 @@ function Button({ variant, size, children }: ButtonProps) {
 ## Testing
 
 ### Component Tests
-```tsx
-import { render, screen, fireEvent } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { LoginForm } from './LoginForm';
 
-describe('LoginForm', () => {
-  it('submits with valid data', async () => {
+```tsx
+import { render, screen, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { LoginForm } from "./LoginForm";
+
+describe("LoginForm", () => {
+  it("submits with valid data", async () => {
     const onSubmit = jest.fn();
     render(<LoginForm onSubmit={onSubmit} />);
 
-    await userEvent.type(screen.getByLabelText(/email/i), 'test@test.com');
-    await userEvent.type(screen.getByLabelText(/password/i), 'password123');
-    await userEvent.click(screen.getByRole('button', { name: /login/i }));
+    await userEvent.type(screen.getByLabelText(/email/i), "test@test.com");
+    await userEvent.type(screen.getByLabelText(/password/i), "password123");
+    await userEvent.click(screen.getByRole("button", { name: /login/i }));
 
     expect(onSubmit).toHaveBeenCalledWith({
-      email: 'test@test.com',
-      password: 'password123'
+      email: "test@test.com",
+      password: "password123",
     });
   });
 
-  it('shows validation errors', async () => {
+  it("shows validation errors", async () => {
     render(<LoginForm onSubmit={jest.fn()} />);
 
-    await userEvent.click(screen.getByRole('button', { name: /login/i }));
+    await userEvent.click(screen.getByRole("button", { name: /login/i }));
 
     expect(screen.getByText(/invalid email/i)).toBeInTheDocument();
   });
@@ -401,6 +416,7 @@ describe('LoginForm', () => {
 ## Checklist
 
 Before shipping:
+
 - [ ] Components are properly typed
 - [ ] Error states handled
 - [ ] Loading states present

@@ -158,6 +158,7 @@ If all checks pass, update `.planning/STATE.md`:
 
 ```markdown
 ## Verification Status
+
 build: pass
 types: pass
 lint: pass
@@ -167,6 +168,7 @@ ui_integration: pass
 browser_verified: pending
 
 ## Last Verified
+
 timestamp: [now]
 ```
 

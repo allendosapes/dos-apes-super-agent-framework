@@ -3,14 +3,16 @@
 > Dos Apes executable plan. This is a prompt, not a document.
 
 ---
+
 phase: XX-phase-name
 plan: NN
 type: execute
-wave: N                     # Execution wave (1, 2, 3...). Pre-computed at plan time.
-depends_on: []              # Plan IDs this plan requires (e.g., ["01-01"])
-files_modified: []          # Files this plan modifies
-autonomous: true            # false if plan has checkpoints
-gate: G4                    # Quality gate this plan works toward
+wave: N # Execution wave (1, 2, 3...). Pre-computed at plan time.
+depends_on: [] # Plan IDs this plan requires (e.g., ["01-01"])
+files_modified: [] # Files this plan modifies
+autonomous: true # false if plan has checkpoints
+gate: G4 # Quality gate this plan works toward
+
 ---
 
 <objective>
@@ -51,6 +53,7 @@ gate: G4                    # Quality gate this plan works toward
     Technology: [what to use]
     Pattern: [how to structure]
     Avoid: [what NOT to do and WHY]
+
   </action>
   <verify>
     ```bash
@@ -125,26 +128,28 @@ Before declaring plan complete:
 - [ ] `npm test` passes all tests
 - [ ] All new UI components integrated (not just created)
 - [ ] All new routes accessible and navigable
-</verification>
+      </verification>
 
 <success_criteria>
+
 - All tasks completed
 - All verification checks pass
 - No errors or warnings introduced
 - [Feature-specific criterion]
 - [Feature-specific criterion]
-</success_criteria>
+  </success_criteria>
 
 <output>
 After completion, create `.planning/phases/XX-phase-name/XX-NN-SUMMARY.md` using the summary template.
 
 Include:
+
 - Frontmatter with dependency graph
 - Performance metrics
 - Task commits
 - Deviations (if any)
 - Issues encountered (if any)
-</output>
+  </output>
 
 ---
 
@@ -152,23 +157,23 @@ Include:
 
 **Good task size:** 15-60 minutes of Claude work.
 
-| Too Small | Just Right | Too Big |
-|-----------|------------|---------|
+| Too Small            | Just Right                     | Too Big                    |
+| -------------------- | ------------------------------ | -------------------------- |
 | Add import statement | Create login endpoint with JWT | Implement full auth system |
-| Fix typo | Add form validation with Zod | Build entire feature |
-| Update config value | Create API route with tests | Refactor entire codebase |
+| Fix typo             | Add form validation with Zod   | Build entire feature       |
+| Update config value  | Create API route with tests    | Refactor entire codebase   |
 
 **Max tasks per plan:** 2-3 (to stay in peak context quality zone)
 
 ## Task Types
 
-| Type | Use When | Claude Does |
-|------|----------|-------------|
-| `auto` | Default - Claude can do it | Executes autonomously |
-| `checkpoint:human-verify` | Visual/UX check needed | Builds, stops, waits for approval |
-| `checkpoint:decision` | Implementation choice needed | Presents options, waits for decision |
-| `checkpoint:human-action` | RARE - No CLI/API exists | Automates everything possible, stops for manual step |
+| Type                      | Use When                     | Claude Does                                          |
+| ------------------------- | ---------------------------- | ---------------------------------------------------- |
+| `auto`                    | Default - Claude can do it   | Executes autonomously                                |
+| `checkpoint:human-verify` | Visual/UX check needed       | Builds, stops, waits for approval                    |
+| `checkpoint:decision`     | Implementation choice needed | Presents options, waits for decision                 |
+| `checkpoint:human-action` | RARE - No CLI/API exists     | Automates everything possible, stops for manual step |
 
 ---
 
-*Managed by [Dos Apes Super Agent Framework](https://github.com/dos-apes/dos-apes)*
+_Managed by [Dos Apes Super Agent Framework](https://github.com/dos-apes/dos-apes)_

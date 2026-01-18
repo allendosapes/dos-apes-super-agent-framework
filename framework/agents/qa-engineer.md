@@ -74,15 +74,16 @@ npm run dev
 ## Test Standards
 
 ### Unit Tests
+
 ```typescript
 describe('MyComponent', () => {
   it('should render with required props', () => {
     // Arrange
     const props = { title: 'Test' };
-    
+
     // Act
     render(<MyComponent {...props} />);
-    
+
     // Assert
     expect(screen.getByText('Test')).toBeInTheDocument();
   });
@@ -90,23 +91,24 @@ describe('MyComponent', () => {
   it('should handle user interaction', () => {
     const onAction = jest.fn();
     render(<MyComponent onAction={onAction} />);
-    
+
     fireEvent.click(screen.getByRole('button'));
-    
+
     expect(onAction).toHaveBeenCalled();
   });
 });
 ```
 
 ### Integration Tests
+
 ```typescript
-describe('User Flow', () => {
-  it('should complete registration', async () => {
+describe("User Flow", () => {
+  it("should complete registration", async () => {
     // Test the full flow
-    await page.goto('/register');
-    await page.fill('[name="email"]', 'test@example.com');
+    await page.goto("/register");
+    await page.fill('[name="email"]', "test@example.com");
     await page.click('button[type="submit"]');
-    await expect(page).toHaveURL('/dashboard');
+    await expect(page).toHaveURL("/dashboard");
   });
 });
 ```
@@ -142,6 +144,7 @@ grep -rn "[PageName]" src/ | grep -i "nav\|menu\|sidebar"
 ## Approval Criteria
 
 Only approve when:
+
 - [ ] Build passes (0 errors)
 - [ ] Type check passes (0 errors)
 - [ ] Lint passes (0 errors, warnings OK)
@@ -154,15 +157,15 @@ Only approve when:
 
 Report in table format:
 
-| Check | Status | Notes |
-|-------|--------|-------|
-| Build | ✅/❌ | |
-| Types | ✅/❌ | |
-| Lint | ✅/❌ | |
-| Unit Tests | ✅/❌ | X/Y passing |
-| Integration | ✅/❌ | |
-| UI Integration | ✅/❌ | Used in [file] |
-| Browser | ✅/❌ | [description] |
+| Check          | Status | Notes          |
+| -------------- | ------ | -------------- |
+| Build          | ✅/❌  |                |
+| Types          | ✅/❌  |                |
+| Lint           | ✅/❌  |                |
+| Unit Tests     | ✅/❌  | X/Y passing    |
+| Integration    | ✅/❌  |                |
+| UI Integration | ✅/❌  | Used in [file] |
+| Browser        | ✅/❌  | [description]  |
 
 **Verdict: APPROVED / REJECTED**
 

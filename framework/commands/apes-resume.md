@@ -23,6 +23,7 @@ fi
 ### Step 2: Restore Context
 
 Load all planning documents:
+
 - `.planning/PROJECT.md` - Project overview
 - `.planning/ROADMAP.md` - Phase overview
 - `.planning/STATE.md` - Current position
@@ -39,6 +40,7 @@ git status --short
 ```
 
 If there are uncommitted changes:
+
 ```
 ⚠️ Uncommitted changes detected from previous session.
 Review changes before continuing.
@@ -78,8 +80,10 @@ Blockers:
 ### Step 6: Update State
 
 Update `.planning/STATE.md`:
+
 ```markdown
 ## Session Log
+
 - [TIMESTAMP]: Session resumed from handoff
 ```
 
@@ -107,10 +111,10 @@ Recommended action:
 
 Based on restored state:
 
-| State | Suggested Command |
-|-------|------------------|
-| Task in progress | Continue implementing |
-| Task blocked | Resolve blocker first |
-| Task complete, more tasks | `/apes-execute` |
-| Phase complete | `/apes-plan [next]` |
-| Verification failing | Fix issues first |
+| State                     | Suggested Command     |
+| ------------------------- | --------------------- |
+| Task in progress          | Continue implementing |
+| Task blocked              | Resolve blocker first |
+| Task complete, more tasks | `/apes-execute`       |
+| Phase complete            | `/apes-plan [next]`   |
+| Verification failing      | Fix issues first      |

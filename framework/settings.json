@@ -1,11 +1,9 @@
 {
   "$schema": "https://raw.githubusercontent.com/anthropics/claude-code/main/schemas/settings.schema.json",
   "_comment": "Dos Apes Super Agent Framework - We ain't monkeying around with code!",
-  
-  "contextFiles": [
-    ".claude/ORCHESTRATOR.md"
-  ],
-  
+
+  "contextFiles": [".claude/ORCHESTRATOR.md"],
+
   "hooks": {
     "PreToolUse": [
       {
@@ -19,20 +17,20 @@
         ]
       }
     ],
-    
+
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
         "hooks": [
           {
-            "type": "command", 
+            "type": "command",
             "command": "npx prettier --write \"$CLAUDE_FILE_PATH\" 2>/dev/null || true",
             "timeout": 10
           }
         ]
       }
     ],
-    
+
     "Stop": [
       {
         "hooks": [
@@ -45,7 +43,7 @@
       }
     ]
   },
-  
+
   "permissions": {
     "allowedTools": {
       "Bash": {
@@ -117,7 +115,7 @@
       "WebFetch": { "allowed": true }
     }
   },
-  
+
   "environment": {
     "DOS_APES_FRAMEWORK": "true",
     "DOS_APES_VERSION": "1.0.0"

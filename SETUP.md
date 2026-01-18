@@ -2,6 +2,7 @@
 
 Get Dos Apes running in 2 minutes.
 git branch -M main
+
 ---
 
 ## Prerequisites
@@ -134,21 +135,21 @@ my-project/
 
 ## Quick Command Reference
 
-| Command | What It Does |
-|---------|--------------|
-| `/apes-help` | Show all commands and usage |
-| `/apes-build --prd file.md --ralph` | Full autonomous build |
-| `/apes-init --prd file.md` | Initialize project from PRD |
-| `/apes-plan [phase]` | Create detailed task plan for a phase |
-| `/apes-execute [phase]` | Execute phase with agent orchestration |
-| `/apes-map` | Analyze existing codebase |
-| `/apes-feature "description"` | Add a feature |
-| `/apes-fix "description"` | Fix a bug |
-| `/apes-refactor "description"` | Refactor existing code |
-| `/apes-status` | Show current progress |
-| `/apes-resume` | Continue from last state |
-| `/apes-verify` | Run verification suite |
-| `/apes-handoff` | Create handoff for session break |
+| Command                             | What It Does                           |
+| ----------------------------------- | -------------------------------------- |
+| `/apes-help`                        | Show all commands and usage            |
+| `/apes-build --prd file.md --ralph` | Full autonomous build                  |
+| `/apes-init --prd file.md`          | Initialize project from PRD            |
+| `/apes-plan [phase]`                | Create detailed task plan for a phase  |
+| `/apes-execute [phase]`             | Execute phase with agent orchestration |
+| `/apes-map`                         | Analyze existing codebase              |
+| `/apes-feature "description"`       | Add a feature                          |
+| `/apes-fix "description"`           | Fix a bug                              |
+| `/apes-refactor "description"`      | Refactor existing code                 |
+| `/apes-status`                      | Show current progress                  |
+| `/apes-resume`                      | Continue from last state               |
+| `/apes-verify`                      | Run verification suite                 |
+| `/apes-handoff`                     | Create handoff for session break       |
 
 ---
 
@@ -168,21 +169,26 @@ The framework includes a pre-configured `settings.json` that gets copied to `.cl
 The settings include comprehensive permissions so Claude doesn't stop to ask for approval on common, safe operations:
 
 **Git Operations:**
+
 - `git status`, `git diff`, `git log`, `git branch`
 - `git checkout`, `git add`, `git commit`, `git push`, `git pull`
 - `git merge`, `git rebase`, `git stash`, `git worktree`
 
 **Package Managers:**
+
 - `npm`, `npx`, `yarn`, `pnpm`, `bun`
 
 **Build & Test Tools:**
+
 - `node`, `tsc`, `tsx`, `vitest`, `jest`, `eslint`, `prettier`
 
 **File Operations:**
+
 - `cat`, `ls`, `find`, `grep`, `mkdir`, `cp`, `mv`, `rm`, `touch`
 - `head`, `tail`, `wc`, `sort`, `chmod +x`
 
 **Claude Tools:**
+
 - `Read`, `Edit`, `Write`, `Grep`, `Glob`, `Task`, `TodoWrite`, `WebFetch`
 
 This enables autonomous workflow without constant permission prompts while maintaining security for unknown commands.
@@ -210,6 +216,7 @@ The pre-configured permissions in settings.json provide a safer alternative.
 ### Customizing Agents
 
 Edit agent files in `.claude/agents/` to customize:
+
 - Model selection (opus/sonnet/haiku)
 - Tool permissions
 - Specific guidelines
@@ -245,19 +252,23 @@ claude
 ## Troubleshooting
 
 ### "Command not found"
+
 - Ensure `.claude/commands/` exists with the command files
 - Restart Claude Code
 
 ### "Permission denied" on hooks
+
 ```bash
 chmod +x .claude/hooks/*.sh
 ```
 
 ### "Context too long"
+
 - The framework manages context automatically
 - For very large codebases, use `/apes-map` first to create summaries
 
 ### Build failures
+
 ```bash
 # Run verification to see what's failing
 /apes-verify
@@ -277,6 +288,7 @@ Setting up the framework takes 1-2 hours initially but saves 5-10 hours per feat
 ### Parallel Sessions
 
 Run multiple Claude instances simultaneously:
+
 - Use different terminal windows for different phases
 - Each instance has its own context window
 - Git worktrees prevent conflicts between parallel work
@@ -284,6 +296,7 @@ Run multiple Claude instances simultaneously:
 ### Model Selection
 
 The framework uses Opus for heavy lifting (architecture, implementation) and Sonnet for coordination. For maximum quality:
+
 - Let the framework choose models per agent
 - Override only if you need faster iteration on simple tasks
 
@@ -292,6 +305,7 @@ The framework uses Opus for heavy lifting (architecture, implementation) and Son
 > "Give Claude a way to verify its work. If Claude has that feedback loop, it will 2-3x the quality of the final result."
 
 The framework includes 5-level verification:
+
 1. Build passes
 2. Types pass
 3. Lint passes
@@ -305,10 +319,12 @@ For enhanced capabilities (Slack notifications, database queries, GitHub API), s
 ### GitHub Actions
 
 The framework includes CI/CD templates:
+
 - `.claude/templates/github-workflows/ci.yml` - Standard CI pipeline
 - `.claude/templates/github-workflows/claude-docs.yml` - Auto-update CLAUDE.md on PRs
 
 Copy to your project:
+
 ```bash
 mkdir -p .github/workflows
 cp .claude/templates/github-workflows/*.yml .github/workflows/

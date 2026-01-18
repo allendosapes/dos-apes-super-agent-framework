@@ -15,17 +15,21 @@
 ## Context
 
 ### Problem Statement
+
 [What is the issue that we're seeing that motivates this decision?]
 
 ### Current State
+
 [Describe the current situation/architecture]
 
 ### Requirements
+
 - [Requirement 1 - e.g., "Must handle 10,000 concurrent users"]
 - [Requirement 2 - e.g., "Must integrate with existing auth system"]
 - [Requirement 3 - e.g., "Must be deployable to AWS"]
 
 ### Constraints
+
 - [Constraint 1 - e.g., "Team has limited Go experience"]
 - [Constraint 2 - e.g., "Budget limited to $500/month for hosting"]
 - [Constraint 3 - e.g., "Must be complete within 2 sprints"]
@@ -49,10 +53,12 @@ Priority-ordered list of factors influencing this decision:
 **Description:** [Brief description of the approach]
 
 **Pros:**
+
 - [Advantage 1]
 - [Advantage 2]
 
 **Cons:**
+
 - [Disadvantage 1]
 - [Disadvantage 2]
 
@@ -66,10 +72,12 @@ Priority-ordered list of factors influencing this decision:
 **Description:** [Brief description of the approach]
 
 **Pros:**
+
 - [Advantage 1]
 - [Advantage 2]
 
 **Cons:**
+
 - [Disadvantage 1]
 - [Disadvantage 2]
 
@@ -83,10 +91,12 @@ Priority-ordered list of factors influencing this decision:
 **Description:** [Brief description of the approach]
 
 **Pros:**
+
 - [Advantage 1]
 - [Advantage 2]
 
 **Cons:**
+
 - [Disadvantage 1]
 - [Disadvantage 2]
 
@@ -100,10 +110,13 @@ Priority-ordered list of factors influencing this decision:
 **We will use Option [N]: [Name]**
 
 ### Rationale
+
 [Explain why this option was chosen over the others. Reference the decision drivers.]
 
 ### Trade-offs Accepted
+
 [What compromises are we making with this decision?]
+
 - [Trade-off 1]
 - [Trade-off 2]
 
@@ -112,16 +125,19 @@ Priority-ordered list of factors influencing this decision:
 ## Consequences
 
 ### Positive
+
 - [Positive consequence 1]
 - [Positive consequence 2]
 
 ### Negative
+
 - [Negative consequence 1]
 - [Negative consequence 2]
 
 ### Risks
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
+
+| Risk     | Likelihood   | Impact       | Mitigation        |
+| -------- | ------------ | ------------ | ----------------- |
 | [Risk 1] | Low/Med/High | Low/Med/High | [How to mitigate] |
 | [Risk 2] | Low/Med/High | Low/Med/High | [How to mitigate] |
 
@@ -130,11 +146,13 @@ Priority-ordered list of factors influencing this decision:
 ## Implementation
 
 ### Action Items
+
 - [ ] [Action 1 - e.g., "Set up new database"]
 - [ ] [Action 2 - e.g., "Migrate existing data"]
 - [ ] [Action 3 - e.g., "Update deployment scripts"]
 
 ### Migration Path
+
 [If replacing an existing solution, describe the migration strategy]
 
 1. [Step 1]
@@ -142,6 +160,7 @@ Priority-ordered list of factors influencing this decision:
 3. [Step 3]
 
 ### Rollback Plan
+
 [How to revert if this decision proves problematic]
 
 ---
@@ -149,11 +168,14 @@ Priority-ordered list of factors influencing this decision:
 ## Validation
 
 ### Success Criteria
+
 How will we know this decision was correct?
+
 - [ ] [Criterion 1 - e.g., "Response time under 200ms"]
 - [ ] [Criterion 2 - e.g., "No increase in error rate"]
 
 ### Review Date
+
 **Scheduled Review:** [Date to revisit this decision]
 
 ---
@@ -180,4 +202,4 @@ How will we know this decision was correct?
 
 ---
 
-*Template for [Dos Apes Super Agent Framework](https://github.com/dos-apes/dos-apes)*
+_Template for [Dos Apes Super Agent Framework](https://github.com/dos-apes/dos-apes)_

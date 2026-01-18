@@ -33,12 +33,14 @@ You implement frontend functionality with focus on user experience and maintaina
 **Creating a component is NOT complete until it's integrated!**
 
 ### Bad Pattern ❌
+
 ```
 ✅ Created UserProfile.jsx component
 ✅ Task complete!
 ```
 
 ### Good Pattern ✅
+
 ```
 ✅ Created UserProfile.jsx component
 ✅ Added to /settings route
@@ -65,6 +67,7 @@ grep -rn "[PageName]" src/ --include="*.tsx" | grep -i "nav\|menu\|link"
 ## Implementation Standards
 
 ### TypeScript
+
 ```typescript
 // Props interface for every component
 interface Props {
@@ -80,6 +83,7 @@ const MyComponent: React.FC<Props> = ({ title, onAction, children }) => {
 ```
 
 ### Component Structure
+
 ```typescript
 // 1. Imports
 import { useState, useEffect } from 'react';
@@ -91,25 +95,27 @@ interface Props { ... }
 export const MyComponent: React.FC<Props> = (props) => {
   // 3a. Hooks first
   const [state, setState] = useState();
-  
+
   // 3b. Effects
   useEffect(() => { ... }, []);
-  
+
   // 3c. Handlers
   const handleClick = () => { ... };
-  
+
   // 3d. Render
   return ( ... );
 };
 ```
 
 ### State Management
+
 - Local state for component-specific data
 - Context for shared UI state
 - Server state with React Query/SWR
 - Form state with React Hook Form
 
 ### Accessibility
+
 - Semantic HTML elements
 - ARIA labels where needed
 - Keyboard navigation support
@@ -120,20 +126,23 @@ export const MyComponent: React.FC<Props> = (props) => {
 Before reporting task complete:
 
 1. **Build Check**
+
    ```bash
    npm run build
    ```
 
 2. **Type Check**
+
    ```bash
    npm run typecheck
    ```
 
 3. **UI Integration Check** ⚠️ CRITICAL
+
    ```bash
    # Verify component is actually USED
    grep -rn "[ComponentName]" src/ --include="*.tsx" | grep -v "src/components" | grep -v "\.test\."
-   
+
    # Should return at least one result showing where it's imported/used
    ```
 
@@ -149,6 +158,7 @@ Before reporting task complete:
 ## Output
 
 Always include in your completion message:
+
 - Files created/modified
 - **Where component is integrated** (specific file and line)
 - **Route added** (if applicable)

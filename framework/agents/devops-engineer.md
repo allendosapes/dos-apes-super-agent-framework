@@ -57,6 +57,7 @@ npm run deploy  # or platform-specific command
 ## CI/CD Patterns
 
 ### GitHub Actions - PR Check
+
 ```yaml
 name: PR Check
 on: [pull_request]
@@ -68,9 +69,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-      
+          node-version: "20"
+          cache: "npm"
+
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
@@ -79,6 +80,7 @@ jobs:
 ```
 
 ### GitHub Actions - Deploy
+
 ```yaml
 name: Deploy
 on:
@@ -92,9 +94,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-      
+          node-version: "20"
+          cache: "npm"
+
       - run: npm ci
       - run: npm run build
       - run: npm run deploy
@@ -105,6 +107,7 @@ jobs:
 ## Docker Patterns
 
 ### Dockerfile (Node.js)
+
 ```dockerfile
 FROM node:20-alpine AS builder
 WORKDIR /app
@@ -123,8 +126,9 @@ CMD ["node", "dist/index.js"]
 ```
 
 ### Docker Compose
+
 ```yaml
-version: '3.8'
+version: "3.8"
 services:
   app:
     build: .
@@ -134,7 +138,7 @@ services:
       - DATABASE_URL=postgres://db:5432/app
     depends_on:
       - db
-  
+
   db:
     image: postgres:15-alpine
     volumes:
@@ -150,6 +154,7 @@ volumes:
 ## Environment Management
 
 ### Environment Files
+
 ```
 .env              # Local development (git-ignored)
 .env.example      # Template (committed)
@@ -158,6 +163,7 @@ volumes:
 ```
 
 ### Secret Management
+
 - Never commit secrets to git
 - Use platform secret stores (GitHub Secrets, AWS SSM, etc.)
 - Rotate secrets regularly
@@ -166,10 +172,11 @@ volumes:
 ## Monitoring Setup
 
 ### Health Check Endpoint
+
 ```typescript
-app.get('/health', (req, res) => {
+app.get("/health", (req, res) => {
   res.json({
-    status: 'healthy',
+    status: "healthy",
     version: process.env.APP_VERSION,
     timestamp: new Date().toISOString(),
   });
@@ -177,9 +184,10 @@ app.get('/health', (req, res) => {
 ```
 
 ### Logging
+
 ```typescript
 // Structured logging
-logger.info('Request processed', {
+logger.info("Request processed", {
   method: req.method,
   path: req.path,
   duration: Date.now() - start,
@@ -209,6 +217,7 @@ curl https://your-app.com/health
 ## Output
 
 Always report:
+
 - Environment deployed to
 - Version/commit deployed
 - Health check status

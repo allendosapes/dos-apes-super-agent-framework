@@ -5,6 +5,7 @@ Standards for version control, branching, and commit practices.
 ## Branch Strategy
 
 ### Main Branches
+
 ```
 main (production)
   └── Protected, requires PR approval
@@ -17,6 +18,7 @@ develop (optional)
 ```
 
 ### Feature Branches
+
 ```
 feat/[description]     # New features
 fix/[description]      # Bug fixes
@@ -32,6 +34,7 @@ refactor/payment-service
 ```
 
 ### Branch Naming
+
 - Use kebab-case
 - Be descriptive but concise
 - Include issue number if applicable
@@ -51,6 +54,7 @@ test
 ## Commit Messages
 
 ### Conventional Commits
+
 ```
 <type>(<scope>): <description>
 
@@ -60,18 +64,20 @@ test
 ```
 
 ### Types
-| Type | Description |
-|------|-------------|
-| feat | New feature |
-| fix | Bug fix |
+
+| Type     | Description                  |
+| -------- | ---------------------------- |
+| feat     | New feature                  |
+| fix      | Bug fix                      |
 | refactor | Code change (no feature/fix) |
-| test | Adding tests |
-| docs | Documentation |
-| style | Formatting (no code change) |
-| chore | Maintenance tasks |
-| perf | Performance improvement |
+| test     | Adding tests                 |
+| docs     | Documentation                |
+| style    | Formatting (no code change)  |
+| chore    | Maintenance tasks            |
+| perf     | Performance improvement      |
 
 ### Examples
+
 ```bash
 # Simple
 feat(auth): add password reset flow
@@ -95,6 +101,7 @@ feat(auth,api): add refresh token rotation
 ```
 
 ### Rules
+
 1. Use imperative mood ("add" not "added")
 2. Don't capitalize first letter
 3. No period at end
@@ -104,6 +111,7 @@ feat(auth,api): add refresh token rotation
 ## Workflow
 
 ### Feature Development
+
 ```bash
 # 1. Start from updated main
 git checkout main
@@ -134,6 +142,7 @@ gh pr create --title "feat: Add user avatar component" --body "..."
 ```
 
 ### Bug Fixes
+
 ```bash
 # 1. Create fix branch
 git checkout -b fix/login-bug
@@ -152,6 +161,7 @@ gh pr create --title "fix: Handle empty password in login"
 ```
 
 ### Hotfix (Production)
+
 ```bash
 # 1. Branch from main
 git checkout main
@@ -171,6 +181,7 @@ gh pr create --title "HOTFIX: Critical auth bug" --label urgent
 ## Pull Requests
 
 ### Creating PRs
+
 ```bash
 gh pr create \
   --title "feat: Add user notifications" \
@@ -196,6 +207,7 @@ EOF
 ```
 
 ### PR Checklist
+
 - [ ] Title follows conventional commits
 - [ ] Description explains what and why
 - [ ] Tests pass
@@ -204,6 +216,7 @@ EOF
 - [ ] Labels added
 
 ### Reviewing PRs
+
 1. Read the description
 2. Check test coverage
 3. Review code changes
@@ -213,6 +226,7 @@ EOF
 ## Merging
 
 ### Squash Merge (Recommended)
+
 - Keeps main history clean
 - One commit per feature
 - Easier to revert
@@ -227,6 +241,7 @@ git commit -m "feat: add new feature (#123)"
 ```
 
 ### Rebase Before Merge
+
 ```bash
 # Update branch before merging
 git checkout feat/new-feature
@@ -244,6 +259,7 @@ git push --force-with-lease
 ## Protected Branches
 
 ### Main Branch Rules
+
 - Require PR approval (1+ reviewers)
 - Require passing CI checks
 - Require up-to-date branch
@@ -251,6 +267,7 @@ git push --force-with-lease
 - No direct push
 
 ### Recommended Settings
+
 ```yaml
 # .github/branch-protection.yml
 branches:

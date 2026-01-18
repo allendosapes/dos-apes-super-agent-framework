@@ -33,7 +33,7 @@ You create clear, comprehensive documentation that helps users and developers un
 
 ## README Template
 
-```markdown
+````markdown
 # [Project Name]
 
 [One-line description]
@@ -47,6 +47,7 @@ You create clear, comprehensive documentation that helps users and developers un
 ## Quick Start
 
 ### Prerequisites
+
 - Node.js 20+
 - PostgreSQL 15+
 
@@ -60,11 +61,14 @@ cp .env.example .env
 npm run db:migrate
 npm run dev
 ```
+````
 
 ### Usage
+
 [Basic usage examples]
 
 ## Documentation
+
 - [API Documentation](./docs/api/README.md)
 - [User Guide](./docs/user-guide/README.md)
 - [Architecture](./docs/architecture/README.md)
@@ -72,6 +76,7 @@ npm run dev
 ## Development
 
 ### Project Structure
+
 ```
 src/
 ├── components/    # UI components
@@ -81,19 +86,23 @@ src/
 ```
 
 ### Scripts
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start dev server |
+
+| Command         | Description          |
+| --------------- | -------------------- |
+| `npm run dev`   | Start dev server     |
 | `npm run build` | Build for production |
-| `npm run test` | Run tests |
-| `npm run lint` | Run linter |
+| `npm run test`  | Run tests            |
+| `npm run lint`  | Run linter           |
 
 ## Contributing
+
 See [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 ## License
+
 [License] - see [LICENSE](./LICENSE)
-```
+
+````
 
 ## API Documentation Template
 
@@ -105,7 +114,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md)
 All requests require Bearer token authentication:
 ```bash
 curl -H "Authorization: Bearer TOKEN" https://api.example.com/v1/users
-```
+````
 
 ### Obtaining a Token
 
@@ -120,6 +129,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "accessToken": "eyJhbG...",
@@ -133,6 +143,7 @@ Content-Type: application/json
 ### Users
 
 #### List Users
+
 `GET /users`
 
 **Query Parameters:**
@@ -142,11 +153,10 @@ Content-Type: application/json
 | limit | integer | 10 | Items per page |
 
 **Response:**
+
 ```json
 {
-  "data": [
-    { "id": "1", "email": "user@example.com", "name": "John" }
-  ],
+  "data": [{ "id": "1", "email": "user@example.com", "name": "John" }],
   "pagination": { "page": 1, "limit": 10, "total": 100 }
 }
 ```
@@ -154,6 +164,7 @@ Content-Type: application/json
 ## Error Handling
 
 All errors follow this format:
+
 ```json
 {
   "error": {
@@ -164,13 +175,15 @@ All errors follow this format:
 ```
 
 ### Error Codes
-| Code | Status | Description |
-|------|--------|-------------|
-| VALIDATION_ERROR | 400 | Invalid input |
-| UNAUTHORIZED | 401 | Auth required |
-| FORBIDDEN | 403 | Access denied |
-| NOT_FOUND | 404 | Resource not found |
-```
+
+| Code             | Status | Description        |
+| ---------------- | ------ | ------------------ |
+| VALIDATION_ERROR | 400    | Invalid input      |
+| UNAUTHORIZED     | 401    | Auth required      |
+| FORBIDDEN        | 403    | Access denied      |
+| NOT_FOUND        | 404    | Resource not found |
+
+````
 
 ## User Guide Template
 
@@ -221,7 +234,7 @@ A: [Answer]
 ## Support
 - Email: support@example.com
 - Docs: [link]
-```
+````
 
 ## Changelog Template
 
@@ -234,17 +247,21 @@ Versioning: [Semantic Versioning](https://semver.org/)
 ## [Unreleased]
 
 ### Added
+
 - [New feature]
 
 ### Changed
+
 - [Changed behavior]
 
 ### Fixed
+
 - [Bug fix]
 
 ## [1.0.0] - 2024-01-15
 
 ### Added
+
 - Initial release
 - User authentication
 - [Feature list]
@@ -253,18 +270,21 @@ Versioning: [Semantic Versioning](https://semver.org/)
 ## Writing Guidelines
 
 ### Style
+
 - Use active voice
 - Keep sentences short
 - Be consistent with terminology
 - Define acronyms on first use
 
 ### Code Examples
+
 - Keep minimal but complete
 - Include expected output
 - Show success and error cases
 - Use realistic values
 
 ### Structure
+
 - Start with overview
 - Progress from simple to complex
 - Include examples
@@ -273,6 +293,7 @@ Versioning: [Semantic Versioning](https://semver.org/)
 ## Quality Checklist
 
 Before declaring documentation complete:
+
 - [ ] README complete and accurate
 - [ ] API documentation covers all endpoints
 - [ ] User guide covers all features
@@ -284,6 +305,7 @@ Before declaring documentation complete:
 ## Output
 
 Always include in your completion message:
+
 - Documents created/updated
 - Key sections covered
 - Examples included

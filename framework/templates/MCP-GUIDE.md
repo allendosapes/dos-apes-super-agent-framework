@@ -14,12 +14,12 @@ MCP (Model Context Protocol) is a standard for connecting AI assistants like Cla
 
 MCP integration supercharges autonomous builds:
 
-| Use Case | Without MCP | With MCP |
-|----------|-------------|----------|
-| Database queries | Manual copy/paste | Direct SQL execution |
-| Team notifications | Manual updates | Auto-post to Slack |
-| GitHub operations | CLI commands only | Rich API access |
-| Persistent memory | Lost between sessions | Retained knowledge |
+| Use Case           | Without MCP           | With MCP             |
+| ------------------ | --------------------- | -------------------- |
+| Database queries   | Manual copy/paste     | Direct SQL execution |
+| Team notifications | Manual updates        | Auto-post to Slack   |
+| GitHub operations  | CLI commands only     | Rich API access      |
+| Persistent memory  | Lost between sessions | Retained knowledge   |
 
 ## Quick Setup
 
@@ -76,19 +76,20 @@ claude
 
 ### Official Servers
 
-| Server | Package | Purpose |
-|--------|---------|---------|
-| GitHub | `@modelcontextprotocol/server-github` | Issues, PRs, repos |
-| Slack | `@modelcontextprotocol/server-slack` | Team messaging |
-| PostgreSQL | `@modelcontextprotocol/server-postgres` | Database queries |
-| Filesystem | `@modelcontextprotocol/server-filesystem` | File access |
-| Memory | `@modelcontextprotocol/server-memory` | Persistent storage |
+| Server     | Package                                   | Purpose            |
+| ---------- | ----------------------------------------- | ------------------ |
+| GitHub     | `@modelcontextprotocol/server-github`     | Issues, PRs, repos |
+| Slack      | `@modelcontextprotocol/server-slack`      | Team messaging     |
+| PostgreSQL | `@modelcontextprotocol/server-postgres`   | Database queries   |
+| Filesystem | `@modelcontextprotocol/server-filesystem` | File access        |
+| Memory     | `@modelcontextprotocol/server-memory`     | Persistent storage |
 
 ### Community Servers
 
 Find more at: https://github.com/modelcontextprotocol/servers
 
 Popular additions:
+
 - `@modelcontextprotocol/server-brave-search` - Web search
 - `@modelcontextprotocol/server-puppeteer` - Browser automation
 - `@modelcontextprotocol/server-sqlite` - SQLite databases
@@ -167,6 +168,7 @@ npx -y @modelcontextprotocol/server-github --help
 ### Permission Errors
 
 Some servers need specific permissions:
+
 - GitHub: `repo`, `read:org` scopes
 - Slack: Bot token with appropriate channel access
 

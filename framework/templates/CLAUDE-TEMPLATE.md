@@ -58,12 +58,14 @@ npm run db:studio    # Open Prisma Studio
 ## Conventions
 
 ### Code Style
+
 - TypeScript strict mode enabled
 - Functional components with hooks
 - Named exports (not default exports)
 - Co-located test files: `Component.tsx` + `Component.test.tsx`
 
 ### Naming
+
 - Components: `PascalCase` (e.g., `UserProfile.tsx`)
 - Hooks: `camelCase` with `use` prefix (e.g., `useAuth.ts`)
 - Utilities: `camelCase` (e.g., `formatDate.ts`)
@@ -71,30 +73,32 @@ npm run db:studio    # Open Prisma Studio
 - Constants: `UPPER_SNAKE_CASE`
 
 ### Git
+
 - Branch naming: `feat/description`, `fix/description`, `refactor/description`
 - Conventional commits: `feat(scope): description`
 - Squash merge to main
 
 ### Imports Order
+
 ```typescript
 // 1. React
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
 // 2. External libraries
-import { format } from 'date-fns';
+import { format } from "date-fns";
 
 // 3. Internal modules (absolute paths)
-import { Button } from '@/components/ui/Button';
-import { useAuth } from '@/hooks/useAuth';
+import { Button } from "@/components/ui/Button";
+import { useAuth } from "@/hooks/useAuth";
 
 // 4. Relative imports
-import { UserAvatar } from './UserAvatar';
+import { UserAvatar } from "./UserAvatar";
 
 // 5. Types
-import type { User } from '@/types';
+import type { User } from "@/types";
 
 // 6. Styles
-import './styles.css';
+import "./styles.css";
 ```
 
 ## Environment Variables
@@ -112,10 +116,12 @@ LOG_LEVEL=              # Logging verbosity
 ## Key Decisions
 
 ### [Decision 1 - e.g., "State Management"]
+
 **Decision:** [What was decided - e.g., "Use React Query for server state, Zustand for client state"]
 **Rationale:** [Why - e.g., "Separates concerns, React Query handles caching"]
 
 ### [Decision 2 - e.g., "Authentication"]
+
 **Decision:** [What was decided]
 **Rationale:** [Why]
 
@@ -132,4 +138,4 @@ LOG_LEVEL=              # Logging verbosity
 
 ---
 
-*Managed by [Dos Apes Super Agent Framework](https://github.com/dos-apes/dos-apes)*
+_Managed by [Dos Apes Super Agent Framework](https://github.com/dos-apes/dos-apes)_

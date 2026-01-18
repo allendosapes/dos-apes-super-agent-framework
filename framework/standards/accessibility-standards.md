@@ -4,17 +4,18 @@ Standards for WCAG 2.1 AA compliance and inclusive design.
 
 ## Minimum Requirements
 
-| Criterion | Level | Requirement |
-|-----------|-------|-------------|
-| Color Contrast | AA | 4.5:1 for normal text, 3:1 for large text |
-| Keyboard Navigation | AA | All interactive elements keyboard accessible |
-| Focus Indicators | AA | Visible focus states on all elements |
-| Touch Targets | AA | Minimum 44x44px for interactive elements |
-| Screen Reader | AA | All content accessible via screen reader |
+| Criterion           | Level | Requirement                                  |
+| ------------------- | ----- | -------------------------------------------- |
+| Color Contrast      | AA    | 4.5:1 for normal text, 3:1 for large text    |
+| Keyboard Navigation | AA    | All interactive elements keyboard accessible |
+| Focus Indicators    | AA    | Visible focus states on all elements         |
+| Touch Targets       | AA    | Minimum 44x44px for interactive elements     |
+| Screen Reader       | AA    | All content accessible via screen reader     |
 
 ## Semantic HTML
 
 ### Use Correct Elements
+
 ```html
 <!-- Good: Semantic elements -->
 <header>
@@ -46,21 +47,24 @@ Standards for WCAG 2.1 AA compliance and inclusive design.
 ```
 
 ### Heading Hierarchy
+
 ```html
 <!-- Good: Logical order -->
 <h1>Main Title</h1>
-  <h2>Section</h2>
-    <h3>Subsection</h3>
-  <h2>Another Section</h2>
+<h2>Section</h2>
+<h3>Subsection</h3>
+<h2>Another Section</h2>
 
 <!-- Bad: Skipping levels -->
 <h1>Main Title</h1>
-  <h4>Subsection</h4>  <!-- Skipped h2, h3 -->
+<h4>Subsection</h4>
+<!-- Skipped h2, h3 -->
 ```
 
 ## Keyboard Navigation
 
 ### Focus Management
+
 ```tsx
 // Ensure all interactive elements are focusable
 <button onClick={handleClick}>Click me</button>  // Good: native button
@@ -78,11 +82,10 @@ Standards for WCAG 2.1 AA compliance and inclusive design.
 ```
 
 ### Skip Links
+
 ```html
 <!-- First element in body -->
-<a href="#main-content" class="skip-link">
-  Skip to main content
-</a>
+<a href="#main-content" class="skip-link"> Skip to main content </a>
 
 <nav>...</nav>
 
@@ -92,6 +95,7 @@ Standards for WCAG 2.1 AA compliance and inclusive design.
 ```
 
 ### Focus Trapping (Modals)
+
 ```tsx
 function Modal({ isOpen, onClose, children }) {
   const modalRef = useRef<HTMLDivElement>(null);
@@ -100,19 +104,21 @@ function Modal({ isOpen, onClose, children }) {
     if (!isOpen) return;
 
     const focusableElements = modalRef.current?.querySelectorAll(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
     );
 
     const firstElement = focusableElements?.[0] as HTMLElement;
-    const lastElement = focusableElements?.[focusableElements.length - 1] as HTMLElement;
+    const lastElement = focusableElements?.[
+      focusableElements.length - 1
+    ] as HTMLElement;
 
     // Focus first element
     firstElement?.focus();
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === "Escape") onClose();
 
-      if (e.key === 'Tab') {
+      if (e.key === "Tab") {
         if (e.shiftKey && document.activeElement === firstElement) {
           e.preventDefault();
           lastElement?.focus();
@@ -123,8 +129,8 @@ function Modal({ isOpen, onClose, children }) {
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
@@ -140,11 +146,13 @@ function Modal({ isOpen, onClose, children }) {
 ## Color and Contrast
 
 ### Minimum Ratios
+
 - Normal text (<18pt): 4.5:1
 - Large text (>=18pt or 14pt bold): 3:1
 - UI components: 3:1
 
 ### Don't Rely on Color Alone
+
 ```tsx
 // Bad: Color only indicates state
 <span style={{ color: 'red' }}>Error</span>
@@ -168,6 +176,7 @@ function Modal({ isOpen, onClose, children }) {
 ## Forms
 
 ### Labels and Instructions
+
 ```tsx
 // Always associate labels
 <label htmlFor="email">Email address</label>
@@ -190,13 +199,14 @@ function Modal({ isOpen, onClose, children }) {
 ```
 
 ### Error Handling
+
 ```tsx
 <form aria-describedby="form-errors">
   {errors.length > 0 && (
     <div id="form-errors" role="alert" aria-live="polite">
       <p>Please fix the following errors:</p>
       <ul>
-        {errors.map(error => (
+        {errors.map((error) => (
           <li key={error.field}>{error.message}</li>
         ))}
       </ul>
@@ -208,10 +218,12 @@ function Modal({ isOpen, onClose, children }) {
     id="email"
     type="email"
     aria-invalid={!!errors.email}
-    aria-describedby={errors.email ? 'email-error' : undefined}
+    aria-describedby={errors.email ? "email-error" : undefined}
   />
   {errors.email && (
-    <span id="email-error" role="alert">{errors.email}</span>
+    <span id="email-error" role="alert">
+      {errors.email}
+    </span>
   )}
 </form>
 ```
@@ -219,6 +231,7 @@ function Modal({ isOpen, onClose, children }) {
 ## Images and Media
 
 ### Alternative Text
+
 ```tsx
 // Informative images
 <img src="chart.png" alt="Sales increased 25% in Q4" />
@@ -239,22 +252,30 @@ function Modal({ isOpen, onClose, children }) {
 ```
 
 ### Video/Audio
+
 ```html
 <video controls>
   <source src="video.mp4" type="video/mp4" />
   <track kind="captions" src="captions.vtt" srclang="en" label="English" />
-  <track kind="descriptions" src="descriptions.vtt" srclang="en" label="Audio Description" />
+  <track
+    kind="descriptions"
+    src="descriptions.vtt"
+    srclang="en"
+    label="Audio Description"
+  />
 </video>
 ```
 
 ## ARIA
 
 ### When to Use ARIA
+
 1. Only when native HTML isn't sufficient
 2. After using semantic HTML
 3. Test with actual screen readers
 
 ### Common Patterns
+
 ```tsx
 // Live regions for dynamic content
 <div aria-live="polite" aria-atomic="true">
@@ -296,6 +317,7 @@ function Modal({ isOpen, onClose, children }) {
 ## Testing
 
 ### Automated Testing
+
 ```typescript
 import { axe, toHaveNoViolations } from 'jest-axe';
 
@@ -309,6 +331,7 @@ test('component has no accessibility violations', async () => {
 ```
 
 ### Manual Testing Checklist
+
 - [ ] Navigate with keyboard only (Tab, Shift+Tab, Enter, Esc)
 - [ ] Test with screen reader (VoiceOver, NVDA)
 - [ ] Test at 200% zoom
@@ -319,6 +342,7 @@ test('component has no accessibility violations', async () => {
 ## Checklist
 
 Before launch:
+
 - [ ] All images have alt text
 - [ ] Color contrast meets WCAG AA
 - [ ] All interactive elements keyboard accessible

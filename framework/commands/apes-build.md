@@ -93,34 +93,43 @@ Extract from PRD:
 # [Project Name]
 
 ## Vision
+
 [One sentence describing what this is]
 
 ## North Star Metric
+
 [Primary success metric]
 
 ## Target Users
+
 - **Primary:** [Main persona]
 - **Secondary:** [Other users]
 
 ## Core Requirements
 
 ### Must Have (P0)
+
 - [ ] [Requirement 1]
 - [ ] [Requirement 2]
 
 ### Should Have (P1)
+
 - [ ] [Requirement 1]
 
 ### Nice to Have (P2)
+
 - [ ] [Requirement 1]
 
 ## Technical Stack
+
 [Determined from PRD or best practices]
 
 ## Constraints
+
 [From PRD]
 
 ## Success Criteria
+
 [Measurable outcomes]
 ```
 
@@ -132,16 +141,19 @@ Break project into phases:
 # Roadmap
 
 ## Phase 1: Foundation
+
 **Goal:** [Setup, core infrastructure]
 **Tasks:** 3-5
 **Deliverable:** [Working skeleton]
 
 ## Phase 2: Core Features
+
 **Goal:** [Main functionality]
 **Tasks:** 3-5
 **Deliverable:** [MVP]
 
 ## Phase 3: Polish & Launch
+
 **Goal:** [Production ready]
 **Tasks:** 3-5
 **Deliverable:** [Shipped product]
@@ -153,25 +165,30 @@ Break project into phases:
 # State
 
 ## Execution Mode
+
 ralph_mode: true
 max_iterations: 500
 current_iteration: 0
 
 ## Current Position
+
 phase: 1
 phase_name: "Foundation"
 task: 0
 status: planning
 
 ## Git State
+
 main_branch: main
 current_branch: main
 
 ## Progress
+
 phases_complete: 0/3
 all_tasks_complete: false
 
 ## Session
+
 started: [timestamp]
 ```
 
@@ -181,16 +198,19 @@ started: [timestamp]
 # [Project Name]
 
 ## Stack
+
 [From PROJECT.md]
 
 ## Commands
-npm run dev      # Development
-npm test         # Tests
-npm run build    # Production build
-npm run lint     # Linting
+
+npm run dev # Development
+npm test # Tests
+npm run build # Production build
+npm run lint # Linting
 npm run typecheck # Type checking
 
 ## Conventions
+
 - TypeScript strict mode
 - Functional components
 - Co-located tests
@@ -204,11 +224,13 @@ npm run typecheck # Type checking
 ### [TECHNICAL ARCHITECT] Design Phase
 
 Load architect agent:
+
 ```bash
 cat .claude/agents/technical-architect.md
 ```
 
 For Phase 1 (Foundation), typically:
+
 - Project scaffolding
 - Core data models
 - Basic API structure
@@ -223,7 +245,7 @@ For Phase 1 (Foundation), typically:
     <name>Foundation</name>
     <goal>Establish project structure and core infrastructure</goal>
   </metadata>
-  
+
   <tasks>
     <task id="1" type="setup" complete="false">
       <name>Project Scaffolding</name>
@@ -234,13 +256,13 @@ For Phase 1 (Foundation), typically:
       </action>
       <verify>npm run build passes</verify>
     </task>
-    
+
     <task id="2" type="backend" complete="false">
       <name>Core Data Models</name>
       <action>...</action>
       <verify>...</verify>
     </task>
-    
+
     <task id="3" type="frontend" complete="false">
       <name>UI Shell</name>
       <action>...</action>
@@ -266,6 +288,7 @@ For Phase 1 (Foundation), typically:
 ```
 
 This triggers the full agent orchestration:
+
 1. Git setup (branch)
 2. Task loop with agent handoffs
 3. QA verification per task
@@ -294,18 +317,18 @@ grep "phases_complete:" .planning/STATE.md
 
 ```
 IF phases_complete < total_phases:
-  
+
   # Generate PLAN.md for next phase
   [TECHNICAL ARCHITECT] designs phase
   [ORCHESTRATOR] creates PLAN.md
-  
+
   # Update state
   phase: [N+1]
   status: executing
-  
+
   # Continue execution
   /apes-execute [N+1] --ralph
-  
+
 ELSE:
   # All done!
   GOTO PHASE 5
@@ -359,7 +382,7 @@ Features Delivered:
 
 Verification Status:
 ✅ Build
-✅ Types  
+✅ Types
 ✅ Lint
 ✅ Tests
 ✅ Security Audit
@@ -456,7 +479,7 @@ Task 1: Project scaffolding
 [QA ENGINEER → ORCHESTRATOR] Task verified
 [ORCHESTRATOR] Committed: chore(setup): initialize project
 
-[ORCHESTRATOR → BACKEND DEVELOPER]  
+[ORCHESTRATOR → BACKEND DEVELOPER]
 Task 2: Core data models...
 ...
 

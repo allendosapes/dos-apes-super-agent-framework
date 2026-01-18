@@ -17,7 +17,7 @@ phase: 0
 phase_name: "Not Started"
 task: 0
 task_name: "None"
-status: initialized  # initialized | planning | executing | verifying | blocked | complete
+status: initialized # initialized | planning | executing | verifying | blocked | complete
 ```
 
 ## Git State
@@ -52,7 +52,7 @@ all_tasks_complete: false
 ## Verification Status
 
 ```yaml
-build: pending      # pending | pass | fail
+build: pending # pending | pass | fail
 types: pending
 lint: pending
 tests: pending
@@ -82,10 +82,10 @@ retry_count: 0
 
 ## Session Log
 
-| Iteration | Timestamp | Action | Result |
-|-----------|-----------|--------|--------|
-| - | - | Initialized | - |
+| Iteration | Timestamp | Action      | Result |
+| --------- | --------- | ----------- | ------ |
+| -         | -         | Initialized | -      |
 
 ---
 
-*Managed by [Dos Apes Super Agent Framework](https://github.com/dos-apes/dos-apes)*
+_Managed by [Dos Apes Super Agent Framework](https://github.com/dos-apes/dos-apes)_

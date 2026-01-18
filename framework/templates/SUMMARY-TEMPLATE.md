@@ -93,6 +93,7 @@ Each task was committed atomically:
 ### Auto-fixed Issues
 
 **1. [Rule X - Category] Brief description**
+
 - **Found during:** Task [N] ([task name])
 - **Issue:** [What was wrong]
 - **Fix:** [What was done]
@@ -103,6 +104,7 @@ Each task was committed atomically:
 ### Deferred Enhancements
 
 Logged to .planning/ISSUES.md for future consideration:
+
 - ISS-XXX: [Brief description] (discovered in Task [N])
 - ISS-XXX: [Brief description] (discovered in Task [N])
 
@@ -117,14 +119,14 @@ Logged to .planning/ISSUES.md for future consideration:
 
 ## Verification Results
 
-| Check | Status | Notes |
-|-------|--------|-------|
-| Build | PASS/FAIL | |
-| Types | PASS/FAIL | |
-| Lint | PASS/FAIL | |
-| Tests | PASS/FAIL | X/Y passing |
-| UI Integration | PASS/FAIL/NA | [where integrated] |
-| Browser Verified | YES/NO | [what was tested] |
+| Check            | Status       | Notes              |
+| ---------------- | ------------ | ------------------ |
+| Build            | PASS/FAIL    |                    |
+| Types            | PASS/FAIL    |                    |
+| Lint             | PASS/FAIL    |                    |
+| Tests            | PASS/FAIL    | X/Y passing        |
+| UI Integration   | PASS/FAIL/NA | [where integrated] |
+| Browser Verified | YES/NO       | [what was tested]  |
 
 ## Next Plan Readiness
 
@@ -133,32 +135,33 @@ Logged to .planning/ISSUES.md for future consideration:
 - [Context needed by dependent plans]
 
 ---
-*Phase: XX-phase-name*
-*Plan: NN*
-*Completed: [date]*
+
+_Phase: XX-phase-name_
+_Plan: NN_
+_Completed: [date]_
 ```
 
 ---
 
 ## Frontmatter Field Guide
 
-| Field | Purpose | Example |
-|-------|---------|---------|
-| `phase` | Phase identifier | `01-foundation` |
-| `plan` | Plan number | `02` |
-| `subsystem` | Primary category for grouping | `auth`, `api`, `ui`, `database` |
-| `tags` | Searchable tech keywords | `jwt`, `prisma`, `react-query` |
-| `requires` | What this plan needed from prior work | `phase: 01-foundation, provides: User model` |
-| `provides` | What this plan delivers | `JWT authentication`, `Login endpoint` |
-| `affects` | Plans that will need this context | `02-dashboard`, `03-profile` |
-| `tech-stack.added` | New dependencies | `jose`, `bcrypt` |
-| `tech-stack.patterns` | Patterns established | `JWT refresh rotation` |
-| `key-files` | Important files for @context | `src/lib/auth.ts`, `src/middleware.ts` |
-| `key-decisions` | Decisions for STATE.md | `"Used jose over jsonwebtoken for Edge compat"` |
-| `patterns-established` | Conventions future plans should follow | `"httpOnly cookies for tokens"` |
-| `issues-created` | ISSUES.md references | `ISS-001`, `ISS-002` |
-| `duration` | Execution time | `28min` |
-| `gate-status` | Quality gate result | `G4-pass` |
+| Field                  | Purpose                                | Example                                         |
+| ---------------------- | -------------------------------------- | ----------------------------------------------- |
+| `phase`                | Phase identifier                       | `01-foundation`                                 |
+| `plan`                 | Plan number                            | `02`                                            |
+| `subsystem`            | Primary category for grouping          | `auth`, `api`, `ui`, `database`                 |
+| `tags`                 | Searchable tech keywords               | `jwt`, `prisma`, `react-query`                  |
+| `requires`             | What this plan needed from prior work  | `phase: 01-foundation, provides: User model`    |
+| `provides`             | What this plan delivers                | `JWT authentication`, `Login endpoint`          |
+| `affects`              | Plans that will need this context      | `02-dashboard`, `03-profile`                    |
+| `tech-stack.added`     | New dependencies                       | `jose`, `bcrypt`                                |
+| `tech-stack.patterns`  | Patterns established                   | `JWT refresh rotation`                          |
+| `key-files`            | Important files for @context           | `src/lib/auth.ts`, `src/middleware.ts`          |
+| `key-decisions`        | Decisions for STATE.md                 | `"Used jose over jsonwebtoken for Edge compat"` |
+| `patterns-established` | Conventions future plans should follow | `"httpOnly cookies for tokens"`                 |
+| `issues-created`       | ISSUES.md references                   | `ISS-001`, `ISS-002`                            |
+| `duration`             | Execution time                         | `28min`                                         |
+| `gate-status`          | Quality gate result                    | `G4-pass`                                       |
 
 ## Why Frontmatter Matters
 
@@ -173,11 +176,13 @@ Logged to .planning/ISSUES.md for future consideration:
 The one-liner MUST be substantive:
 
 **Good:**
+
 - "JWT auth with refresh rotation using jose library"
 - "Prisma schema with User, Session, and Product models"
 - "Dashboard with real-time metrics via Server-Sent Events"
 
 **Bad:**
+
 - "Plan complete"
 - "Authentication implemented"
 - "Foundation finished"
@@ -272,6 +277,7 @@ gate-status: G4-pass
 ### Auto-fixed Issues
 
 **1. [Rule 2 - Missing Critical] Added password hashing**
+
 - **Found during:** Task 2 (Login endpoint)
 - **Issue:** Plan didn't specify password hashing
 - **Fix:** Added bcrypt with salt rounds 10
@@ -295,14 +301,14 @@ None - plan executed smoothly
 
 ## Verification Results
 
-| Check | Status | Notes |
-|-------|--------|-------|
-| Build | PASS | |
-| Types | PASS | |
-| Lint | PASS | |
-| Tests | PASS | 8/8 passing |
-| UI Integration | N/A | Backend only |
-| Browser Verified | YES | Login flow tested |
+| Check            | Status | Notes             |
+| ---------------- | ------ | ----------------- |
+| Build            | PASS   |                   |
+| Types            | PASS   |                   |
+| Lint             | PASS   |                   |
+| Tests            | PASS   | 8/8 passing       |
+| UI Integration   | N/A    | Backend only      |
+| Browser Verified | YES    | Login flow tested |
 
 ## Next Plan Readiness
 
@@ -311,11 +317,12 @@ None - plan executed smoothly
 - Next: Dashboard should use auth middleware
 
 ---
-*Phase: 01-foundation*
-*Plan: 02*
-*Completed: 2025-01-15*
+
+_Phase: 01-foundation_
+_Plan: 02_
+_Completed: 2025-01-15_
 ```
 
 ---
 
-*Managed by [Dos Apes Super Agent Framework](https://github.com/dos-apes/dos-apes)*
+_Managed by [Dos Apes Super Agent Framework](https://github.com/dos-apes/dos-apes)_

@@ -14,6 +14,7 @@ Add domain-specific skills for common use cases:
 - CI/CD patterns
 
 **How to add:**
+
 1. Create `framework/skills/your-skill/SKILL.md`
 2. Follow the skill format in `framework/skills/README.md`
 3. Test it in a real project
@@ -28,6 +29,7 @@ Add commands for common workflows:
 - `/apes-audit` - Security/dependency audits
 
 **How to add:**
+
 1. Create `framework/commands/pathway-your-command.md`
 2. Follow existing command patterns
 3. Include verification steps
@@ -42,6 +44,7 @@ Add specialized agents:
 - Technical Writer
 
 **How to add:**
+
 1. Create `framework/agents/your-agent.md`
 2. Define clear responsibilities
 3. Include verification requirements
@@ -104,6 +107,7 @@ Why these changes are needed.
 ## Testing
 
 How you tested these changes:
+
 - [ ] Tested in greenfield project
 - [ ] Tested in brownfield project
 - [ ] Tested Ralph loop

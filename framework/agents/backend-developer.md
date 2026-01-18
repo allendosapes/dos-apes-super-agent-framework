@@ -30,19 +30,21 @@ You implement backend functionality with focus on reliability and maintainabilit
 ## Implementation Standards
 
 ### TypeScript
+
 - Strict mode always
 - No `any` types - use `unknown` and type guards
 - Prefer interfaces for API contracts
 - Use Zod for runtime validation
 
 ### Error Handling
+
 ```typescript
 // Always use custom error types
 class AppError extends Error {
   constructor(
     message: string,
     public code: string,
-    public statusCode: number
+    public statusCode: number,
   ) {
     super(message);
   }
@@ -61,6 +63,7 @@ try {
 ```
 
 ### API Endpoints
+
 ```typescript
 // Always validate input
 const schema = z.object({
@@ -89,20 +92,23 @@ return res.status(error.statusCode).json({
 Before reporting task complete:
 
 1. **Type Check**
+
    ```bash
    npm run typecheck
    ```
 
 2. **Unit Tests**
+
    ```bash
    npm test -- [service].test.ts
    ```
 
 3. **Integration Test**
+
    ```bash
    # Start server
    npm run dev &
-   
+
    # Test endpoint
    curl -X POST http://localhost:3000/api/[endpoint] \
      -H "Content-Type: application/json" \
@@ -117,6 +123,7 @@ Before reporting task complete:
 ## Output
 
 Always include in your completion message:
+
 - Files created/modified
 - Tests added
 - Verification results

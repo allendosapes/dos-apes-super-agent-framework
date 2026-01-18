@@ -1,35 +1,35 @@
 # Dos Apes Super Agent Framework
 
 ```
-                       .:+*-.                                         .:+*-.                        
-                      .*@@@@@%*:                                  ..+%@@@@@%:                       
-                      +@@@@@@@@@%+.                             .-#@@@@@@@@@%.                      
-                    .=%@@@@@@@@@@@@+.                         .-%@@@@@@@@@@@@#.                     
-                   .*@@@@@@@@@@@@@@@@=.                     .:%@@@@@@@@@@@@@@@@-                    
-                  .-:=*%%%#*-..=%@@@@@%:.                  .*@@@@@@*...+*#%%#+:-.                   
-                 ..-%=....:-+=..:%@@@@@@@%+:..        ..-%@@@@@@@@#..-+-:....-#*..                  
-             ..=@@%.=@#-+%@@-  .:@@@@@@@@@@@@%:.   ..#@@@@@@@@@@@@#.  .@@%*-*%%.+@@*..              
-           .-@@@@@@@-*=.:=.   .*@@@@@@@@@@@@@@@#. .+@@@@@@@@@@@@@@@%:.  .:=.:*.*@@@@@@*.            
-          .%@@@@@@@=.......  :#%@@@@@@@@@@@@@@@@%.-@@@@@@@@@@@@@@@@@%=. .......:@@@@@@@@=           
-         .%@@@@@@@%:.          .%@@@@@@@@@@@@@@@%:#@@@@@@@@@@@@@@@@-          ..%@@@@@@@@:          
-         =@@@@@@@@#::::=###*-..-@@@@@@@@@@@@@@@@%:*@@@@@@@@@@@@@@@@*. :*###*-:::-@@@@@@@@%.         
-         *@@@@@@@@@#.        .=%@@@@@@@@@@@@@@@@#.-@@@@@@@@@@@@@@@@@#.        .=@@@@@@@@@%:         
-        .%@@@@@@@@@@%+.    .+%@*%@@@@@@@@@@@@@@%: .#@@@@@@@@@@@@@@%*%@*..  ..-%@@@@@@@@@@@=         
-        .%@@@@@@@@@@@@@@@@@@@%:%@@@@@@@@@@@@@@@= ...%@@@@@@@@@@@@@@@*#@@@@@@@@@@@@@@@@@@@@=         
-        .%@@@@@@@@@@@@@@@@@@@-@@@@@@@@@@@@@@@@*..#=.-%@@@@@@@@@@@@@@@=+@@@@@@@@@@@@@@@@@@@=         
-         #@@@@@@@@@@@@@@@@@%.#@@@@@@@@@@@@@@@# .#@%-.=@@@@@@@@@@@@@@@@=*@@@@@@@@@@@@@@@@@@-         
-         +@@@@@@@@@@@@@@@@@-*@@@@@@@@@@@@@@@%:.*@@@@-.+@@@@@@@@@@@@@@@%.*@@@@@@@@@@@@@@@@%:         
-         =@@@@@@@@@@@@@@@@=:%@@@@@@@@@@@@@@%:.*@@@@@%..#@@@@@@@@@@@@@@@+:@@@@@@@@@@@@@@@@%.         
-         :%@@@@@@@@@@@@@@#.=@@@@@@@@@@@@@@@=.=@@@@@@@@:.#@@@@@@@@@@@@@@@.-@@@@@@@@@@@@@@@+          
-         .%@@@@@@@@@@@@@@-.%@@@@@@@@@@@@@@=.=@@@@@@@@@#.:@@@@@@@@@@@@@@@=.#@@@@@@@@@@@@@@:          
-          =@@@@@@@@@@@@@+ -@@@@@@@@@@@@@@*.-%@@@@@@@@@@%.:%@@@@@@@@@@@@@*.:@@@@@@@@@@@@@#.          
-          .%@@@@@@@@@@@%..#@@@@@@@@@@@@@+..%@@@@@@@@@@@@=.:@@@@@@@@@@@@@%..-@@@@@@@@@@@@=           
-           +@@@@@@@@@@@. .#@@@@@@@@@@@@#. :@@@@@@@@@@@@@*. -%@@@@@@@@@@@@: .#@@@@@@@@@@@.           
-           :%@@@@@@@@@=  :%@@@@@@@@@@@*.  .*@@@@@@@@@@@%-  .:%@@@@@@@@@@@+. .%@@@@@@@@@=            
-           .+@@@@@@@@%.  :%@@@@@@@@@@+.    .*@@@@@@@@@%:     :%@@@@@@@@@@#.  -@@@@@@@@#.            
-            .#@@@@@@@=.  :@@@@@@@@@@+.      .*@@@@@@@@-       .%@@@@@@@@@#. .:%@@@@@@@=.            
-             =@@@@@@@@@=.:%@@@@@@@@@#.       :@@@@@@@*.      .+@@@@@@@@@@#.:%@@@@@@@@#.             
-             .:#%@@@@@@@-.:#@@@@@@@@@-       .%@@@@@@-       .%@@@@@@@@%+ .%@@@@@@@%+.              
+                       .:+*-.                                         .:+*-.
+                      .*@@@@@%*:                                  ..+%@@@@@%:
+                      +@@@@@@@@@%+.                             .-#@@@@@@@@@%.
+                    .=%@@@@@@@@@@@@+.                         .-%@@@@@@@@@@@@#.
+                   .*@@@@@@@@@@@@@@@@=.                     .:%@@@@@@@@@@@@@@@@-
+                  .-:=*%%%#*-..=%@@@@@%:.                  .*@@@@@@*...+*#%%#+:-.
+                 ..-%=....:-+=..:%@@@@@@@%+:..        ..-%@@@@@@@@#..-+-:....-#*..
+             ..=@@%.=@#-+%@@-  .:@@@@@@@@@@@@%:.   ..#@@@@@@@@@@@@#.  .@@%*-*%%.+@@*..
+           .-@@@@@@@-*=.:=.   .*@@@@@@@@@@@@@@@#. .+@@@@@@@@@@@@@@@%:.  .:=.:*.*@@@@@@*.
+          .%@@@@@@@=.......  :#%@@@@@@@@@@@@@@@@%.-@@@@@@@@@@@@@@@@@%=. .......:@@@@@@@@=
+         .%@@@@@@@%:.          .%@@@@@@@@@@@@@@@%:#@@@@@@@@@@@@@@@@-          ..%@@@@@@@@:
+         =@@@@@@@@#::::=###*-..-@@@@@@@@@@@@@@@@%:*@@@@@@@@@@@@@@@@*. :*###*-:::-@@@@@@@@%.
+         *@@@@@@@@@#.        .=%@@@@@@@@@@@@@@@@#.-@@@@@@@@@@@@@@@@@#.        .=@@@@@@@@@%:
+        .%@@@@@@@@@@%+.    .+%@*%@@@@@@@@@@@@@@%: .#@@@@@@@@@@@@@@%*%@*..  ..-%@@@@@@@@@@@=
+        .%@@@@@@@@@@@@@@@@@@@%:%@@@@@@@@@@@@@@@= ...%@@@@@@@@@@@@@@@*#@@@@@@@@@@@@@@@@@@@@=
+        .%@@@@@@@@@@@@@@@@@@@-@@@@@@@@@@@@@@@@*..#=.-%@@@@@@@@@@@@@@@=+@@@@@@@@@@@@@@@@@@@=
+         #@@@@@@@@@@@@@@@@@%.#@@@@@@@@@@@@@@@# .#@%-.=@@@@@@@@@@@@@@@@=*@@@@@@@@@@@@@@@@@@-
+         +@@@@@@@@@@@@@@@@@-*@@@@@@@@@@@@@@@%:.*@@@@-.+@@@@@@@@@@@@@@@%.*@@@@@@@@@@@@@@@@%:
+         =@@@@@@@@@@@@@@@@=:%@@@@@@@@@@@@@@%:.*@@@@@%..#@@@@@@@@@@@@@@@+:@@@@@@@@@@@@@@@@%.
+         :%@@@@@@@@@@@@@@#.=@@@@@@@@@@@@@@@=.=@@@@@@@@:.#@@@@@@@@@@@@@@@.-@@@@@@@@@@@@@@@+
+         .%@@@@@@@@@@@@@@-.%@@@@@@@@@@@@@@=.=@@@@@@@@@#.:@@@@@@@@@@@@@@@=.#@@@@@@@@@@@@@@:
+          =@@@@@@@@@@@@@+ -@@@@@@@@@@@@@@*.-%@@@@@@@@@@%.:%@@@@@@@@@@@@@*.:@@@@@@@@@@@@@#.
+          .%@@@@@@@@@@@%..#@@@@@@@@@@@@@+..%@@@@@@@@@@@@=.:@@@@@@@@@@@@@%..-@@@@@@@@@@@@=
+           +@@@@@@@@@@@. .#@@@@@@@@@@@@#. :@@@@@@@@@@@@@*. -%@@@@@@@@@@@@: .#@@@@@@@@@@@.
+           :%@@@@@@@@@=  :%@@@@@@@@@@@*.  .*@@@@@@@@@@@%-  .:%@@@@@@@@@@@+. .%@@@@@@@@@=
+           .+@@@@@@@@%.  :%@@@@@@@@@@+.    .*@@@@@@@@@%:     :%@@@@@@@@@@#.  -@@@@@@@@#.
+            .#@@@@@@@=.  :@@@@@@@@@@+.      .*@@@@@@@@-       .%@@@@@@@@@#. .:%@@@@@@@=.
+             =@@@@@@@@@=.:%@@@@@@@@@#.       :@@@@@@@*.      .+@@@@@@@@@@#.:%@@@@@@@@#.
+             .:#%@@@@@@@-.:#@@@@@@@@@-       .%@@@@@@-       .%@@@@@@@@%+ .%@@@@@@@%+.
 ```
 
 ## We ain't monkeying around with code!
@@ -140,22 +140,23 @@ npx dos-apes
 
 Work is delegated to specialized agents, each with their own rules:
 
-| Agent | Model | Responsibility |
-|-------|-------|---------------|
-| **Orchestrator** | Sonnet | Git, state, coordination, handoffs |
-| **Product Manager** | Sonnet | PRD, user stories, MoSCoW prioritization |
-| **Technical Architect** | Opus | System design, ADRs, tech decisions |
-| **UI/UX Designer** | Sonnet | User flows, wireframes, accessibility |
-| **Frontend Developer** | Opus | Components, pages, **UI integration mandatory** |
-| **Backend Developer** | Opus | APIs, services, database |
-| **Security Engineer** | Opus | Threat modeling, OWASP compliance |
-| **QA Engineer** | Sonnet | Test execution, bug reports, UAT |
-| **Test Automation** | Sonnet | Unit/integration/E2E test creation |
-| **DevOps Engineer** | Sonnet | CI/CD, deployment, infrastructure |
-| **Code Reviewer** | Opus | Code quality, standards compliance |
-| **Tech Writer** | Sonnet | README, API docs, user guides |
+| Agent                   | Model  | Responsibility                                  |
+| ----------------------- | ------ | ----------------------------------------------- |
+| **Orchestrator**        | Sonnet | Git, state, coordination, handoffs              |
+| **Product Manager**     | Sonnet | PRD, user stories, MoSCoW prioritization        |
+| **Technical Architect** | Opus   | System design, ADRs, tech decisions             |
+| **UI/UX Designer**      | Sonnet | User flows, wireframes, accessibility           |
+| **Frontend Developer**  | Opus   | Components, pages, **UI integration mandatory** |
+| **Backend Developer**   | Opus   | APIs, services, database                        |
+| **Security Engineer**   | Opus   | Threat modeling, OWASP compliance               |
+| **QA Engineer**         | Sonnet | Test execution, bug reports, UAT                |
+| **Test Automation**     | Sonnet | Unit/integration/E2E test creation              |
+| **DevOps Engineer**     | Sonnet | CI/CD, deployment, infrastructure               |
+| **Code Reviewer**       | Opus   | Code quality, standards compliance              |
+| **Tech Writer**         | Sonnet | README, API docs, user guides                   |
 
 Agent handoffs are explicit:
+
 ```
 [ORCHESTRATOR → BACKEND DEVELOPER]
 Task: Create user authentication service
@@ -180,7 +181,7 @@ WHILE not complete:
     verify with QA
     if fail: analyze, fix, retry
     if pass: commit, continue
-    
+
 OUTPUT <promise>PRODUCT_COMPLETE</promise>
 ```
 
@@ -190,13 +191,13 @@ Stop hooks prevent exit until the product ships. Failures trigger retries with f
 
 Proper branching strategy built in:
 
-| Situation | Git Action |
-|-----------|------------|
-| Start phase | `git checkout -b feat/phase-N` |
-| Complete task | `git commit -m "feat: ..."` |
-| Complete phase | `git merge --squash` to main |
-| Parallel work | Git worktrees |
-| Stay current | `git rebase origin/main` |
+| Situation      | Git Action                     |
+| -------------- | ------------------------------ |
+| Start phase    | `git checkout -b feat/phase-N` |
+| Complete task  | `git commit -m "feat: ..."`    |
+| Complete phase | `git merge --squash` to main   |
+| Parallel work  | Git worktrees                  |
+| Stay current   | `git rebase origin/main`       |
 
 ### 📊 State Management
 
@@ -213,6 +214,7 @@ All state persists in `.planning/`:
 ```
 
 Resume anytime:
+
 ```bash
 /apes-resume
 ```
@@ -221,14 +223,14 @@ Resume anytime:
 
 Six gates ensure quality at each phase:
 
-| Gate | Checkpoint | Must Have |
-|------|------------|-----------|
-| **G1** | Requirements | PRD, user stories, MVP definition |
-| **G2** | Design | Architecture, wireframes, threat model |
-| **G3** | Implementation Ready | Tech stack, dev env, security model |
-| **G4** | Code Complete | All features, unit tests passing |
-| **G5** | Test Complete | All tests pass, 80%+ coverage, no criticals |
-| **G6** | Release Ready | Docs, security review, deployment ready |
+| Gate   | Checkpoint           | Must Have                                   |
+| ------ | -------------------- | ------------------------------------------- |
+| **G1** | Requirements         | PRD, user stories, MVP definition           |
+| **G2** | Design               | Architecture, wireframes, threat model      |
+| **G3** | Implementation Ready | Tech stack, dev env, security model         |
+| **G4** | Code Complete        | All features, unit tests passing            |
+| **G5** | Test Complete        | All tests pass, 80%+ coverage, no criticals |
+| **G6** | Release Ready        | Docs, security review, deployment ready     |
 
 Gates are **blocking** - work cannot proceed until criteria are met.
 
@@ -236,12 +238,12 @@ Gates are **blocking** - work cannot proceed until criteria are met.
 
 Smart context management for peak AI quality:
 
-| Context Usage | Quality | Action |
-|--------------|---------|--------|
-| 0-30% | Peak | Continue in current session |
-| 30-50% | Good | Plan handoff after current task |
-| 50-70% | Degrading | Spawn subagent for remaining work |
-| 70%+ | Poor | Must handoff immediately |
+| Context Usage | Quality   | Action                            |
+| ------------- | --------- | --------------------------------- |
+| 0-30%         | Peak      | Continue in current session       |
+| 30-50%        | Good      | Plan handoff after current task   |
+| 50-70%        | Degrading | Spawn subagent for remaining work |
+| 70%+          | Poor      | Must handoff immediately          |
 
 ### ✅ Verification Stack
 
@@ -264,46 +266,46 @@ Level 5: Browser      Manual verification
 
 ### Build Commands
 
-| Command | Purpose |
-|---------|---------|
-| `/apes-build --prd [file]` | Full autonomous build from PRD |
-| `/apes-build --idea "[text]"` | Build from description |
-| `/apes-init --prd [file]` | Initialize without auto-execute |
-| `/apes-plan [phase]` | Plan a specific phase |
-| `/apes-execute [phase]` | Execute a phase |
+| Command                       | Purpose                         |
+| ----------------------------- | ------------------------------- |
+| `/apes-build --prd [file]`    | Full autonomous build from PRD  |
+| `/apes-build --idea "[text]"` | Build from description          |
+| `/apes-init --prd [file]`     | Initialize without auto-execute |
+| `/apes-plan [phase]`          | Plan a specific phase           |
+| `/apes-execute [phase]`       | Execute a phase                 |
 
 ### Brownfield Commands
 
-| Command | Purpose |
-|---------|---------|
-| `/apes-map` | Analyze existing codebase |
-| `/apes-feature "[desc]"` | Add feature |
-| `/apes-fix "[desc]"` | Fix bug |
-| `/apes-refactor "[desc]"` | Refactor code |
+| Command                   | Purpose                   |
+| ------------------------- | ------------------------- |
+| `/apes-map`               | Analyze existing codebase |
+| `/apes-feature "[desc]"`  | Add feature               |
+| `/apes-fix "[desc]"`      | Fix bug                   |
+| `/apes-refactor "[desc]"` | Refactor code             |
 
 ### State Commands
 
-| Command | Purpose |
-|---------|---------|
-| `/apes-status` | Show current position |
-| `/apes-verify` | Run verification suite |
-| `/apes-resume` | Continue from last state |
-| `/apes-handoff` | Create handoff document |
+| Command         | Purpose                  |
+| --------------- | ------------------------ |
+| `/apes-status`  | Show current position    |
+| `/apes-verify`  | Run verification suite   |
+| `/apes-resume`  | Continue from last state |
+| `/apes-handoff` | Create handoff document  |
 
 ### Flags
 
-| Flag | Effect |
-|------|--------|
-| `--ralph` | Autonomous loop until complete |
+| Flag                 | Effect                          |
+| -------------------- | ------------------------------- |
+| `--ralph`            | Autonomous loop until complete  |
 | `--max-iterations N` | Limit iterations (default: 500) |
-| `--parallel` | Use git worktrees |
+| `--parallel`         | Use git worktrees               |
 
 ### Claude Code Flags (for `claude` command)
 
-| Flag | Effect |
-|------|--------|
-| `--permission-mode=dontAsk` | Skip all permission prompts (sandboxed environments only) |
-| `--permission-mode=acceptEdits` | Auto-accept file edits |
+| Flag                            | Effect                                                    |
+| ------------------------------- | --------------------------------------------------------- |
+| `--permission-mode=dontAsk`     | Skip all permission prompts (sandboxed environments only) |
+| `--permission-mode=acceptEdits` | Auto-accept file edits                                    |
 
 ---
 
@@ -311,11 +313,11 @@ Level 5: Browser      Manual verification
 
 Choose your comfort level:
 
-| Level | Command | You Review |
-|-------|---------|------------|
-| Task | `/apes-execute --task 1` | Each task |
-| Phase | `/apes-execute 1 --ralph` | Each phase |
-| Product | `/apes-build --ralph` | Final product |
+| Level   | Command                   | You Review    |
+| ------- | ------------------------- | ------------- |
+| Task    | `/apes-execute --task 1`  | Each task     |
+| Phase   | `/apes-execute 1 --ralph` | Each phase    |
+| Product | `/apes-build --ralph`     | Final product |
 
 ---
 
@@ -381,7 +383,7 @@ Dos Apes: We ain't monkeying around with code!
 
 ```
 Creating a component ≠ done
-Component in a file ≠ done  
+Component in a file ≠ done
 Component imported ≠ done
 
 Done = integrated + routed + navigable + tested + browser-verified
@@ -390,6 +392,7 @@ Done = integrated + routed + navigable + tested + browser-verified
 ### Fail Fast, Fix Fast
 
 Ralph loops embrace failure:
+
 - First attempt often fails
 - Failure provides information
 - Loop fixes and retries
@@ -426,6 +429,7 @@ MIT License - Use freely, contribute back.
 ## Setup & Installation
 
 See [SETUP.md](./SETUP.md) for detailed setup instructions including:
+
 - Prerequisites (Claude Code CLI, Git, Node.js)
 - Installation for new and existing projects
 - Directory structure explanation
@@ -434,12 +438,14 @@ See [SETUP.md](./SETUP.md) for detailed setup instructions including:
 ## Publishing to GitHub
 
 See [GITHUB.md](./GITHUB.md) for detailed instructions on:
+
 - Creating the repository
 - Pushing the code
 - Publishing to npm
 - Setting up CI/CD
 
 **Quick version:**
+
 ```bash
 cd dos-apes
 git init
@@ -455,31 +461,31 @@ git push -u origin main
 
 The framework includes comprehensive templates:
 
-| Template | Purpose |
-|----------|---------|
-| `PRD-TEMPLATE.md` | Product requirements document structure |
-| `user-story-template.md` | Detailed user stories with acceptance criteria |
-| `adr-template.md` | Architecture Decision Records |
-| `test-plan-template.md` | Comprehensive test planning |
-| `security-review-template.md` | OWASP-based security checklist |
-| `PLAN-TEMPLATE.md` | Phase task planning (GSD XML format) |
-| `SUMMARY-TEMPLATE.md` | Plan summaries with frontmatter dependencies |
-| `STATE-TEMPLATE.md` | Execution state tracking |
-| `CLAUDE-TEMPLATE.md` | Project context file for Claude |
+| Template                      | Purpose                                        |
+| ----------------------------- | ---------------------------------------------- |
+| `PRD-TEMPLATE.md`             | Product requirements document structure        |
+| `user-story-template.md`      | Detailed user stories with acceptance criteria |
+| `adr-template.md`             | Architecture Decision Records                  |
+| `test-plan-template.md`       | Comprehensive test planning                    |
+| `security-review-template.md` | OWASP-based security checklist                 |
+| `PLAN-TEMPLATE.md`            | Phase task planning (GSD XML format)           |
+| `SUMMARY-TEMPLATE.md`         | Plan summaries with frontmatter dependencies   |
+| `STATE-TEMPLATE.md`           | Execution state tracking                       |
+| `CLAUDE-TEMPLATE.md`          | Project context file for Claude                |
 
 ## Standards Library
 
 Quality standards for consistent development:
 
-| Standard | Coverage |
-|----------|----------|
-| `coding-standards.md` | Naming, TypeScript, error handling |
-| `security-guidelines.md` | OWASP Top 10, auth, input validation |
-| `testing-standards.md` | 80% coverage, unit/integration/E2E |
-| `api-standards.md` | REST design, pagination, errors |
-| `accessibility-standards.md` | WCAG 2.1 AA compliance |
-| `git-workflow.md` | Branching, commits, PRs |
-| `frontend-design.md` | Components, state, hooks |
+| Standard                     | Coverage                             |
+| ---------------------------- | ------------------------------------ |
+| `coding-standards.md`        | Naming, TypeScript, error handling   |
+| `security-guidelines.md`     | OWASP Top 10, auth, input validation |
+| `testing-standards.md`       | 80% coverage, unit/integration/E2E   |
+| `api-standards.md`           | REST design, pagination, errors      |
+| `accessibility-standards.md` | WCAG 2.1 AA compliance               |
+| `git-workflow.md`            | Branching, commits, PRs              |
+| `frontend-design.md`         | Components, state, hooks             |
 
 Find them in `framework/templates/` and `framework/standards/`.
 

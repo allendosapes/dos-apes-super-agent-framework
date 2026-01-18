@@ -5,18 +5,20 @@ Standards for code quality, consistency, and maintainability.
 ## Naming Conventions
 
 ### Files
-| Type | Convention | Example |
-|------|------------|---------|
-| Components | PascalCase | `UserProfile.tsx` |
-| Utilities | camelCase | `formatDate.ts` |
-| Constants | UPPER_SNAKE | `API_ENDPOINTS.ts` |
-| Styles | kebab-case | `user-profile.css` |
-| Tests | [name].test.ts | `formatDate.test.ts` |
+
+| Type       | Convention     | Example              |
+| ---------- | -------------- | -------------------- |
+| Components | PascalCase     | `UserProfile.tsx`    |
+| Utilities  | camelCase      | `formatDate.ts`      |
+| Constants  | UPPER_SNAKE    | `API_ENDPOINTS.ts`   |
+| Styles     | kebab-case     | `user-profile.css`   |
+| Tests      | [name].test.ts | `formatDate.test.ts` |
 
 ### Variables & Functions
+
 ```typescript
 // Variables: camelCase
-const userName = 'John';
+const userName = "John";
 const isActive = true;
 const maxRetries = 3;
 
@@ -27,10 +29,11 @@ function handleSubmit(e: FormEvent) {}
 
 // Constants: UPPER_SNAKE_CASE
 const MAX_RETRY_COUNT = 3;
-const API_BASE_URL = '/api/v1';
+const API_BASE_URL = "/api/v1";
 ```
 
 ### Classes & Interfaces
+
 ```typescript
 // Classes: PascalCase
 class UserService {}
@@ -42,12 +45,13 @@ interface ApiResponse<T> {}
 
 // Types: PascalCase
 type UserId = string;
-type Status = 'active' | 'inactive';
+type Status = "active" | "inactive";
 ```
 
 ## Code Organization
 
 ### Function Size
+
 - Maximum 30 lines per function
 - Single responsibility
 - Early returns for guard clauses
@@ -68,39 +72,43 @@ function processUser(user: User | null): ProcessedUser {
 ```
 
 ### File Size
+
 - Maximum 300 lines per file
 - Split large files into modules
 - One component per file
 
 ### Import Order
+
 ```typescript
 // 1. Node/framework imports
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/router";
 
 // 2. Third-party libraries
-import { z } from 'zod';
-import { format } from 'date-fns';
+import { z } from "zod";
+import { format } from "date-fns";
 
 // 3. Local imports (absolute)
-import { Button } from '@/components/ui/Button';
-import { useAuth } from '@/hooks/useAuth';
+import { Button } from "@/components/ui/Button";
+import { useAuth } from "@/hooks/useAuth";
 
 // 4. Relative imports
-import { UserCard } from './UserCard';
-import { formatUserName } from './utils';
+import { UserCard } from "./UserCard";
+import { formatUserName } from "./utils";
 
 // 5. Types (if separate)
-import type { User } from '@/types';
+import type { User } from "@/types";
 
 // 6. Styles
-import styles from './styles.module.css';
+import styles from "./styles.module.css";
 ```
 
 ## TypeScript Standards
 
 ### Strict Mode
+
 Always enable strict mode in `tsconfig.json`:
+
 ```json
 {
   "compilerOptions": {
@@ -112,14 +120,15 @@ Always enable strict mode in `tsconfig.json`:
 ```
 
 ### Type Safety
+
 ```typescript
 // Never use 'any'
-function bad(data: any) {}  // BAD
-function good(data: unknown) {}  // GOOD
+function bad(data: any) {} // BAD
+function good(data: unknown) {} // GOOD
 
 // Use type guards
 function isUser(obj: unknown): obj is User {
-  return typeof obj === 'object' && obj !== null && 'id' in obj;
+  return typeof obj === "object" && obj !== null && "id" in obj;
 }
 
 // Prefer interfaces for object shapes
@@ -130,55 +139,61 @@ interface User {
 }
 
 // Use types for unions/intersections
-type Status = 'pending' | 'active' | 'inactive';
+type Status = "pending" | "active" | "inactive";
 type UserWithRole = User & { role: Role };
 ```
 
 ### Null Handling
+
 ```typescript
 // Use optional chaining
 const name = user?.profile?.name;
 
 // Use nullish coalescing
-const displayName = user.name ?? 'Anonymous';
+const displayName = user.name ?? "Anonymous";
 
 // Be explicit about nullable types
 function findUser(id: string): User | null {
-  return users.find(u => u.id === id) ?? null;
+  return users.find((u) => u.id === id) ?? null;
 }
 ```
 
 ## Error Handling
 
 ### Custom Error Classes
+
 ```typescript
 class AppError extends Error {
   constructor(
     message: string,
     public code: string,
-    public statusCode: number = 500
+    public statusCode: number = 500,
   ) {
     super(message);
-    this.name = 'AppError';
+    this.name = "AppError";
   }
 }
 
 class ValidationError extends AppError {
-  constructor(message: string, public field?: string) {
-    super(message, 'VALIDATION_ERROR', 400);
-    this.name = 'ValidationError';
+  constructor(
+    message: string,
+    public field?: string,
+  ) {
+    super(message, "VALIDATION_ERROR", 400);
+    this.name = "ValidationError";
   }
 }
 
 class NotFoundError extends AppError {
   constructor(resource: string) {
-    super(`${resource} not found`, 'NOT_FOUND', 404);
-    this.name = 'NotFoundError';
+    super(`${resource} not found`, "NOT_FOUND", 404);
+    this.name = "NotFoundError";
   }
 }
 ```
 
 ### Error Boundaries (React)
+
 ```typescript
 class ErrorBoundary extends React.Component<Props, State> {
   static getDerivedStateFromError(error: Error) {
@@ -201,12 +216,14 @@ class ErrorBoundary extends React.Component<Props, State> {
 ## Comments
 
 ### When to Comment
+
 - Complex algorithms
 - Non-obvious workarounds
 - API documentation (JSDoc)
 - TODO with issue reference
 
 ### When NOT to Comment
+
 - Obvious code
 - Already clear variable names
 - Every function
@@ -228,12 +245,16 @@ function findUser(id: string): User | null {}
  * @returns User data or null if not found
  * @throws {AuthError} If authentication fails
  */
-async function fetchUser(id: string, options?: RetryOptions): Promise<User | null> {}
+async function fetchUser(
+  id: string,
+  options?: RetryOptions,
+): Promise<User | null> {}
 ```
 
 ## Async/Await
 
 ### Prefer async/await over callbacks
+
 ```typescript
 // BAD: Callback pyramid
 fetchUser(id, (err, user) => {
@@ -253,6 +274,7 @@ async function loadUserData(id: string) {
 ```
 
 ### Error Handling
+
 ```typescript
 // Always handle errors
 async function safelyFetchUser(id: string): Promise<User | null> {
@@ -262,7 +284,7 @@ async function safelyFetchUser(id: string): Promise<User | null> {
     if (error instanceof NotFoundError) {
       return null;
     }
-    throw error;  // Re-throw unexpected errors
+    throw error; // Re-throw unexpected errors
   }
 }
 ```

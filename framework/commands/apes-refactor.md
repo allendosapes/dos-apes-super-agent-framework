@@ -13,6 +13,7 @@ allowed-tools: Read, Edit, Write, Bash, Grep, Glob
    - Read `CLAUDE.md`
 
 2. **Verify Clean State**
+
    ```bash
    git status --short
    ```
@@ -27,6 +28,7 @@ allowed-tools: Read, Edit, Write, Bash, Grep, Glob
 ### Step 1: Understand Scope
 
 Parse "$ARGUMENTS" to identify:
+
 - What needs to be refactored?
 - What's the target state?
 - What behavior must be preserved?
@@ -43,11 +45,11 @@ find src/ -name "*.tsx" -exec grep -l "[pattern]" {} \; | wc -l
 
 ### Step 3: Assess Risk
 
-| Factor | Status |
-|--------|--------|
-| Test coverage | [high/medium/low] |
-| Complexity | [high/medium/low] |
-| Dependencies | [many/few/none] |
+| Factor               | Status            |
+| -------------------- | ----------------- |
+| Test coverage        | [high/medium/low] |
+| Complexity           | [high/medium/low] |
+| Dependencies         | [many/few/none]   |
 | Breaking change risk | [high/medium/low] |
 
 ### Step 4: Create Refactor Plan
@@ -58,20 +60,20 @@ Create `.planning/PLAN.md`:
 <refactor>
   <n>$ARGUMENTS</n>
   <type>refactor</type>
-  
+
   <scope>
     <files_affected>[count]</files_affected>
     <pattern_from>[current pattern]</pattern_from>
     <pattern_to>[target pattern]</pattern_to>
     <behavior_preserved>true</behavior_preserved>
   </scope>
-  
+
   <strategy>
     <approach>[incremental/batch/strangler-fig]</approach>
     <safety_net>[existing tests/new tests/both]</safety_net>
     <rollback_plan>[how to revert if needed]</rollback_plan>
   </strategy>
-  
+
   <tasks>
     <task id="1" type="safety">
       <n>Add safety net tests</n>
@@ -81,7 +83,7 @@ Create `.planning/PLAN.md`:
       </action>
       <verify>npm test (all pass)</verify>
     </task>
-    
+
     <task id="2" type="refactor">
       <n>Refactor batch 1: [scope]</n>
       <files>[first batch of files]</files>
@@ -91,7 +93,7 @@ Create `.planning/PLAN.md`:
         npm test
       </verify>
     </task>
-    
+
     <task id="3" type="refactor">
       <n>Refactor batch 2: [scope]</n>
       <files>[second batch of files]</files>
@@ -101,7 +103,7 @@ Create `.planning/PLAN.md`:
         npm test
       </verify>
     </task>
-    
+
     <task id="4" type="cleanup">
       <n>Clean up dead code</n>
       <action>
@@ -113,7 +115,7 @@ Create `.planning/PLAN.md`:
       </verify>
     </task>
   </tasks>
-  
+
   <verification>
     <commands>
       npm run build
@@ -147,6 +149,7 @@ git checkout -b refactor/[descriptive-name]
 ### Step 2: Add Safety Net (if needed)
 
 If test coverage is low for affected code:
+
 1. Add characterization tests
 2. These tests document CURRENT behavior
 3. They must pass before AND after refactor
@@ -159,18 +162,23 @@ For each batch:
    Apply refactoring to one batch of files.
 
 2. **Run Type Check**
+
    ```bash
    npm run typecheck
    ```
+
    Fix any type errors immediately.
 
 3. **Run Tests**
+
    ```bash
    npm test
    ```
+
    All tests must pass. If not, fix or revert.
 
 4. **Commit**
+
    ```bash
    git add .
    git commit -m "refactor: [what changed in this batch]"
@@ -188,6 +196,7 @@ After all refactoring complete:
    - Old patterns no longer used
 
 2. **Run Full Suite**
+
    ```bash
    npm run build
    npm run typecheck
@@ -217,6 +226,7 @@ jkl3456 refactor: clean up deprecated code
 ```
 
 Each commit:
+
 - Passes all tests
 - Is independently revertable
 - Has clear description
@@ -224,6 +234,7 @@ Each commit:
 ## Completion Criteria
 
 Refactor is complete when:
+
 - [ ] All targeted code refactored
 - [ ] All tests passing (same as before)
 - [ ] No type errors

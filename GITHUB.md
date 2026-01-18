@@ -73,6 +73,7 @@ npx dos-apes/dos-apes --local
 If you want users to install via `npx dos-apes`:
 
 ### 1. Create npm Account (if needed)
+
 ```bash
 npm login
 ```
@@ -80,6 +81,7 @@ npm login
 ### 2. Update package.json
 
 Make sure `package.json` has:
+
 ```json
 {
   "name": "dos-apes",
@@ -92,13 +94,7 @@ Make sure `package.json` has:
     "type": "git",
     "url": "https://github.com/dos-apes/dos-apes.git"
   },
-  "keywords": [
-    "ai",
-    "claude",
-    "agent",
-    "automation",
-    "code-generation"
-  ]
+  "keywords": ["ai", "claude", "agent", "automation", "code-generation"]
 }
 ```
 
@@ -121,12 +117,15 @@ npx dos-apes
 After pushing, configure these settings on GitHub:
 
 ### Branch Protection (Settings → Branches)
+
 - Require pull request reviews before merging
 - Require status checks to pass (if you add CI)
 - Include administrators
 
 ### Topics (Main page → About → Edit)
+
 Add topics for discoverability:
+
 - `ai`
 - `claude`
 - `automation`
@@ -135,6 +134,7 @@ Add topics for discoverability:
 - `developer-tools`
 
 ### About Section
+
 - Description: "AI Super Agent Framework - Feed it a PRD, walk away, come back to a shipped product 🦍🦍"
 - Website: (optional documentation site)
 
@@ -158,17 +158,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-      
+          node-version: "20"
+          cache: "npm"
+
       - run: npm ci
-      
+
       - name: Test CLI
         run: node bin/cli.js --help || true
-      
+
       - name: Verify structure
         run: |
           test -f README.md
@@ -224,6 +224,7 @@ https://github.com/dos-apes/dos-apes
 ### README Badges
 
 Add to your README:
+
 ```markdown
 [![npm version](https://badge.fury.io/js/dos-apes.svg)](https://www.npmjs.com/package/dos-apes)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -234,12 +235,15 @@ Add to your README:
 ## Support
 
 ### Issues
+
 Enable GitHub Issues for bug reports and feature requests.
 
 ### Discussions
+
 Enable GitHub Discussions for Q&A and community support.
 
 ### Contributing
+
 The `CONTRIBUTING.md` file is already included with contribution guidelines.
 
 ---

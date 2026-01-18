@@ -12,11 +12,13 @@ allowed-tools: Read, Edit, Write, Bash, Grep, Glob
 Parse "$ARGUMENTS" and load relevant codebase documents:
 
 **Always load:**
+
 - `CLAUDE.md` (project rules)
 - `.planning/codebase/CONCERNS.md` (known issues - may already document this bug)
 - `.planning/codebase/TESTING.md` (test patterns for reproduction test)
 
 **Conditionally load:**
+
 ```bash
 KEYWORDS=$(echo "$ARGUMENTS" | tr '[:upper:]' '[:lower:]')
 
@@ -49,6 +51,7 @@ git log --oneline -10 -- [suspected files]
 ```
 
 ### 3. Clean State
+
 ```bash
 git status --short
 git stash  # if needed
@@ -59,6 +62,7 @@ git stash  # if needed
 ### Step 1: Understand the Bug
 
 Parse "$ARGUMENTS" to identify:
+
 - What's the expected behavior?
 - What's the actual behavior?
 - When does it occur? (conditions, inputs)
@@ -80,6 +84,7 @@ git log --oneline -10 -- [suspected files]
 ### Step 3: Identify Root Cause
 
 Document findings:
+
 - Affected files
 - Root cause hypothesis
 - Why it's happening
@@ -93,7 +98,7 @@ Create `.planning/PLAN.md`:
 <bugfix>
   <n>$ARGUMENTS</n>
   <type>fix</type>
-  
+
   <diagnosis>
     <expected>[Expected behavior]</expected>
     <actual>[Actual behavior]</actual>
@@ -101,7 +106,7 @@ Create `.planning/PLAN.md`:
     <affected_files>[Files involved]</affected_files>
     <confidence>[high/medium/low]</confidence>
   </diagnosis>
-  
+
   <tasks>
     <task id="1" type="test">
       <n>Create reproduction test</n>
@@ -112,14 +117,14 @@ Create `.planning/PLAN.md`:
       </action>
       <verify>npm test -- [test file] (should fail)</verify>
     </task>
-    
+
     <task id="2" type="fix">
       <n>Implement fix</n>
       <files>[files to modify]</files>
       <action>[Fix implementation details]</action>
       <verify>npm test -- [test file] (should pass)</verify>
     </task>
-    
+
     <task id="3" type="regression">
       <n>Check for regressions</n>
       <files>-</files>
@@ -127,7 +132,7 @@ Create `.planning/PLAN.md`:
       <verify>npm test (all should pass)</verify>
     </task>
   </tasks>
-  
+
   <verification>
     <commands>
       npm run build
@@ -152,13 +157,14 @@ git checkout -b fix/[descriptive-name]
 ### Step 2: Write Reproduction Test FIRST
 
 This is critical. The test should:
+
 - Reproduce the exact bug condition
 - FAIL before the fix
 - Be specific enough to catch regressions
 
 ```typescript
-describe('Bug: [description]', () => {
-  it('should [expected behavior]', () => {
+describe("Bug: [description]", () => {
+  it("should [expected behavior]", () => {
     // Arrange: Set up the bug condition
     // Act: Trigger the bug
     // Assert: Verify correct behavior
@@ -208,6 +214,7 @@ Fixes #[issue number if applicable]"
 ## Completion Criteria
 
 Bug fix is complete when:
+
 - [ ] Reproduction test written
 - [ ] Test failed before fix
 - [ ] Fix implemented

@@ -52,6 +52,7 @@ tests/
 ## Unit Test Patterns
 
 ### React Component Test
+
 ```typescript
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MyComponent } from '@/components/MyComponent';
@@ -78,13 +79,14 @@ describe('MyComponent', () => {
 ```
 
 ### Service Test with Mocks
+
 ```typescript
-import { AuthService } from '@/services/auth';
-import { UserRepository } from '@/repositories/user';
+import { AuthService } from "@/services/auth";
+import { UserRepository } from "@/repositories/user";
 
-jest.mock('@/repositories/user');
+jest.mock("@/repositories/user");
 
-describe('AuthService', () => {
+describe("AuthService", () => {
   let authService: AuthService;
   let mockUserRepo: jest.Mocked<UserRepository>;
 
@@ -93,25 +95,25 @@ describe('AuthService', () => {
     authService = new AuthService(mockUserRepo);
   });
 
-  it('returns tokens for valid credentials', async () => {
+  it("returns tokens for valid credentials", async () => {
     mockUserRepo.findByEmail.mockResolvedValue({
-      id: '1',
-      email: 'test@example.com',
-      password: '$hashed$',
+      id: "1",
+      email: "test@example.com",
+      password: "$hashed$",
     });
 
-    const result = await authService.login('test@example.com', 'password');
+    const result = await authService.login("test@example.com", "password");
 
-    expect(result).toHaveProperty('accessToken');
-    expect(result).toHaveProperty('refreshToken');
+    expect(result).toHaveProperty("accessToken");
+    expect(result).toHaveProperty("refreshToken");
   });
 
-  it('throws for invalid credentials', async () => {
+  it("throws for invalid credentials", async () => {
     mockUserRepo.findByEmail.mockResolvedValue(null);
 
     await expect(
-      authService.login('invalid@example.com', 'password')
-    ).rejects.toThrow('Invalid credentials');
+      authService.login("invalid@example.com", "password"),
+    ).rejects.toThrow("Invalid credentials");
   });
 });
 ```
@@ -119,11 +121,12 @@ describe('AuthService', () => {
 ## Integration Test Patterns
 
 ### API Test
-```typescript
-import request from 'supertest';
-import { createTestApp, createTestUser, getAuthToken } from '../utils';
 
-describe('Users API', () => {
+```typescript
+import request from "supertest";
+import { createTestApp, createTestUser, getAuthToken } from "../utils";
+
+describe("Users API", () => {
   let app: Express;
   let authToken: string;
 
@@ -137,20 +140,18 @@ describe('Users API', () => {
     await cleanupDatabase();
   });
 
-  it('GET /users returns paginated list', async () => {
+  it("GET /users returns paginated list", async () => {
     const response = await request(app)
-      .get('/api/users')
-      .set('Authorization', `Bearer ${authToken}`)
+      .get("/api/users")
+      .set("Authorization", `Bearer ${authToken}`)
       .expect(200);
 
     expect(response.body.data).toBeInstanceOf(Array);
     expect(response.body.pagination).toBeDefined();
   });
 
-  it('returns 401 without auth', async () => {
-    await request(app)
-      .get('/api/users')
-      .expect(401);
+  it("returns 401 without auth", async () => {
+    await request(app).get("/api/users").expect(401);
   });
 });
 ```
@@ -158,29 +159,30 @@ describe('Users API', () => {
 ## E2E Test Patterns
 
 ### Playwright Test
+
 ```typescript
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-test.describe('Authentication', () => {
-  test('user can log in', async ({ page }) => {
-    await page.goto('/login');
+test.describe("Authentication", () => {
+  test("user can log in", async ({ page }) => {
+    await page.goto("/login");
 
-    await page.fill('[name="email"]', 'test@example.com');
-    await page.fill('[name="password"]', 'password123');
+    await page.fill('[name="email"]', "test@example.com");
+    await page.fill('[name="password"]', "password123");
     await page.click('button[type="submit"]');
 
-    await expect(page).toHaveURL('/dashboard');
+    await expect(page).toHaveURL("/dashboard");
     await expect(page.locator('[data-testid="user-menu"]')).toBeVisible();
   });
 
-  test('shows error for invalid credentials', async ({ page }) => {
-    await page.goto('/login');
+  test("shows error for invalid credentials", async ({ page }) => {
+    await page.goto("/login");
 
-    await page.fill('[name="email"]', 'test@example.com');
-    await page.fill('[name="password"]', 'wrongpassword');
+    await page.fill('[name="email"]', "test@example.com");
+    await page.fill('[name="password"]', "wrongpassword");
     await page.click('button[type="submit"]');
 
-    await expect(page.locator('[role="alert"]')).toContainText('Invalid');
+    await expect(page.locator('[role="alert"]')).toContainText("Invalid");
   });
 });
 ```
@@ -188,6 +190,7 @@ test.describe('Authentication', () => {
 ## Test Utilities
 
 ### Custom Render
+
 ```typescript
 // tests/utils/render.tsx
 import { render as rtlRender, RenderOptions } from '@testing-library/react';
@@ -210,9 +213,10 @@ export function render(ui: React.ReactElement, options?: RenderOptions) {
 ```
 
 ### Data Factory
+
 ```typescript
 // tests/utils/factories.ts
-import { faker } from '@faker-js/faker';
+import { faker } from "@faker-js/faker";
 
 export function createUserData(overrides = {}) {
   return {
@@ -227,11 +231,11 @@ export function createUserData(overrides = {}) {
 
 ## Coverage Targets
 
-| Type | Target | Minimum |
-|------|--------|---------|
-| Unit Tests | 80%+ | 70% |
-| Integration | Key paths | Critical flows |
-| E2E | Happy paths | Core user flows |
+| Type        | Target      | Minimum         |
+| ----------- | ----------- | --------------- |
+| Unit Tests  | 80%+        | 70%             |
+| Integration | Key paths   | Critical flows  |
+| E2E         | Happy paths | Core user flows |
 
 ## Verification
 
@@ -251,6 +255,7 @@ npm run test:e2e
 ## Quality Checklist
 
 Before declaring tests complete:
+
 - [ ] Unit tests cover 80%+ of code
 - [ ] Integration tests cover API endpoints
 - [ ] E2E tests cover core user flows
@@ -262,6 +267,7 @@ Before declaring tests complete:
 ## Output
 
 Always include in your completion message:
+
 - Tests created (count by type)
 - Coverage percentage
 - Test commands to run

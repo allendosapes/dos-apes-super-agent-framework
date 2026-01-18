@@ -5,6 +5,7 @@ Standards for designing and implementing RESTful APIs.
 ## URL Design
 
 ### Resource Naming
+
 ```
 # Use nouns, not verbs
 GET /users          # Good
@@ -24,6 +25,7 @@ GET /orderItems          # Bad
 ```
 
 ### URL Patterns
+
 ```
 GET    /resources          # List resources
 POST   /resources          # Create resource
@@ -39,44 +41,48 @@ POST   /orders/:id/cancel         # Cancel order
 
 ## HTTP Methods
 
-| Method | Purpose | Idempotent | Body |
-|--------|---------|------------|------|
-| GET | Retrieve | Yes | No |
-| POST | Create | No | Yes |
-| PUT | Replace | Yes | Yes |
-| PATCH | Partial update | Yes | Yes |
-| DELETE | Remove | Yes | No |
+| Method | Purpose        | Idempotent | Body |
+| ------ | -------------- | ---------- | ---- |
+| GET    | Retrieve       | Yes        | No   |
+| POST   | Create         | No         | Yes  |
+| PUT    | Replace        | Yes        | Yes  |
+| PATCH  | Partial update | Yes        | Yes  |
+| DELETE | Remove         | Yes        | No   |
 
 ## Status Codes
 
 ### Success
-| Code | Meaning | Use When |
-|------|---------|----------|
-| 200 | OK | GET, PATCH, PUT success |
-| 201 | Created | POST created resource |
-| 204 | No Content | DELETE success |
+
+| Code | Meaning    | Use When                |
+| ---- | ---------- | ----------------------- |
+| 200  | OK         | GET, PATCH, PUT success |
+| 201  | Created    | POST created resource   |
+| 204  | No Content | DELETE success          |
 
 ### Client Errors
-| Code | Meaning | Use When |
-|------|---------|----------|
-| 400 | Bad Request | Validation failed |
-| 401 | Unauthorized | Auth required |
-| 403 | Forbidden | No permission |
-| 404 | Not Found | Resource doesn't exist |
-| 409 | Conflict | Duplicate/conflict |
-| 422 | Unprocessable | Semantic error |
-| 429 | Too Many Requests | Rate limited |
+
+| Code | Meaning           | Use When               |
+| ---- | ----------------- | ---------------------- |
+| 400  | Bad Request       | Validation failed      |
+| 401  | Unauthorized      | Auth required          |
+| 403  | Forbidden         | No permission          |
+| 404  | Not Found         | Resource doesn't exist |
+| 409  | Conflict          | Duplicate/conflict     |
+| 422  | Unprocessable     | Semantic error         |
+| 429  | Too Many Requests | Rate limited           |
 
 ### Server Errors
-| Code | Meaning | Use When |
-|------|---------|----------|
-| 500 | Internal Error | Server failure |
-| 502 | Bad Gateway | Upstream failure |
-| 503 | Service Unavailable | Temporarily down |
+
+| Code | Meaning             | Use When         |
+| ---- | ------------------- | ---------------- |
+| 500  | Internal Error      | Server failure   |
+| 502  | Bad Gateway         | Upstream failure |
+| 503  | Service Unavailable | Temporarily down |
 
 ## Request Format
 
 ### Headers
+
 ```
 Content-Type: application/json
 Accept: application/json
@@ -85,6 +91,7 @@ X-Request-ID: <uuid>        # For tracing
 ```
 
 ### Body (JSON)
+
 ```json
 {
   "email": "user@example.com",
@@ -96,6 +103,7 @@ X-Request-ID: <uuid>        # For tracing
 ## Response Format
 
 ### Success Response
+
 ```json
 {
   "data": {
@@ -108,6 +116,7 @@ X-Request-ID: <uuid>        # For tracing
 ```
 
 ### List Response (with Pagination)
+
 ```json
 {
   "data": [
@@ -124,6 +133,7 @@ X-Request-ID: <uuid>        # For tracing
 ```
 
 ### Error Response
+
 ```json
 {
   "error": {
@@ -140,24 +150,26 @@ X-Request-ID: <uuid>        # For tracing
 ## Pagination
 
 ### Query Parameters
+
 ```
 GET /users?page=2&limit=20&sort=createdAt&order=desc
 ```
 
-| Parameter | Default | Max | Description |
-|-----------|---------|-----|-------------|
-| page | 1 | - | Page number |
-| limit | 10 | 100 | Items per page |
-| sort | createdAt | - | Sort field |
-| order | desc | - | asc or desc |
+| Parameter | Default   | Max | Description    |
+| --------- | --------- | --- | -------------- |
+| page      | 1         | -   | Page number    |
+| limit     | 10        | 100 | Items per page |
+| sort      | createdAt | -   | Sort field     |
+| order     | desc      | -   | asc or desc    |
 
 ### Implementation
+
 ```typescript
 interface PaginationParams {
   page: number;
   limit: number;
   sort: string;
-  order: 'asc' | 'desc';
+  order: "asc" | "desc";
 }
 
 function paginate<T>(items: T[], params: PaginationParams) {
@@ -167,7 +179,7 @@ function paginate<T>(items: T[], params: PaginationParams) {
   const sorted = [...items].sort((a, b) => {
     const aVal = a[sort];
     const bVal = b[sort];
-    return order === 'asc' ? aVal - bVal : bVal - aVal;
+    return order === "asc" ? aVal - bVal : bVal - aVal;
   });
 
   return {
@@ -176,8 +188,8 @@ function paginate<T>(items: T[], params: PaginationParams) {
       page,
       limit,
       total: items.length,
-      totalPages: Math.ceil(items.length / limit)
-    }
+      totalPages: Math.ceil(items.length / limit),
+    },
   };
 }
 ```
@@ -185,17 +197,19 @@ function paginate<T>(items: T[], params: PaginationParams) {
 ## Filtering
 
 ### Query Parameters
+
 ```
 GET /users?status=active&role=admin&createdAfter=2024-01-01
 ```
 
 ### Implementation
+
 ```typescript
 const FilterSchema = z.object({
-  status: z.enum(['active', 'inactive']).optional(),
+  status: z.enum(["active", "inactive"]).optional(),
   role: z.string().optional(),
   createdAfter: z.string().datetime().optional(),
-  search: z.string().max(100).optional()
+  search: z.string().max(100).optional(),
 });
 
 function buildFilter(params: FilterParams): WhereClause {
@@ -203,8 +217,10 @@ function buildFilter(params: FilterParams): WhereClause {
 
   if (params.status) where.status = params.status;
   if (params.role) where.role = params.role;
-  if (params.createdAfter) where.createdAt = { gte: new Date(params.createdAfter) };
-  if (params.search) where.name = { contains: params.search, mode: 'insensitive' };
+  if (params.createdAfter)
+    where.createdAt = { gte: new Date(params.createdAfter) };
+  if (params.search)
+    where.name = { contains: params.search, mode: "insensitive" };
 
   return where;
 }
@@ -213,25 +229,26 @@ function buildFilter(params: FilterParams): WhereClause {
 ## Validation
 
 ### Input Validation
+
 ```typescript
-import { z } from 'zod';
+import { z } from "zod";
 
 const CreateUserSchema = z.object({
   email: z.string().email().max(255),
   password: z.string().min(8).max(100),
-  name: z.string().min(1).max(100)
+  name: z.string().min(1).max(100),
 });
 
-app.post('/users', async (req, res) => {
+app.post("/users", async (req, res) => {
   const result = CreateUserSchema.safeParse(req.body);
 
   if (!result.success) {
     return res.status(400).json({
       error: {
-        code: 'VALIDATION_ERROR',
-        message: 'Invalid input',
-        details: result.error.flatten().fieldErrors
-      }
+        code: "VALIDATION_ERROR",
+        message: "Invalid input",
+        details: result.error.flatten().fieldErrors,
+      },
     });
   }
 
@@ -243,12 +260,14 @@ app.post('/users', async (req, res) => {
 ## Versioning
 
 ### URL Versioning (Recommended)
+
 ```
 GET /api/v1/users
 GET /api/v2/users
 ```
 
 ### Header Versioning (Alternative)
+
 ```
 GET /api/users
 Accept: application/vnd.api+json; version=2
@@ -257,13 +276,14 @@ Accept: application/vnd.api+json; version=2
 ## Error Handling
 
 ### Standard Error Format
+
 ```typescript
 class ApiError extends Error {
   constructor(
     public code: string,
     message: string,
     public statusCode: number = 500,
-    public details?: Record<string, any>
+    public details?: Record<string, any>,
   ) {
     super(message);
   }
@@ -276,8 +296,8 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
       error: {
         code: err.code,
         message: err.message,
-        details: err.details
-      }
+        details: err.details,
+      },
     });
   }
 
@@ -286,9 +306,9 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 
   res.status(500).json({
     error: {
-      code: 'INTERNAL_ERROR',
-      message: 'An unexpected error occurred'
-    }
+      code: "INTERNAL_ERROR",
+      message: "An unexpected error occurred",
+    },
   });
 });
 ```
@@ -296,6 +316,7 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 ## Rate Limiting
 
 ### Headers
+
 ```
 X-RateLimit-Limit: 100
 X-RateLimit-Remaining: 45
@@ -303,6 +324,7 @@ X-RateLimit-Reset: 1640995200
 ```
 
 ### Response (429)
+
 ```json
 {
   "error": {
@@ -316,6 +338,7 @@ X-RateLimit-Reset: 1640995200
 ## Documentation
 
 ### OpenAPI Specification
+
 ```yaml
 openapi: 3.0.3
 info:
@@ -333,10 +356,10 @@ paths:
             type: integer
             default: 1
       responses:
-        '200':
+        "200":
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserList'
+                $ref: "#/components/schemas/UserList"
 ```

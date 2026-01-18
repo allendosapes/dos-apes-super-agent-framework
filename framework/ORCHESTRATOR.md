@@ -16,6 +16,7 @@ You handle: EVERYTHING else until shipped
 ```
 
 This means:
+
 - Planning phases and tasks
 - Managing git workflow (branches, worktrees, merges)
 - Delegating to specialized agents
@@ -31,14 +32,15 @@ This means:
 
 Claude's output quality degrades as context usage increases. Manage context to stay in the peak quality zone:
 
-| Context Usage | Quality | Action |
-|---------------|---------|--------|
-| 0-30% | Peak | Optimal working zone |
-| 30-50% | Good | Still effective, monitor |
-| 50-70% | Degrading | Split work, spawn subagents |
-| 70%+ | Poor | Must spawn fresh subagent |
+| Context Usage | Quality   | Action                      |
+| ------------- | --------- | --------------------------- |
+| 0-30%         | Peak      | Optimal working zone        |
+| 30-50%        | Good      | Still effective, monitor    |
+| 50-70%        | Degrading | Split work, spawn subagents |
+| 70%+          | Poor      | Must spawn fresh subagent   |
 
 **Rules:**
+
 1. **Split work into small plans** - 2-3 tasks per plan maximum
 2. **Fresh context per plan** - Each plan executes in a subagent with fresh 200k context
 3. **Frontmatter enables context assembly** - Auto-assemble only needed context from prior SUMMARYs
@@ -48,14 +50,15 @@ Claude's output quality degrades as context usage increases. Manage context to s
 
 Before planning, determine research depth needed:
 
-| Level | When | Action | Duration | Output |
-|-------|------|--------|----------|--------|
-| 0 - Skip | Pure internal work, established patterns | None | 0 | None |
-| 1 - Quick Verify | Single known library, confirming syntax | Quick lookup | 2-5 min | None |
-| 2 - Standard Research | Choosing between options, new integration | Research workflow | 15-30 min | DISCOVERY.md |
-| 3 - Deep Dive | Architectural decisions, novel problems | Full discovery | 1+ hour | Comprehensive DISCOVERY.md |
+| Level                 | When                                      | Action            | Duration  | Output                     |
+| --------------------- | ----------------------------------------- | ----------------- | --------- | -------------------------- |
+| 0 - Skip              | Pure internal work, established patterns  | None              | 0         | None                       |
+| 1 - Quick Verify      | Single known library, confirming syntax   | Quick lookup      | 2-5 min   | None                       |
+| 2 - Standard Research | Choosing between options, new integration | Research workflow | 15-30 min | DISCOVERY.md               |
+| 3 - Deep Dive         | Architectural decisions, novel problems   | Full discovery    | 1+ hour   | Comprehensive DISCOVERY.md |
 
 **Discovery triggers:**
+
 - New external dependency → Level 2
 - Technology choice needed → Level 2
 - Security/auth implementation → Level 3
@@ -66,15 +69,16 @@ Before planning, determine research depth needed:
 
 During execution, apply these rules for unplanned situations:
 
-| Rule | Situation | Action | Document |
-|------|-----------|--------|----------|
-| 1 - Auto-fix bugs | Bug found during task | Fix immediately | In SUMMARY.md |
-| 2 - Auto-add critical | Security/correctness gap | Add immediately | In SUMMARY.md |
-| 3 - Auto-fix blockers | Can't proceed without fix | Fix immediately | In SUMMARY.md |
-| 4 - Ask architectural | Major design change | Stop and ask user | -  |
-| 5 - Log enhancements | Nice-to-have improvements | Defer to ISSUES.md | In ISSUES.md |
+| Rule                  | Situation                 | Action             | Document      |
+| --------------------- | ------------------------- | ------------------ | ------------- |
+| 1 - Auto-fix bugs     | Bug found during task     | Fix immediately    | In SUMMARY.md |
+| 2 - Auto-add critical | Security/correctness gap  | Add immediately    | In SUMMARY.md |
+| 3 - Auto-fix blockers | Can't proceed without fix | Fix immediately    | In SUMMARY.md |
+| 4 - Ask architectural | Major design change       | Stop and ask user  | -             |
+| 5 - Log enhancements  | Nice-to-have improvements | Defer to ISSUES.md | In ISSUES.md  |
 
 **On deviation:**
+
 ```
 1. Classify by rule (1-5)
 2. Execute allowed action
@@ -90,14 +94,14 @@ Every phase transition requires passing a quality gate. Gates are BLOCKING - wor
 
 ### Gate Definitions
 
-| Gate | Checkpoint | Required Artifacts | Pass Criteria |
-|------|------------|-------------------|---------------|
-| G1 | Requirements Complete | PRD, user stories, MVP definition | All documented, reviewed |
-| G2 | Design Complete | Architecture, wireframes, threat model | All approved |
-| G3 | Implementation Ready | Tech stack, dev environment, security model | Environment working |
-| G4 | Code Complete | All features, unit tests | Build + tests pass |
-| G5 | Test Complete | All tests, coverage | 80%+ coverage, no critical bugs |
-| G6 | Release Ready | Docs, security review, deployment | All verified |
+| Gate | Checkpoint            | Required Artifacts                          | Pass Criteria                   |
+| ---- | --------------------- | ------------------------------------------- | ------------------------------- |
+| G1   | Requirements Complete | PRD, user stories, MVP definition           | All documented, reviewed        |
+| G2   | Design Complete       | Architecture, wireframes, threat model      | All approved                    |
+| G3   | Implementation Ready  | Tech stack, dev environment, security model | Environment working             |
+| G4   | Code Complete         | All features, unit tests                    | Build + tests pass              |
+| G5   | Test Complete         | All tests, coverage                         | 80%+ coverage, no critical bugs |
+| G6   | Release Ready         | Docs, security review, deployment           | All verified                    |
 
 ### Gate Enforcement
 
@@ -153,11 +157,13 @@ Always maintain these files in `.planning/`:
 # State
 
 ## Execution Mode
+
 ralph_mode: true/false
 max_iterations: [N]
 current_iteration: [N]
 
 ## Current Position
+
 phase: [N]
 phase_name: "[Name]"
 task: [N]
@@ -165,25 +171,30 @@ task_name: "[Name]"
 status: planning|executing|verifying|blocked|complete
 
 ## Git State
+
 main_branch: main
 current_branch: [branch-name]
 worktrees:
-  - path: ../worktrees/phase-1
-    branch: feat/phase-1-foundation
-    status: active|merged|abandoned
+
+- path: ../worktrees/phase-1
+  branch: feat/phase-1-foundation
+  status: active|merged|abandoned
 
 ## Agent State
+
 current_agent: orchestrator|backend-developer|frontend-developer|qa-engineer|devops-engineer|technical-architect|security-engineer
 handoff_pending: true/false
 handoff_to: [agent]
 handoff_context: "[what they need to know]"
 
 ## Progress
+
 phases_complete: [N]/[Total]
 current_phase_tasks: [N]/[Total]
 all_tasks_complete: false
 
 ## Verification Status
+
 build: pass|fail|pending
 types: pass|fail|pending
 lint: pass|fail|pending
@@ -192,10 +203,12 @@ ui_integration: pass|fail|pending|na
 browser_verified: true|false|pending
 
 ## Session
+
 started: [timestamp]
 last_update: [timestamp]
 iteration_log:
-  - [N]: [what happened]
+
+- [N]: [what happened]
 ```
 
 ---
@@ -210,7 +223,7 @@ main (protected)
   ├── feat/phase-1-foundation
   │     └── [work, verify, squash merge to main]
   │
-  ├── feat/phase-2-core-features  
+  ├── feat/phase-2-core-features
   │     └── [work, verify, squash merge to main]
   │
   └── feat/phase-3-polish
@@ -219,18 +232,19 @@ main (protected)
 
 ### When to Use What
 
-| Situation | Git Strategy | Why |
-|-----------|--------------|-----|
-| Starting new phase | Create branch from main | Clean baseline |
-| Parallel features | Git worktrees | Isolated environments |
-| Single feature | Regular branch | Simpler |
-| Phase complete | Squash merge to main | Clean history |
-| Bug in main | Hotfix branch | Isolate fix |
-| Conflict with main | Rebase feature branch | Linear history |
+| Situation          | Git Strategy            | Why                   |
+| ------------------ | ----------------------- | --------------------- |
+| Starting new phase | Create branch from main | Clean baseline        |
+| Parallel features  | Git worktrees           | Isolated environments |
+| Single feature     | Regular branch          | Simpler               |
+| Phase complete     | Squash merge to main    | Clean history         |
+| Bug in main        | Hotfix branch           | Isolate fix           |
+| Conflict with main | Rebase feature branch   | Linear history        |
 
 ### Git Commands by Phase
 
 #### Starting a Phase
+
 ```bash
 # Update main first
 git checkout main
@@ -245,6 +259,7 @@ cd ../worktrees/phase-[N]
 ```
 
 #### During Development
+
 ```bash
 # After each task
 git add .
@@ -261,6 +276,7 @@ git rebase origin/main
 ```
 
 #### Completing a Phase
+
 ```bash
 # Ensure all verification passes
 npm run build && npm run typecheck && npm run lint && npm test
@@ -317,51 +333,54 @@ done
 
 ### Agent Roster (12 Agents)
 
-| # | Agent | File | Model | Responsibilities |
-|---|-------|------|-------|------------------|
-| 1 | Orchestrator | `orchestrator.md` | Sonnet | Planning, git, state, coordination |
-| 2 | Product Manager | `product-manager.md` | Sonnet | PRD, user stories, requirements |
-| 3 | Technical Architect | `technical-architect.md` | Opus | System design, ADRs, tech decisions |
-| 4 | UI/UX Designer | `ui-ux-designer.md` | Sonnet | Wireframes, design system, accessibility |
-| 5 | Frontend Developer | `frontend-developer.md` | Opus | UI implementation, state, integration |
-| 6 | Backend Developer | `backend-developer.md` | Opus | APIs, database, business logic |
-| 7 | Security Engineer | `security-engineer.md` | Opus | Threat modeling, security review, OWASP |
-| 8 | QA Engineer | `qa-engineer.md` | Sonnet | Test execution, verification, UAT |
-| 9 | Test Automation | `test-automation.md` | Sonnet | Unit/integration/E2E test creation |
-| 10 | DevOps Engineer | `devops-engineer.md` | Sonnet | CI/CD, deployment, infrastructure |
-| 11 | Code Reviewer | `code-reviewer.md` | Opus | Code quality, standards compliance |
-| 12 | Tech Writer | `tech-writer.md` | Sonnet | Documentation, API docs, guides |
+| #   | Agent               | File                     | Model  | Responsibilities                         |
+| --- | ------------------- | ------------------------ | ------ | ---------------------------------------- |
+| 1   | Orchestrator        | `orchestrator.md`        | Sonnet | Planning, git, state, coordination       |
+| 2   | Product Manager     | `product-manager.md`     | Sonnet | PRD, user stories, requirements          |
+| 3   | Technical Architect | `technical-architect.md` | Opus   | System design, ADRs, tech decisions      |
+| 4   | UI/UX Designer      | `ui-ux-designer.md`      | Sonnet | Wireframes, design system, accessibility |
+| 5   | Frontend Developer  | `frontend-developer.md`  | Opus   | UI implementation, state, integration    |
+| 6   | Backend Developer   | `backend-developer.md`   | Opus   | APIs, database, business logic           |
+| 7   | Security Engineer   | `security-engineer.md`   | Opus   | Threat modeling, security review, OWASP  |
+| 8   | QA Engineer         | `qa-engineer.md`         | Sonnet | Test execution, verification, UAT        |
+| 9   | Test Automation     | `test-automation.md`     | Sonnet | Unit/integration/E2E test creation       |
+| 10  | DevOps Engineer     | `devops-engineer.md`     | Sonnet | CI/CD, deployment, infrastructure        |
+| 11  | Code Reviewer       | `code-reviewer.md`       | Opus   | Code quality, standards compliance       |
+| 12  | Tech Writer         | `tech-writer.md`         | Sonnet | Documentation, API docs, guides          |
 
 ### Agent Activation by Phase
 
-| Phase | Primary Agents |
-|-------|----------------|
-| Requirements | Product Manager |
-| Design | Technical Architect, UI/UX Designer |
+| Phase          | Primary Agents                        |
+| -------------- | ------------------------------------- |
+| Requirements   | Product Manager                       |
+| Design         | Technical Architect, UI/UX Designer   |
 | Implementation | Frontend Developer, Backend Developer |
-| Security | Security Engineer |
-| Testing | Test Automation, QA Engineer |
-| Review | Code Reviewer |
-| Documentation | Tech Writer |
-| Deployment | DevOps Engineer |
+| Security       | Security Engineer                     |
+| Testing        | Test Automation, QA Engineer          |
+| Review         | Code Reviewer                         |
+| Documentation  | Tech Writer                           |
+| Deployment     | DevOps Engineer                       |
 
 ### Agent Handoff Protocol
 
 When switching agents:
 
 1. **Update STATE.md**
+
    ```markdown
    current_agent: frontend-developer
    handoff_pending: false
    ```
 
 2. **Load Agent Context**
+
    ```
    Read: .claude/agents/[agent-name].md
    Apply: Agent's rules and patterns
    ```
 
 3. **Announce Switch**
+
    ```
    [ORCHESTRATOR → FRONTEND DEVELOPER]
    Task: Create Login component
@@ -385,38 +404,38 @@ When switching agents:
 
 ```
 FOR each task in current phase:
-  
+
   1. [ORCHESTRATOR] Read task from PLAN.md
-  
+
   2. [ORCHESTRATOR] Determine agent based on task type
      - backend → Backend Developer
      - frontend → Frontend Developer
      - test → QA Engineer
      - etc.
-  
+
   3. [ORCHESTRATOR] Load agent context
      Read .claude/agents/[agent].md
-  
+
   4. [ORCHESTRATOR → AGENT] Handoff
      Update STATE.md with agent and context
-  
+
   5. [AGENT] Execute task
      Follow agent-specific rules
      Create/modify files
      Run agent's verification
-  
+
   6. [AGENT → QA ENGINEER] Handoff for verification
-     
+
   7. [QA ENGINEER] Run verification stack
      If FAIL: Return to agent with failure details
      If PASS: Continue
-  
+
   8. [QA ENGINEER → ORCHESTRATOR] Report
-  
+
   9. [ORCHESTRATOR] Commit and update state
      git add . && git commit
      Update STATE.md (task complete)
-  
+
   10. [ORCHESTRATOR] Next task or phase complete
 ```
 
@@ -429,54 +448,54 @@ FOR each task in current phase:
 ```
 RALPH_LOOP(max_iterations):
   iteration = 0
-  
+
   WHILE iteration < max_iterations:
     iteration += 1
-    
+
     # Update state
     STATE.current_iteration = iteration
-    
+
     # Find next work
     next_task = find_incomplete_task()
-    
+
     IF no next_task:
       IF current_phase_complete:
         merge_phase_to_main()
         next_phase = find_next_phase()
-        
+
         IF no next_phase:
           OUTPUT "<promise>PRODUCT_COMPLETE</promise>"
           EXIT loop
         ELSE:
           start_phase(next_phase)
           CONTINUE
-    
+
     # Execute task with appropriate agent
     agent = determine_agent(next_task)
     load_agent(agent)
-    
+
     TRY:
       execute_task(next_task)
-      
+
       # Verify
       qa_result = run_verification()
-      
+
       IF qa_result.failed:
         log_failure(qa_result)
         # Loop continues - will retry with failure context
         CONTINUE
-      
+
       # Success
       commit_task(next_task)
       mark_complete(next_task)
       update_state()
-      
+
     CATCH error:
       log_error(error)
       add_to_issues(error)
       # Loop continues
       CONTINUE
-  
+
   # Max iterations reached
   OUTPUT "Max iterations reached. Progress saved in STATE.md"
   OUTPUT "Run /apes-resume to continue"
@@ -535,6 +554,7 @@ exit 1  # Block exit, re-feed prompt
 ```
 
 This is the "hands off" command. It will:
+
 1. Ingest PRD → Create PROJECT.md, ROADMAP.md
 2. Plan Phase 1 → Create PLAN.md
 3. Execute all tasks with agent handoffs
@@ -546,11 +566,11 @@ This is the "hands off" command. It will:
 
 ### Autonomy Levels
 
-| Level | Command | Human Involvement |
-|-------|---------|-------------------|
-| Task | `/apes-task 1` | Review each task |
-| Phase | `/apes-execute 1 --ralph` | Review each phase |
-| Product | `/apes-build --ralph` | Review final product |
+| Level   | Command                   | Human Involvement    |
+| ------- | ------------------------- | -------------------- |
+| Task    | `/apes-task 1`            | Review each task     |
+| Phase   | `/apes-execute 1 --ralph` | Review each phase    |
+| Product | `/apes-build --ralph`     | Review final product |
 
 ---
 
@@ -562,28 +582,34 @@ This is the "hands off" command. It will:
 # Memory
 
 ## Project Patterns
+
 - API endpoints follow: /api/v1/[resource]
 - Components use: Functional + hooks
 - State management: React Query for server state
 
 ## Discovered Conventions
+
 - Import order: React, libs, local, styles
 - File naming: kebab-case for files, PascalCase for components
 - Test files: co-located as [name].test.ts
 
 ## Successful Approaches
+
 - Phase 1: Started with data models first - worked well
 - Auth: Used JWT with refresh tokens - standard pattern
 
 ## Failed Approaches (Don't Repeat)
+
 - Tried CSS modules, switched to Tailwind - team preference
 - Initial API without validation - had to retrofit Zod
 
 ## Technical Decisions
+
 - Database: PostgreSQL (see ADR-001)
 - Auth: JWT (see ADR-002)
 
 ## Integration Points
+
 - Auth service must be called before any protected route
 - User context required for dashboard components
 ```
@@ -591,6 +617,7 @@ This is the "hands off" command. It will:
 ### Learning Loop
 
 After each phase:
+
 1. Review what worked
 2. Note what failed
 3. Update MEMORY.md
@@ -601,6 +628,7 @@ After each phase:
 ## 9. VERIFICATION GATES
 
 ### Per-Task Verification
+
 ```
 [QA ENGINEER]
 1. Build passes
@@ -611,6 +639,7 @@ After each phase:
 ```
 
 ### Per-Phase Verification
+
 ```
 [QA ENGINEER]
 All per-task verifications PLUS:
@@ -621,6 +650,7 @@ All per-task verifications PLUS:
 ```
 
 ### Pre-Merge Verification
+
 ```
 [QA ENGINEER]
 All per-phase verifications PLUS:
@@ -635,6 +665,7 @@ All per-phase verifications PLUS:
 ## 10. FAILURE RECOVERY
 
 ### Task Failure
+
 ```
 IF task fails:
   1. Log failure details to STATE.md
@@ -644,6 +675,7 @@ IF task fails:
 ```
 
 ### Phase Failure
+
 ```
 IF phase fails to complete:
   1. Save all state
@@ -653,6 +685,7 @@ IF phase fails to complete:
 ```
 
 ### Recovery Commands
+
 ```bash
 /apes-resume           # Continue from last state
 /apes-retry            # Retry failed task
@@ -668,30 +701,30 @@ When Dos Apes starts:
 
 ```
 1. Check for .planning/STATE.md
-   
+
    IF exists AND incomplete:
      "Found existing state. Resuming..."
      Load state
      Continue from current position
-   
+
    IF exists AND complete:
      "Previous build complete. Start new?"
      Wait for user input
-   
+
    IF not exists:
      "No existing state. Starting fresh."
      Wait for PRD or idea
 
 2. Check for CLAUDE.md
-   
+
    IF exists:
      Load project conventions
-   
+
    IF not exists:
      Will create during initialization
 
 3. Check git state
-   
+
    IF dirty working directory:
      "Uncommitted changes detected."
      Offer to stash or commit
@@ -705,13 +738,13 @@ When Dos Apes starts:
 
 The Ralph loop listens for these completion signals:
 
-| Promise | Meaning |
-|---------|---------|
-| `<promise>TASK_COMPLETE</promise>` | Single task done |
-| `<promise>PHASE_COMPLETE</promise>` | Phase done, ready for merge |
+| Promise                               | Meaning                          |
+| ------------------------------------- | -------------------------------- |
+| `<promise>TASK_COMPLETE</promise>`    | Single task done                 |
+| `<promise>PHASE_COMPLETE</promise>`   | Phase done, ready for merge      |
 | `<promise>PRODUCT_COMPLETE</promise>` | All phases done, product shipped |
-| `<promise>BLOCKED</promise>` | Cannot continue, needs human |
-| `<promise>FAILED</promise>` | Unrecoverable failure |
+| `<promise>BLOCKED</promise>`          | Cannot continue, needs human     |
+| `<promise>FAILED</promise>`           | Unrecoverable failure            |
 
 ---
 

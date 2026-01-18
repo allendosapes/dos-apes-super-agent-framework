@@ -11,6 +11,7 @@
 **Sprint/Phase:** [Which iteration this belongs to]
 
 ### User Story
+
 ```
 As a [user role/persona],
 I want to [action/capability],
@@ -18,9 +19,11 @@ So that [benefit/value].
 ```
 
 ### Description
+
 [Additional context about this story. What problem does it solve? Why is it important?]
 
 ### Personas Affected
+
 - **Primary:** [Main user affected]
 - **Secondary:** [Other affected users]
 
@@ -51,17 +54,22 @@ So that [benefit/value].
 ## Technical Notes
 
 ### Implementation Hints
+
 [Any technical guidance for developers]
+
 - Approach: [Suggested implementation approach]
 - Components: [Affected components/files]
 - APIs: [Relevant API endpoints]
 
 ### Dependencies
+
 - [ ] [Dependency 1 - e.g., "US-1234 must be complete"]
 - [ ] [Dependency 2 - e.g., "Auth service available"]
 
 ### Out of Scope
+
 [What this story explicitly does NOT include]
+
 - [Item 1]
 - [Item 2]
 
@@ -70,13 +78,16 @@ So that [benefit/value].
 ## Design
 
 ### UI/UX Requirements
+
 - [ ] [UI requirement 1]
 - [ ] [UI requirement 2]
 
 ### Wireframe/Mockup
+
 [Link to design or embed image]
 
 ### Accessibility
+
 - [ ] Keyboard navigable
 - [ ] Screen reader compatible
 - [ ] Color contrast meets WCAG AA
@@ -87,12 +98,14 @@ So that [benefit/value].
 ## Testing
 
 ### Test Scenarios
-| Scenario | Steps | Expected Result | Priority |
-|----------|-------|-----------------|----------|
-| [Name] | [Steps] | [Result] | High/Med/Low |
-| [Name] | [Steps] | [Result] | High/Med/Low |
+
+| Scenario | Steps   | Expected Result | Priority     |
+| -------- | ------- | --------------- | ------------ |
+| [Name]   | [Steps] | [Result]        | High/Med/Low |
+| [Name]   | [Steps] | [Result]        | High/Med/Low |
 
 ### Non-Functional Requirements
+
 - Performance: [e.g., "Load in under 2 seconds"]
 - Security: [e.g., "Input validation on all fields"]
 - Compatibility: [e.g., "Works in Chrome, Firefox, Safari"]
@@ -118,6 +131,7 @@ So that [benefit/value].
 **T-Shirt Size:** [XS, S, M, L, XL]
 
 ### Breakdown
+
 - [ ] Task 1: [Description] - [estimate]
 - [ ] Task 2: [Description] - [estimate]
 - [ ] Task 3: [Description] - [estimate]
@@ -126,13 +140,13 @@ So that [benefit/value].
 
 ## History
 
-| Date | Status | Notes |
-|------|--------|-------|
-| [Date] | Created | Initial story creation |
-| [Date] | Refined | [Changes made] |
-| [Date] | In Progress | [Developer name] |
-| [Date] | Done | Completed and verified |
+| Date   | Status      | Notes                  |
+| ------ | ----------- | ---------------------- |
+| [Date] | Created     | Initial story creation |
+| [Date] | Refined     | [Changes made]         |
+| [Date] | In Progress | [Developer name]       |
+| [Date] | Done        | Completed and verified |
 
 ---
 
-*Template for [Dos Apes Super Agent Framework](https://github.com/dos-apes/dos-apes)*
+_Template for [Dos Apes Super Agent Framework](https://github.com/dos-apes/dos-apes)_

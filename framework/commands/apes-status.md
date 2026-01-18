@@ -63,10 +63,10 @@ npm test > /dev/null 2>&1 && echo "✅ Tests" || echo "❌ Tests"
 
 Based on current state, suggest:
 
-| Status | Suggestion |
-|--------|------------|
-| No plan | `/apes-plan [phase]` |
-| Plan exists, not started | `/apes-execute` |
-| Task in progress | Continue current task |
-| Phase complete | `/apes-plan [next-phase]` |
-| All phases complete | 🎉 Ship it! |
+| Status                   | Suggestion                |
+| ------------------------ | ------------------------- |
+| No plan                  | `/apes-plan [phase]`      |
+| Plan exists, not started | `/apes-execute`           |
+| Task in progress         | Continue current task     |
+| Phase complete           | `/apes-plan [next-phase]` |
+| All phases complete      | 🎉 Ship it!               |

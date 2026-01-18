@@ -17,7 +17,7 @@ BRANCH=$(git branch --show-current)
 
 ### Step 2: Create HANDOFF.md
 
-```markdown
+````markdown
 # Session Handoff
 
 **Created:** [TIMESTAMP]
@@ -26,6 +26,7 @@ BRANCH=$(git branch --show-current)
 ## Current Position
 
 From STATE.md:
+
 - Phase: [current phase]
 - Task: [current task]
 - Status: [status]
@@ -33,16 +34,20 @@ From STATE.md:
 ## Work In Progress
 
 ### Files Modified
+
 ```bash
 git status --short
 ```
+````
 
 ### Uncommitted Changes
+
 ```bash
 git diff --stat
 ```
 
 ### Last Commits
+
 ```bash
 git log --oneline -5
 ```
@@ -50,35 +55,40 @@ git log --oneline -5
 ## Context
 
 ### What I Was Working On
+
 [Describe the current task/problem]
 
 ### Progress Made
+
 - [Completed step 1]
 - [Completed step 2]
 - [In progress: step 3]
 
 ### Key Decisions Made
+
 - [Decision 1 and why]
 - [Decision 2 and why]
 
 ### Blockers/Issues
+
 - [Any blockers encountered]
 - [Questions that need resolution]
 
 ## Next Steps
 
 When resuming:
+
 1. [First thing to do]
 2. [Second thing to do]
 3. [Third thing to do]
 
 ## Verification Status
 
-| Check | Status |
-|-------|--------|
+| Check | Status      |
+| ----- | ----------- |
 | Build | [pass/fail] |
 | Types | [pass/fail] |
-| Lint | [pass/fail] |
+| Lint  | [pass/fail] |
 | Tests | [pass/fail] |
 
 ## Resume Command
@@ -86,7 +96,8 @@ When resuming:
 ```bash
 /apes-resume
 ```
-```
+
+````
 
 ### Step 3: Update STATE.md
 
@@ -94,7 +105,7 @@ Add to session log:
 ```markdown
 ## Session Log
 - [TIMESTAMP]: Session handoff created
-```
+````
 
 ### Step 4: Commit Handoff (optional)
 

@@ -36,16 +36,18 @@ Wave 3: [Plan F]                 → Sequential (depends on D, E)
 ### How Waves Are Determined
 
 From PLAN.md frontmatter:
+
 ```yaml
 ---
 phase: 01-foundation
 plan: 02
-wave: 1              # Pre-assigned during planning
-depends_on: []       # No dependencies = Wave 1
+wave: 1 # Pre-assigned during planning
+depends_on: [] # No dependencies = Wave 1
 ---
 ```
 
 Plans with dependencies execute in later waves:
+
 - `depends_on: []` → Wave 1
 - `depends_on: ["01-01"]` → Wave 2 (after 01-01 completes)
 - `depends_on: ["01-01", "01-02"]` → Wave 3 (after both complete)
@@ -84,6 +86,7 @@ FOR each wave W in sorted(waves):
 Each plan executes in a fresh subagent with 200k token context:
 
 ```
+
 Orchestrator Context Usage:
 ├── 15% - Coordination, state management, handoffs
 └── 85% - Available for subagent spawning
@@ -93,7 +96,8 @@ Per-Plan Subagent:
 ├── Loads: PROJECT.md, STATE.md, PLAN.md, relevant source
 ├── Executes: 2-3 tasks
 └── Returns: SUMMARY.md with results
-```
+
+````
 
 **Context Quality Zones:**
 - 0-30%: Peak quality (optimal)
@@ -118,13 +122,15 @@ ls .planning/phases/[phase-name]/*-PLAN.md
 # Load project memory
 cat CLAUDE.md
 cat .planning/MEMORY.md 2>/dev/null || echo "No memory yet"
-```
+````
 
 ### Set Execution Mode
 
 Update `.planning/STATE.md`:
+
 ```markdown
 ## Execution Mode
+
 ralph_mode: [true if --ralph, else false]
 max_iterations: [N]
 current_iteration: 0
@@ -165,12 +171,14 @@ done
 
 ```markdown
 ## Git State
+
 main_branch: main
 current_branch: feat/phase-[N]-[name]
 worktrees:
-  - path: ../worktrees/phase-[N]-task-1
-    branch: feat/phase-[N]-task-1
-    status: active
+
+- path: ../worktrees/phase-[N]-task-1
+  branch: feat/phase-[N]-task-1
+  status: active
 ```
 
 ---
@@ -195,14 +203,14 @@ TASK_VERIFY=[verification commands]
 
 ### 3.2 [ORCHESTRATOR] Select Agent
 
-| Task Type | Agent | Agent File |
-|-----------|-------|------------|
-| `backend` | Backend Developer | `.claude/agents/backend-developer.md` |
-| `frontend` | Frontend Developer | `.claude/agents/frontend-developer.md` |
-| `test` | QA Engineer | `.claude/agents/qa-engineer.md` |
-| `security` | Security Engineer | `.claude/agents/security-engineer.md` |
-| `deploy` | DevOps Engineer | `.claude/agents/devops-engineer.md` |
-| `design` | Technical Architect | `.claude/agents/technical-architect.md` |
+| Task Type  | Agent               | Agent File                              |
+| ---------- | ------------------- | --------------------------------------- |
+| `backend`  | Backend Developer   | `.claude/agents/backend-developer.md`   |
+| `frontend` | Frontend Developer  | `.claude/agents/frontend-developer.md`  |
+| `test`     | QA Engineer         | `.claude/agents/qa-engineer.md`         |
+| `security` | Security Engineer   | `.claude/agents/security-engineer.md`   |
+| `deploy`   | DevOps Engineer     | `.claude/agents/devops-engineer.md`     |
+| `design`   | Technical Architect | `.claude/agents/technical-architect.md` |
 
 ### 3.3 [ORCHESTRATOR → AGENT] Handoff
 
@@ -227,6 +235,7 @@ Requirements:
 ```
 
 Update STATE.md:
+
 ```markdown
 current_agent: [agent-name]
 handoff_pending: false
@@ -235,6 +244,7 @@ handoff_pending: false
 ### 3.4 [AGENT] Execute Task
 
 Load and follow agent-specific rules:
+
 ```bash
 cat .claude/agents/[agent-name].md
 ```
@@ -251,12 +261,14 @@ cat .claude/agents/[agent-name].md
 Each agent runs their own verification before handoff:
 
 **Backend Developer:**
+
 ```bash
 npm run typecheck
 npm test -- [service].test.ts
 ```
 
 **Frontend Developer:**
+
 ```bash
 npm run typecheck
 # CRITICAL: UI Integration check
@@ -282,11 +294,13 @@ Requesting full verification stack.
 ### 3.7 [QA ENGINEER] Full Verification
 
 Load QA rules:
+
 ```bash
 cat .claude/agents/qa-engineer.md
 ```
 
 Run verification stack:
+
 ```bash
 echo "═══ QA VERIFICATION ═══"
 
@@ -363,11 +377,13 @@ Verified by: QA Engineer"
 ### 3.10 [ORCHESTRATOR] Update State
 
 Update `.planning/STATE.md`:
+
 ```markdown
 task: [N+1]
 task_name: "[Next task]"
 
 ## Verification Status
+
 build: pass
 types: pass
 lint: pass
@@ -375,10 +391,12 @@ tests: pass
 ui_integration: pass
 
 ## Progress
+
 current_phase_tasks: [N]/[Total]
 ```
 
 Mark task complete in `.planning/PLAN.md`:
+
 ```xml
 <task id="[N]" type="[type]" complete="true">
 ```
@@ -395,7 +413,7 @@ When all tasks complete:
 echo "═══ FINAL PHASE VERIFICATION ═══"
 
 npm run build
-npm run typecheck  
+npm run typecheck
 npm run lint
 npm test
 npm run test:integration 2>/dev/null || echo "No integration tests"
@@ -424,7 +442,7 @@ git commit -m "feat: Phase [N] - [Phase Name]
 
 Completed tasks:
 - [Task 1]
-- [Task 2]  
+- [Task 2]
 - [Task 3]
 
 All verification passed.
@@ -446,12 +464,14 @@ done
 
 ```markdown
 ## Current Position
+
 phase: [N+1]
 phase_name: "[Next phase from ROADMAP]"
 task: 1
 status: planning
 
 ## Progress
+
 phases_complete: [N]/[Total]
 current_phase_tasks: 0/[pending count]
 ```
@@ -472,10 +492,10 @@ If `--ralph` mode:
 IF more phases exist:
   Create PLAN.md for next phase
   GOTO STEP 2 (Git Setup for new phase)
-  
+
 ELSE:
   OUTPUT "<promise>PRODUCT_COMPLETE</promise>"
-  
+
   echo "═══════════════════════════════════════════"
   echo "🦍🦍 PRODUCT SHIPPED!"
   echo "═══════════════════════════════════════════"
@@ -532,16 +552,19 @@ Choosing: Block for human review
 ## OUTPUT
 
 On success:
+
 ```
 <promise>PHASE_[N]_COMPLETE</promise>
 ```
 
 On all phases done:
+
 ```
 <promise>PRODUCT_COMPLETE</promise>
 ```
 
 On failure requiring human:
+
 ```
 <promise>BLOCKED</promise>
 ```

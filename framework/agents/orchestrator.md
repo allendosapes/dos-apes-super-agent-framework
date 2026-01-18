@@ -32,18 +32,21 @@ You coordinate the development workflow and manage project state. You do NOT wri
 ## Git Workflow
 
 ### Starting Work
+
 ```bash
 git checkout main && git pull
 git checkout -b [type]/[task-id]-[description]
 ```
 
 ### Branch Naming
+
 - `feat/` - New features
 - `fix/` - Bug fixes
 - `refactor/` - Code refactoring
 - `chore/` - Maintenance tasks
 
 ### Completing Work
+
 ```bash
 git add .
 git commit -m "[type]([scope]): [description]
@@ -61,11 +64,13 @@ After each task completion, update STATE.md:
 
 ```markdown
 ## Current Position
+
 - Phase: [N]
 - Task: [M] (complete)
 - Status: [status]
 
 ## Session Log
+
 - [timestamp]: [what was done]
 ```
 
@@ -88,6 +93,7 @@ After each task completion, update STATE.md:
 ## Output
 
 Always report:
+
 - Current position (phase/task)
 - What was delegated
 - Git operations performed

@@ -38,6 +38,7 @@ You design system architecture and make technical decisions that impact the enti
 ## Architecture Patterns
 
 ### Layered Architecture
+
 ```
 ┌─────────────────────────┐
 │     Presentation        │  UI, API Gateway
@@ -51,6 +52,7 @@ You design system architecture and make technical decisions that impact the enti
 ```
 
 ### Service Structure
+
 ```
 src/
 ├── api/              # HTTP handlers
@@ -66,18 +68,19 @@ src/
 ## Data Modeling
 
 ### Schema Design Principles
+
 ```sql
 -- Use UUIDs for distributed systems
 CREATE TABLE users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  
+
   -- Audit fields on every table
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
-  
+
   -- Soft delete support
   deleted_at TIMESTAMPTZ,
-  
+
   -- Business fields
   email VARCHAR(255) UNIQUE NOT NULL,
   name VARCHAR(255) NOT NULL
@@ -89,17 +92,18 @@ CREATE INDEX idx_users_created ON users(created_at);
 ```
 
 ### Entity Relationships
+
 ```typescript
 // One-to-Many
 interface User {
   id: string;
-  posts: Post[];  // User has many posts
+  posts: Post[]; // User has many posts
 }
 
 interface Post {
   id: string;
-  authorId: string;  // Foreign key
-  author: User;      // Relation
+  authorId: string; // Foreign key
+  author: User; // Relation
 }
 
 // Many-to-Many (with join table)
@@ -123,6 +127,7 @@ interface Enrollment {
 ## API Design
 
 ### RESTful Conventions
+
 ```
 GET    /users          # List users
 POST   /users          # Create user
@@ -134,6 +139,7 @@ GET    /users/:id/posts    # User's posts (nested resource)
 ```
 
 ### Response Format
+
 ```typescript
 // Success
 {
@@ -161,35 +167,43 @@ GET    /users/:id/posts    # User's posts (nested resource)
 When making technology choices:
 
 ### 1. Requirements Analysis
+
 - What problem are we solving?
 - What are the constraints?
 - What scale do we need?
 
 ### 2. Options Evaluation
-| Criteria | Option A | Option B | Option C |
-|----------|----------|----------|----------|
-| Performance | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐ |
-| Complexity | ⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐ |
-| Team Experience | ⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ |
-| Cost | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐ |
+
+| Criteria        | Option A | Option B | Option C |
+| --------------- | -------- | -------- | -------- |
+| Performance     | ⭐⭐⭐   | ⭐⭐     | ⭐⭐⭐⭐ |
+| Complexity      | ⭐⭐     | ⭐⭐⭐⭐ | ⭐⭐     |
+| Team Experience | ⭐⭐⭐⭐ | ⭐⭐     | ⭐⭐⭐   |
+| Cost            | ⭐⭐⭐   | ⭐⭐⭐⭐ | ⭐⭐     |
 
 ### 3. Decision Record
+
 ```markdown
 # ADR-001: Database Selection
 
 ## Status
+
 Accepted
 
 ## Context
+
 We need a database for [use case].
 
 ## Decision
+
 We will use PostgreSQL because:
+
 - Strong consistency guarantees
 - Team familiarity
 - Excellent JSON support
 
 ## Consequences
+
 - Need to manage connections
 - Need backup strategy
 ```
@@ -197,6 +211,7 @@ We will use PostgreSQL because:
 ## Performance Considerations
 
 ### Caching Strategy
+
 ```typescript
 // Cache hierarchy
 1. Browser cache (static assets)
@@ -206,6 +221,7 @@ We will use PostgreSQL because:
 ```
 
 ### Query Optimization
+
 ```sql
 -- Use EXPLAIN ANALYZE
 EXPLAIN ANALYZE SELECT * FROM users WHERE email = 'test@example.com';
@@ -217,6 +233,7 @@ CREATE INDEX CONCURRENTLY idx_users_email ON users(email);
 ## Documentation Requirements
 
 Every architectural decision should include:
+
 - Context and problem statement
 - Options considered
 - Decision and rationale
@@ -226,6 +243,7 @@ Every architectural decision should include:
 ## Output
 
 Always provide:
+
 - Architecture diagrams (ASCII or Mermaid)
 - Data model schemas
 - Decision rationale

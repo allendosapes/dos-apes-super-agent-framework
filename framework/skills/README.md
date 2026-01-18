@@ -5,6 +5,7 @@ Skills are domain knowledge documents that teach Claude project-specific pattern
 ## How Skills Work
 
 When Claude Code starts a session, it loads skills based on:
+
 1. The `description` field in each SKILL.md frontmatter
 2. Keywords in your prompts
 3. File paths you're working with
@@ -24,12 +25,14 @@ allowed-tools: Read, Edit, Grep
 # Skill Title
 
 ## When to Use
+
 - Trigger condition 1
 - Trigger condition 2
 
 ## Core Patterns
 
 ### Pattern Name
+
 \`\`\`typescript
 // Example code
 \`\`\`
@@ -37,6 +40,7 @@ allowed-tools: Read, Edit, Grep
 ## Anti-Patterns
 
 ### What NOT to Do
+
 \`\`\`typescript
 // Bad example
 \`\`\`
@@ -46,11 +50,11 @@ allowed-tools: Read, Edit, Grep
 
 The framework includes these starter skills:
 
-| Skill | Purpose |
-|-------|---------|
-| `testing-patterns` | TDD, unit tests, integration tests |
-| `react-patterns` | React components, hooks, state management |
-| `api-patterns` | REST APIs, validation, error handling |
+| Skill              | Purpose                                   |
+| ------------------ | ----------------------------------------- |
+| `testing-patterns` | TDD, unit tests, integration tests        |
+| `react-patterns`   | React components, hooks, state management |
+| `api-patterns`     | REST APIs, validation, error handling     |
 
 ## Best Practices
 
