@@ -1,8 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dir /s /b \"C:\\\\Projects\\\\dos-apes\")",
-      "Bash(xargs:*)"
+      "Bash(ls:*)",
+      "Bash(npm:*)",
+      "Bash(node:*)",
+      "Bash(git:*)",
+      "Bash(cat:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)"
     ]
   }
 }
