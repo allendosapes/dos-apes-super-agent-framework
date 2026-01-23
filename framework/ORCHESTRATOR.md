@@ -180,6 +180,14 @@ worktrees:
   branch: feat/phase-1-foundation
   status: active|merged|abandoned
 
+## Git Operations (Auto-tracked)
+last_commit: [short-hash]
+last_commit_time: [timestamp]
+pending_push: true|false
+commits_since_push: [N]
+last_push: [timestamp]
+working_dir_clean: true|false
+
 ## Agent State
 
 current_agent: orchestrator|backend-developer|frontend-developer|qa-engineer|devops-engineer|technical-architect|security-engineer
@@ -210,6 +218,17 @@ iteration_log:
 
 - [N]: [what happened]
 ```
+
+### Git Operations Tracking
+
+The framework automatically tracks git state. Update these fields:
+
+| Event | Update |
+|-------|--------|
+| After `git commit` | `last_commit: [hash]`, `pending_push: true`, increment `commits_since_push` |
+| After `git push` | `pending_push: false`, `commits_since_push: 0`, `last_push: [timestamp]` |
+| After any file edit | `working_dir_clean: false` |
+| After successful commit | `working_dir_clean: true` |
 
 ---
 

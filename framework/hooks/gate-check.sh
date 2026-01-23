@@ -178,6 +178,24 @@ case "$GATE" in
     echo "─────────────────────────────────────────────────────────────────"
     echo ""
 
+    # Check git working directory is clean
+    echo "Checking git state..."
+    UNCOMMITTED=$(git status --porcelain 2>/dev/null | wc -l)
+    if [ "$UNCOMMITTED" -eq 0 ]; then
+      check_pass "Working directory clean (all changes committed)"
+    else
+      check_fail "Uncommitted changes exist ($UNCOMMITTED files)"
+      echo "    Run: git add -A && git commit"
+    fi
+
+    # Check we're on a feature branch, not main
+    CURRENT_BRANCH=$(git branch --show-current 2>/dev/null)
+    if [ "$CURRENT_BRANCH" != "main" ] && [ "$CURRENT_BRANCH" != "master" ]; then
+      check_pass "On feature branch: $CURRENT_BRANCH"
+    else
+      check_warn "On main branch - should be on feature branch during development"
+    fi
+
     # Run build check
     echo "Checking build..."
     if npm run build &>/dev/null || make build &>/dev/null || cargo build &>/dev/null 2>&1; then
@@ -274,6 +292,39 @@ case "$GATE" in
       fi
     done
     echo ""
+
+    # Check git - all changes pushed to remote
+    echo "Checking git push status..."
+
+    # Check if on main branch
+    CURRENT_BRANCH=$(git branch --show-current 2>/dev/null)
+    if [ "$CURRENT_BRANCH" = "main" ] || [ "$CURRENT_BRANCH" = "master" ]; then
+      check_pass "On main branch for release"
+    else
+      check_fail "Not on main branch (on: $CURRENT_BRANCH)"
+      echo "    Merge feature branch to main first"
+    fi
+
+    # Check if local is ahead of remote
+    git fetch origin main &>/dev/null 2>&1 || git fetch origin master &>/dev/null 2>&1 || true
+    LOCAL_COMMIT=$(git rev-parse HEAD 2>/dev/null)
+    REMOTE_COMMIT=$(git rev-parse origin/main 2>/dev/null || git rev-parse origin/master 2>/dev/null)
+
+    if [ "$LOCAL_COMMIT" = "$REMOTE_COMMIT" ]; then
+      check_pass "All changes pushed to remote"
+    else
+      AHEAD_COUNT=$(git rev-list --count origin/main..HEAD 2>/dev/null || git rev-list --count origin/master..HEAD 2>/dev/null || echo "?")
+      check_fail "Local is $AHEAD_COUNT commit(s) ahead of remote"
+      echo "    Run: git push origin main"
+    fi
+
+    # Check working directory clean
+    UNCOMMITTED=$(git status --porcelain 2>/dev/null | wc -l)
+    if [ "$UNCOMMITTED" -eq 0 ]; then
+      check_pass "Working directory clean"
+    else
+      check_fail "Uncommitted changes exist ($UNCOMMITTED files)"
+    fi
 
     # Check documentation
     if [ -f "README.md" ]; then

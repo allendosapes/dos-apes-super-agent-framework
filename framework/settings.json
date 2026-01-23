@@ -2,7 +2,9 @@
   "$schema": "https://raw.githubusercontent.com/anthropics/claude-code/main/schemas/settings.schema.json",
   "_comment": "Dos Apes Super Agent Framework - We ain't monkeying around with code!",
 
-  "contextFiles": [".claude/ORCHESTRATOR.md"],
+  "contextFiles": [
+    "framework/ORCHESTRATOR.md"
+  ],
 
   "hooks": {
     "PreToolUse": [
@@ -26,6 +28,11 @@
             "type": "command",
             "command": "npx prettier --write \"$CLAUDE_FILE_PATH\" 2>/dev/null || true",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "git add \"$CLAUDE_FILE_PATH\" 2>/dev/null || true",
+            "timeout": 5
           }
         ]
       }
@@ -36,8 +43,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/stop.sh 2>/dev/null || exit 0",
-            "timeout": 30
+            "command": "bash framework/hooks/stop.sh 2>/dev/null || exit 0",
+            "timeout": 60
           }
         ]
       }

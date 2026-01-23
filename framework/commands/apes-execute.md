@@ -138,22 +138,38 @@ current_iteration: 0
 
 ---
 
-## STEP 2: GIT SETUP
+## STEP 2: GIT SETUP (MANDATORY)
+
+**⚠️ DO NOT START implementation until branch is created and confirmed.**
 
 ### [ORCHESTRATOR] Create Phase Branch
 
+Execute these commands NOW:
+
 ```bash
-# Ensure main is current
+# 1. ENSURE main is current
 git checkout main
 git pull origin main
 
-# Create phase branch
-PHASE_NUM=[phase number]
-PHASE_NAME=[from ROADMAP.md]
-BRANCH_NAME="feat/phase-${PHASE_NUM}-${PHASE_NAME// /-}"
+# 2. CREATE phase branch (replace placeholders with actual values)
+PHASE_NUM="[phase number]"           # e.g., "01"
+PHASE_NAME="[name-from-roadmap]"     # e.g., "foundation" (kebab-case)
+BRANCH_NAME="feat/phase-${PHASE_NUM}-${PHASE_NAME}"
 
 git checkout -b "$BRANCH_NAME"
+
+# 3. VERIFY branch created
+git branch --show-current
+# Must show: feat/phase-XX-name
 ```
+
+**Branch Setup Checklist:**
+- [ ] On main and pulled latest
+- [ ] Feature branch created with naming: `feat/phase-[N]-[name]`
+- [ ] `git branch --show-current` confirms correct branch
+- [ ] STATE.md updated with `current_branch: [branch-name]`
+
+**If on wrong branch:** `git checkout -b feat/phase-XX-name` from main.
 
 ### If --parallel: Create Worktrees
 
@@ -360,19 +376,40 @@ Ready for commit.
 ═══════════════════════════════════════════════════════════
 ```
 
-### 3.9 [ORCHESTRATOR] Commit Task
+### 3.9 [ORCHESTRATOR] Commit Task (MANDATORY)
+
+**⚠️ DO NOT PROCEED to next task until commit is confirmed.**
+
+Execute these commands NOW - not as templates:
 
 ```bash
-git add .
-git commit -m "[type]([scope]): [task description]
+# EXECUTE IMMEDIATELY after verification passes:
+git add -A
+git commit -m "$(cat <<'EOF'
+[type]([scope]): [task description]
 
 - [Change 1]
 - [Change 2]
 - [Change 3]
 
 [TASK-ID] complete
-Verified by: QA Engineer"
+Verified by: QA Engineer
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+EOF
+)"
+
+# VERIFY commit succeeded:
+git log --oneline -1
 ```
+
+**Commit Checklist:**
+- [ ] `git add -A` executed
+- [ ] `git commit` executed with descriptive message
+- [ ] `git log --oneline -1` shows new commit
+- [ ] STATE.md updated with `last_commit: [hash]`
+
+**If commit fails:** Fix the issue and retry. DO NOT continue to next task.
 
 ### 3.10 [ORCHESTRATOR] Update State
 
@@ -424,21 +461,28 @@ echo "Run: npm run dev"
 echo "Verify: [list key features from phase]"
 ```
 
-### 4.2 [ORCHESTRATOR] Merge to Main
+### 4.2 [ORCHESTRATOR] Merge to Main (MANDATORY)
+
+**⚠️ DO NOT PROCEED to next phase until merge AND push are confirmed.**
+
+Execute these commands NOW - not as templates:
 
 ```bash
-# Ensure clean state
+# 1. VERIFY clean state
 git status
+# Must show: "nothing to commit, working tree clean" or only staged changes
 
-# Checkout main
+# 2. CHECKOUT main
 git checkout main
 git pull origin main
 
-# Squash merge
-git merge --squash feat/phase-[N]-[name]
+# 3. SQUASH MERGE (execute with actual branch name)
+PHASE_BRANCH="feat/phase-[N]-[name]"  # Replace with actual branch
+git merge --squash "$PHASE_BRANCH"
 
-# Commit with full context
-git commit -m "feat: Phase [N] - [Phase Name]
+# 4. COMMIT with full context
+git commit -m "$(cat <<'EOF'
+feat: Phase [N] - [Phase Name]
 
 Completed tasks:
 - [Task 1]
@@ -446,19 +490,32 @@ Completed tasks:
 - [Task 3]
 
 All verification passed.
-Ready for Phase [N+1]."
+Ready for Phase [N+1].
 
-# Push
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+EOF
+)"
+
+# 5. PUSH to remote (MANDATORY after phase complete)
 git push origin main
 
-# Clean up branch
-git branch -d feat/phase-[N]-[name]
+# 6. VERIFY push succeeded
+git log origin/main --oneline -1
 
-# Clean up worktrees if used
-git worktree list | grep "phase-[N]" | while read wt; do
-  git worktree remove $(echo $wt | awk '{print $1}') --force
-done
+# 7. Clean up feature branch
+git branch -d "$PHASE_BRANCH"
 ```
+
+**Phase Merge Checklist:**
+- [ ] `git checkout main` executed
+- [ ] `git merge --squash` executed
+- [ ] `git commit` executed with phase summary
+- [ ] `git push origin main` executed and confirmed
+- [ ] `git log origin/main` shows merge commit
+- [ ] Feature branch deleted
+- [ ] STATE.md updated: `pending_push: false`
+
+**If merge/push fails:** Resolve conflicts, fix issues, and retry. DO NOT start next phase until main is updated.
 
 ### 4.3 [ORCHESTRATOR] Update State for Next Phase
 
