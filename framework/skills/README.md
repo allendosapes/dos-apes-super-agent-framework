@@ -1,76 +1,50 @@
 # Skills
 
-Skills are domain knowledge documents that teach Claude project-specific patterns and conventions.
+Domain knowledge files that teammates load for specialized expertise.
 
 ## How Skills Work
 
-When Claude Code starts a session, it loads skills based on:
+In the Dos Apes framework, skills replace the v1 concept of individual agent definitions. Instead of 12 separate agents, Claude Code's Agent Teams spawns teammates who load the appropriate skill file for their domain.
 
-1. The `description` field in each SKILL.md frontmatter
-2. Keywords in your prompts
-3. File paths you're working with
+When a command like `/apes-build` assembles a team, it assigns each teammate a skill:
 
-## Creating a Skill
-
-1. Create a directory: `.claude/skills/your-skill-name/`
-2. Add a `SKILL.md` file with frontmatter:
-
-```markdown
----
-name: your-skill-name
-description: What this skill does and when to use it. Include keywords that would trigger it.
-allowed-tools: Read, Edit, Grep
----
-
-# Skill Title
-
-## When to Use
-
-- Trigger condition 1
-- Trigger condition 2
-
-## Core Patterns
-
-### Pattern Name
-
-\`\`\`typescript
-// Example code
-\`\`\`
-
-## Anti-Patterns
-
-### What NOT to Do
-
-\`\`\`typescript
-// Bad example
-\`\`\`
+```
+Teammate: "architect" → loads skills/architecture.md
+Teammate: "builder"   → loads skills/frontend.md + skills/backend.md
+Teammate: "tester"    → loads skills/testing.md
 ```
 
 ## Included Skills
 
-The framework includes these starter skills:
-
-| Skill              | Purpose                                   |
-| ------------------ | ----------------------------------------- |
-| `testing-patterns` | TDD, unit tests, integration tests        |
-| `react-patterns`   | React components, hooks, state management |
-| `api-patterns`     | REST APIs, validation, error handling     |
-
-## Best Practices
-
-1. **Keep SKILL.md focused** - Under 500 lines
-2. **Write trigger-rich descriptions** - Include keywords users would say
-3. **Include examples** - Show both good and bad patterns
-4. **Reference other skills** - Show how skills work together
+| Skill | File | Domain |
+|-------|------|--------|
+| **Architecture** | `architecture.md` | System design, ADRs, tech stack decisions, scaling patterns |
+| **Backend** | `backend.md` | APIs, database, auth, business logic, error handling |
+| **Frontend** | `frontend.md` | Components, state, routing, accessibility, responsive design |
+| **Testing** | `testing.md` | TDD, unit/integration/E2E, coverage gates, 8-level pyramid |
+| **Browser Verification** | `browser-verification.md` | agent-browser, Playwright MCP, visual regression, E2E generation |
+| **Design Integration** | `design-integration.md` | Figma MCP, design tokens, pixel-level validation |
 
 ## Adding Project-Specific Skills
 
-Create skills for patterns specific to your project:
+Create additional skills for patterns specific to your project:
 
 ```
 .claude/skills/
-├── your-design-system/SKILL.md
-├── your-api-patterns/SKILL.md
-├── your-testing-patterns/SKILL.md
-└── your-conventions/SKILL.md
+├── architecture.md          # Framework-provided
+├── backend.md               # Framework-provided
+├── frontend.md              # Framework-provided
+├── testing.md               # Framework-provided
+├── browser-verification.md  # Framework-provided
+├── design-integration.md    # Framework-provided
+├── your-domain-logic.md     # Your custom skill
+└── your-api-patterns.md     # Your custom skill
 ```
+
+## Skill File Guidelines
+
+- Keep under 500 lines — focused domain knowledge, not tutorials
+- Include concrete code patterns — show what good looks like
+- Include anti-patterns — show what to avoid
+- Reference other skills where domains overlap
+- Write for the teammate context — they'll read this at task start

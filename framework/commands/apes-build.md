@@ -283,19 +283,33 @@ For Phase 1 (Foundation), typically:
 
 ### [ORCHESTRATOR] Start Execution Loop
 
-```
-/apes-execute 1 --ralph --max-iterations [remaining]
-```
-
-This triggers the full agent orchestration:
+The build loop handles execution internally:
 
 1. Git setup (branch)
 2. Task loop with agent handoffs
 3. QA verification per task
-4. Commit per task
+4. Commit per task with git tag
 5. Phase merge when complete
 
-See `apes-execute.md` for full details.
+### Task-Level Git Tags
+
+After each task commit succeeds, tag the commit for rollback support:
+
+```bash
+# After commit succeeds
+git tag -a "phase-${PHASE_NUM}/task-${TASK_ID}-complete" \
+  -m "${TASK_NAME} - verified $(date -Iseconds)"
+```
+
+This enables fine-grained rollback:
+
+```bash
+# Rollback to specific task
+git reset --hard phase-2/task-3-complete
+
+# See all task tags
+git tag -l "phase-*"
+```
 
 ---
 
@@ -326,8 +340,7 @@ IF phases_complete < total_phases:
   phase: [N+1]
   status: executing
 
-  # Continue execution
-  /apes-execute [N+1] --ralph
+  # Continue execution loop for next phase
 
 ELSE:
   # All done!
@@ -405,6 +418,27 @@ Dos Apes: We ain't monkeying around with code!
 
 ---
 
+## TASK TYPES & APPROVAL GATES
+
+```
+Task types:
+  - Regular task: auto-assigned to teammates
+  - Gate task: "[GATE] ..." prefix, assigned to tester
+  - Approval task: "[APPROVAL] ..." prefix, requires human
+
+Approval tasks:
+  Task #X: "[APPROVAL] Architecture review before implementation"
+    Dependencies: [architect tasks]
+    Description: "PAUSE. Present architecture decisions to human for review.
+    Do NOT mark complete until human confirms in chat."
+
+  All implementation tasks blockedBy: [#X]
+```
+
+The orchestrator pauses and waits for human input before marking the approval task complete. Downstream tasks remain blocked until approval. Use approval gates at phase boundaries or before major architectural decisions.
+
+---
+
 ## FAILURE MODES
 
 ### Iteration Limit Reached
@@ -418,7 +452,8 @@ Progress saved:
 - State: .planning/STATE.md
 
 To continue:
-/apes-resume
+/apes-build --prd [same-prd] --ralph
+(Build will detect existing state and resume)
 ```
 
 ### Blocked by Error
@@ -432,20 +467,18 @@ Issue: [description]
 See: .planning/ISSUES.md
 
 To retry after fixing:
-/apes-resume
+/apes-build --prd [same-prd] --ralph
 ```
 
 ### Recovery
 
 ```bash
-# Continue from where we left off
-/apes-resume
+# Continue from where we left off (detects .planning/STATE.md)
+/apes-build --prd [same-prd] --ralph
 
-# Or retry the failed task
-/apes-retry
-
-# Or skip and continue
-/apes-skip --confirm
+# Rollback to a specific task tag and retry
+git reset --hard phase-2/task-3-complete
+/apes-build --prd [same-prd] --ralph
 ```
 
 ---

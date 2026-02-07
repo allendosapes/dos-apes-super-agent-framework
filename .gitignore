@@ -39,3 +39,12 @@ pnpm-lock.yaml
 
 # Tarball outputs (for development)
 *.tar.gz
+
+# Claude Code local settings (user-specific permissions)
+.claude/settings.local.json
+
+# Cleanup scripts (one-time use)
+cleanup-v1.*
+
+# Planning state (project-specific, not framework)
+.planning/

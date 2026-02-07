@@ -1,0 +1,29 @@
+name: Biweekly Dependency Audit
+on:
+  schedule:
+    - cron: '0 4 1,15 * *'  # 1st and 15th of month
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm ci
+      - name: Audit and update
+        run: |
+          npm audit --json > audit-report.json || true
+          npx npm-check-updates -u --target minor
+          npm install
+          npm test || { echo "Tests failed after update — reverting"; git checkout .; exit 1; }
+      - name: Create PR if changes
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            BRANCH="chore/dep-audit-$(date +%Y%m%d)"
+            git checkout -b "$BRANCH"
+            git add -A && git commit -m "chore: dependency updates"
+            git push origin "$BRANCH"
+            gh pr create --title "Dependency Audit" --body "Safe minor/patch updates"
+          fi

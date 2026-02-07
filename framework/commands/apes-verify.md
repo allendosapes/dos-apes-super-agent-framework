@@ -12,7 +12,7 @@ allowed-tools: Bash, Read, Grep
 ```bash
 /apes-verify              # Full verification
 /apes-verify --quick      # Build + types only
-/apes-verify --browser    # Include browser check prompt
+/apes-verify --browser    # Include browser/E2E levels
 ```
 
 ---
@@ -24,21 +24,31 @@ allowed-tools: Bash, Read, Grep
 │                    VERIFICATION PYRAMID                      │
 ├─────────────────────────────────────────────────────────────┤
 │                                                              │
-│     Level 5: Browser Verification    ← Manual testing        │
+│     Level 7: Visual Regression     ← Screenshot diff         │
 │     ─────────────────────────────                           │
-│     Level 4: UI Integration          ← Components used?      │
-│     ─────────────────────────                               │
-│     Level 3: Integration Tests       ← E2E/API tests         │
-│     ─────────────────────────                               │
-│     Level 2: Unit Tests              ← Function tests        │
-│     ─────────────────────────                               │
-│     Level 1: Static Analysis         ← Types + Lint          │
-│     ─────────────────────────                               │
-│     Level 0: Build                   ← Compiles?             │
+│     Level 6: E2E / Browser         ← Playwright + agent     │
+│     ─────────────────────────────                           │
+│     Level 5: Security Scan         ← npm audit + gitleaks   │
+│     ─────────────────────────────                           │
+│     Level 4: UI Integration        ← Components used?        │
+│     ─────────────────────────────                           │
+│     Level 3: Integration Tests     ← E2E/API tests           │
+│     ─────────────────────────────                           │
+│     Level 2.5: Coverage Gate       ← scripts/check-coverage  │
+│     ─────────────────────────────                           │
+│     Level 2: Unit Tests            ← Function tests          │
+│     ─────────────────────────────                           │
+│     Level 1: Static Analysis       ← Types + Lint            │
+│     ─────────────────────────────                           │
+│     Level 0.5: Auto Code Review    ← Stop hook (automatic)   │
+│     ─────────────────────────────                           │
+│     Level 0: Build                 ← Compiles?               │
 │                                                              │
 └─────────────────────────────────────────────────────────────┘
 
-ALL levels must pass before work is considered complete.
+Levels 0-5 must pass before work is considered complete.
+Levels 6-7 run when Playwright/agent-browser are configured.
+Level 0.5 runs automatically via Stop hook — not invoked here.
 ```
 
 ---
@@ -98,6 +108,26 @@ else
 fi
 echo ""
 
+# Level 2.5: Coverage Gate
+echo "Level 2.5: Coverage Gate"
+echo "─────────────────────────────"
+if [ -f "scripts/check-coverage.sh" ]; then
+  if bash scripts/check-coverage.sh 2>&1; then
+    echo "✅ Coverage meets threshold"
+  else
+    echo "⚠️ Coverage below threshold"
+  fi
+elif [ -f ".claude/scripts/check-coverage.sh" ]; then
+  if bash .claude/scripts/check-coverage.sh 2>&1; then
+    echo "✅ Coverage meets threshold"
+  else
+    echo "⚠️ Coverage below threshold"
+  fi
+else
+  echo "⚠️ Coverage script not found — skipping"
+fi
+echo ""
+
 # Level 3: Integration Tests
 echo "Level 3: Integration Tests"
 echo "─────────────────────────────"
@@ -128,20 +158,34 @@ else
 fi
 echo ""
 
-# Summary
+# Level 5: Security Scan
+echo "Level 5: Security Scan"
+echo "─────────────────────────────"
+
+echo "  Dependency audit..."
+npm audit --audit-level=high 2>&1 | tail -5
+AUDIT_EXIT=$?
+if [ $AUDIT_EXIT -eq 0 ]; then
+  echo "  ✅ No high/critical vulnerabilities"
+else
+  echo "  ⚠️ Vulnerabilities found (review npm audit output)"
+fi
+
+echo "  Secret detection..."
+if [ -f "scripts/check-secrets.sh" ]; then
+  bash scripts/check-secrets.sh 2>&1
+elif [ -f ".claude/scripts/check-secrets.sh" ]; then
+  bash .claude/scripts/check-secrets.sh 2>&1
+else
+  echo "  ⚠️ Secret detection script not found — skipping"
+fi
+echo ""
+
+# Summary (Levels 0-5)
 echo "═══════════════════════════════════════════════════════════════"
 if [ "$FAILED" -eq 0 ]; then
-  echo "✅ ALL VERIFICATION PASSED"
+  echo "✅ CORE VERIFICATION PASSED (Levels 0-5)"
   echo "═══════════════════════════════════════════════════════════════"
-  echo ""
-  echo "Level 5: Browser Verification (Manual)"
-  echo "─────────────────────────────"
-  echo "Run: npm run dev"
-  echo "Then verify in browser:"
-  echo "  [ ] Application loads without errors"
-  echo "  [ ] Key features are accessible"
-  echo "  [ ] Navigation works"
-  echo "  [ ] Forms submit correctly"
 else
   echo "❌ VERIFICATION FAILED"
   echo "═══════════════════════════════════════════════════════════════"
@@ -152,7 +196,29 @@ fi
 
 ---
 
-## STEP 2: UPDATE STATE
+## STEP 2: BROWSER LEVELS (if --browser or Playwright configured)
+
+```bash
+# Level 6: E2E (if configured)
+if [ -f "playwright.config.ts" ] || [ -f "playwright.config.js" ]; then
+  echo ""
+  echo "Level 6: E2E / Browser Tests"
+  echo "─────────────────────────────"
+  npx playwright test || { echo "❌ E2E FAILED"; FAILED=1; }
+fi
+
+# Level 7: Visual Regression (if baselines exist)
+if [ -d "tests/visual-baselines" ]; then
+  echo ""
+  echo "Level 7: Visual Regression"
+  echo "─────────────────────────────"
+  npx playwright test --project=visual-regression || echo "⚠️ Visual differences detected"
+fi
+```
+
+---
+
+## STEP 3: UPDATE STATE
 
 If all checks pass, update `.planning/STATE.md`:
 
@@ -163,8 +229,12 @@ build: pass
 types: pass
 lint: pass
 tests: pass
+coverage: pass/warn
 integration: pass
 ui_integration: pass
+security_scan: pass/warn
+e2e: pass/skipped
+visual_regression: pass/skipped
 browser_verified: pending
 
 ## Last Verified
@@ -188,15 +258,18 @@ npm run build && npm run typecheck
 ## OUTPUT
 
 ```
-| Check | Status |
-|-------|--------|
-| Build | ✅/❌ |
-| Types | ✅/❌ |
-| Lint | ✅/❌ |
-| Unit Tests | ✅/❌ |
-| Integration | ✅/❌/⚠️ |
-| UI Integration | ✅/⚠️ |
-| Browser | ⏳ Manual |
+| Check              | Status   |
+|--------------------|----------|
+| Build              | ✅/❌    |
+| Types              | ✅/❌    |
+| Lint               | ✅/❌    |
+| Unit Tests         | ✅/❌    |
+| Coverage Gate      | ✅/⚠️    |
+| Integration        | ✅/❌/⚠️ |
+| UI Integration     | ✅/⚠️    |
+| Security Scan      | ✅/⚠️    |
+| E2E (if configured)| ✅/❌/⏳ |
+| Visual Regression  | ✅/⚠️/⏳ |
 
 Overall: PASS / FAIL
 ```

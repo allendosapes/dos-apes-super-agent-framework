@@ -1,0 +1,12 @@
+{
+  "repositories": {
+    "frontend": { "path": "../frontend", "type": "next-app" },
+    "api": { "path": "../api", "type": "express-api" },
+    "shared": { "path": "../shared", "type": "npm-package" }
+  },
+  "dependencies": {
+    "frontend": ["api", "shared"],
+    "api": ["shared"]
+  },
+  "build_order": ["shared", "api", "frontend"]
+}

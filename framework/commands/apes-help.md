@@ -40,7 +40,7 @@ _We ain't monkeying around with code!_
 
 ---
 
-## 🚀 FULL AUTONOMOUS BUILD
+## FULL AUTONOMOUS BUILD
 
 The main event. Feed it a PRD, walk away:
 
@@ -54,7 +54,7 @@ This will:
 2. Plan phases → Break into tasks
 3. Execute with agent handoffs → Backend, Frontend, QA, etc.
 4. Git workflow → Branch per phase, squash merge to main
-5. Verify everything → Build, types, lint, tests, UI integration
+5. Verify everything → 8-level pyramid (build, types, lint, tests, coverage, security, E2E, visual)
 6. Iterate until complete → Ralph loop handles failures
 7. Ship → `<promise>PRODUCT_COMPLETE</promise>`
 
@@ -62,16 +62,13 @@ This will:
 
 ## Commands
 
-### 🏗️ Build Commands
+### Build Commands
 
-| Command                 | Purpose                                               |
-| ----------------------- | ----------------------------------------------------- |
-| `/apes-build`           | **Full autonomous build from PRD to shipped product** |
-| `/apes-init`            | Initialize project from PRD (without auto-execute)    |
-| `/apes-plan [phase]`    | Create detailed task plan for a phase                 |
-| `/apes-execute [phase]` | Execute phase with agent orchestration                |
+| Command        | Purpose                                               |
+| -------------- | ----------------------------------------------------- |
+| `/apes-build`  | **Full autonomous build from PRD to shipped product** |
 
-### 🔧 Brownfield Commands
+### Brownfield Commands
 
 | Command                 | Purpose                         |
 | ----------------------- | ------------------------------- |
@@ -80,14 +77,22 @@ This will:
 | `/apes-fix "desc"`      | Fix a bug                       |
 | `/apes-refactor "desc"` | Refactor existing code          |
 
-### 📊 State Commands
+### Testing Commands
+
+| Command               | Purpose                                 |
+| --------------------- | --------------------------------------- |
+| `/apes-verify`        | Run full verification pyramid (L0-L7)   |
+| `/apes-test-e2e`      | Generate and run E2E tests from stories |
+| `/apes-test-visual`   | Visual regression screenshot testing    |
+| `/apes-test-a11y`     | Automated accessibility audit           |
+| `/apes-security-scan` | Full security audit pipeline            |
+
+### State & Metrics Commands
 
 | Command         | Purpose                          |
 | --------------- | -------------------------------- |
 | `/apes-status`  | Show current position            |
-| `/apes-verify`  | Run full verification suite      |
-| `/apes-resume`  | Continue from last position      |
-| `/apes-handoff` | Create handoff for session break |
+| `/apes-metrics` | Show session and project metrics |
 
 ---
 
@@ -97,44 +102,34 @@ This will:
 | -------------------- | ------------------------------------------ |
 | `--ralph`            | Enable autonomous loop until complete      |
 | `--max-iterations N` | Limit iterations (default: 50, build: 500) |
-| `--parallel`         | Use git worktrees for parallel execution   |
 | `--prd [file]`       | Path to PRD document                       |
 | `--idea "[text]"`    | Describe what to build                     |
 
 ---
 
-## Autonomy Levels
+## Verification Pyramid
 
-| Level       | Command                   | Human Involvement    |
-| ----------- | ------------------------- | -------------------- |
-| **Task**    | `/apes-execute --task 1`  | Review each task     |
-| **Phase**   | `/apes-execute 1 --ralph` | Review each phase    |
-| **Product** | `/apes-build --ralph`     | Review final product |
-
----
-
-## Agents
-
-Work is delegated to specialized agents:
-
-| Agent                   | Handles                    |
-| ----------------------- | -------------------------- |
-| **Orchestrator**        | Git, state, coordination   |
-| **Backend Developer**   | APIs, services, database   |
-| **Frontend Developer**  | Components, UI integration |
-| **QA Engineer**         | Testing, verification      |
-| **DevOps Engineer**     | CI/CD, deployment          |
-| **Technical Architect** | Design, data models        |
-| **Security Engineer**   | Auth, security review      |
+```
+L7: Visual Regression     ← Screenshot diff
+L6: E2E / Browser         ← Playwright + agent-browser
+L5: Security Scan         ← npm audit + gitleaks
+L4: UI Integration        ← Components used?
+L3: Integration Tests     ← E2E/API tests
+L2.5: Coverage Gate       ← 80% threshold
+L2: Unit Tests            ← Function tests
+L1: Static Analysis       ← Types + Lint
+L0.5: Auto Code Review    ← Stop hook (automatic)
+L0: Build                 ← Compiles?
+```
 
 ---
 
 ## Git Workflow
 
-- **Phase start:** Branch from main
-- **During phase:** Commit per task
+- **Phase start:** Branch from main (protected by hooks)
+- **During phase:** Commit per task with git tag
 - **Phase complete:** Squash merge to main
-- **Parallel work:** Git worktrees
+- **Rollback:** `git reset --hard phase-N/task-M-complete`
 
 ---
 
@@ -151,7 +146,6 @@ Work is delegated to specialized agents:
 ```bash
 /apes-map
 /apes-feature "Add dark mode with system preference detection"
-/apes-execute --ralph
 ```
 
 ### Fix a Bug
@@ -160,19 +154,20 @@ Work is delegated to specialized agents:
 /apes-fix "Login fails with special characters in email"
 ```
 
-### Continue After Break
+### Run Security Audit
 
 ```bash
-/apes-resume
+/apes-security-scan
 ```
 
 ---
 
 ## Documentation
 
-- `ORCHESTRATOR.md` - Core orchestration engine
-- `agents/*.md` - Agent definitions
 - `commands/*.md` - Command details
+- `skills/*.md` - Domain knowledge
+- `scripts/*.sh` - Hook scripts
+- `ci/*.yml` - CI workflow templates
 
 Full docs: https://github.com/dos-apes/dos-apes
 
