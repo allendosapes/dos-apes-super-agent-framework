@@ -41,39 +41,19 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx prettier --write \"$CLAUDE_FILE_PATH\" 2>/dev/null || true",
+            "command": "bash scripts/hook-format-and-stage.sh",
             "timeout": 10
           },
           {
             "type": "command",
-            "command": "git add \"$CLAUDE_FILE_PATH\" 2>/dev/null || true",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "Edit:*.ts|Edit:*.tsx|Write:*.ts|Write:*.tsx",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "npx tsc --noEmit 2>&1 | head -20 || true",
+            "command": "bash scripts/hook-typecheck.sh",
             "timeout": 30
-          }
-        ]
-      },
-      {
-        "matcher": "Edit:*.test.*|Write:*.test.*",
-        "hooks": [
+          },
           {
             "type": "command",
-            "command": "npm test -- --related 2>&1 | tail -10 || true",
+            "command": "bash scripts/hook-test-related.sh",
             "timeout": 60
-          }
-        ]
-      },
-      {
-        "matcher": "Write|Edit",
-        "hooks": [
+          },
           {
             "type": "command",
             "command": "bash scripts/track-modified-files.sh 2>/dev/null || true",

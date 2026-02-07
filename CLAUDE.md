@@ -36,7 +36,7 @@ dos-apes/
 ├── package.json            # npm package config (v2.0.0)
 ├── framework/
 │   ├── commands/           # 13 slash commands (.md files)
-│   ├── skills/             # 6 domain skills + README
+│   ├── skills/             # 7 domain skills + README
 │   ├── scripts/            # 7 hook scripts (.sh files)
 │   ├── ci/                 # 3 GitHub Actions workflows
 │   ├── templates/          # CLAUDE-TEMPLATE, PRD, ADR, multi-repo-config

@@ -73,9 +73,21 @@ Within each phase, break work into tasks. Each task should be:
 
 Use Tasks API with `blockedBy` dependencies to create execution waves:
 ```
-Wave 1: [Independent tasks] → execute in parallel
-Wave 2: [Tasks depending on Wave 1] → execute in parallel
+Wave 1: [Independent tasks] → execute in parallel via worktrees
+Wave 2: [Tasks depending on Wave 1] → execute in parallel via worktrees
 Wave 3: [Tasks depending on Wave 2] → sequential if needed
+```
+
+**Parallel execution rule:** When designing tasks, maximize parallelism by keeping tasks in the same wave touching **different files/directories**. Tasks in the same wave get their own git worktree and run simultaneously via separate teammates. After all complete, branches merge back to the phase branch.
+
+Example — good parallel wave (separate concerns):
+```
+Wave 1: "API routes" (src/routes/) | "UI shell" (src/components/) | "DB models" (prisma/)
+```
+
+Example — bad parallel wave (shared files):
+```
+Wave 1: "User API" (src/routes/users.ts) | "Auth middleware" (src/routes/users.ts) ← CONFLICT
 ```
 
 ## Layer Architecture

@@ -202,4 +202,4 @@ How will we know this decision was correct?
 
 ---
 
-_Template for [Dos Apes Super Agent Framework](https://github.com/dos-apes/dos-apes)_
+_Template for [Dos Apes Super Agent Framework](https://github.com/allendosapes/dos-apes-super-agent-framework)_

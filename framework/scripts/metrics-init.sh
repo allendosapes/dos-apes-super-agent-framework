@@ -10,7 +10,8 @@ cat > "$METRICS_FILE" << EOF
   "tasks_failed": 0,
   "files_modified": 0,
   "verification_runs": 0,
-  "auto_review_issues": 0
+  "auto_review_issues": 0,
+  "last_activity": "$(date -Iseconds)"
 }
 EOF
 echo "$METRICS_FILE" > /tmp/dos-apes-current-metrics.txt

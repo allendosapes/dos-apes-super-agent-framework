@@ -1,6 +1,10 @@
 # Product Requirements Document (PRD) Template
 
-> **How to use:** Copy this template and fill in the sections. The more detail you provide, the better Dos Apes can plan and build your product.
+> **How to use:** Copy this template and fill in the sections below. You don't need to fill in everything — write what you know and leave the rest blank. The more detail you provide, the better the AI team can plan and build your product.
+>
+> **Not sure what to write?** Just describe your product idea in plain language in the Overview section. The AI will ask you clarifying questions at `[APPROVAL]` checkpoints during the build.
+>
+> **Technical sections optional:** If you see a section that feels too technical (like "Tech Stack Preferences" or "Data Requirements"), skip it. The AI team will make good default choices and check with you at approval gates.
 
 ---
 
@@ -90,6 +94,8 @@ These can wait for later versions.
 ---
 
 ## Technical Requirements
+
+> **Skip this section if you're not technical.** Just check the Platform boxes below and leave the rest blank — the AI team will choose appropriate tools.
 
 ### Platform
 
@@ -219,4 +225,4 @@ These can wait for later versions.
 
 ---
 
-_This PRD was created for use with [Dos Apes Super Agent Framework](https://github.com/dos-apes/dos-apes)_
+_This PRD was created for use with [Dos Apes Super Agent Framework](https://github.com/allendosapes/dos-apes-super-agent-framework)_

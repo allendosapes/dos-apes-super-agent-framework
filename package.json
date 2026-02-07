@@ -2,7 +2,7 @@
   "name": "dos-apes-super-agent",
   "version": "2.0.0",
   "description": "Dos Apes Super Agent Framework — Multi-agent coding framework built on Claude Code Agent Teams",
-  "main": "index.js",
+  "main": "bin/cli.js",
   "bin": {
     "dos-apes-super-agent": "bin/cli.js"
   },

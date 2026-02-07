@@ -36,12 +36,20 @@ git branch --show-current
 git status --short
 ```
 
-## Worktrees
+## Worktrees (Parallel Execution)
 
 ```bash
 echo ""
 echo "=== Active Worktrees ==="
+WORKTREE_COUNT=$(git worktree list | wc -l)
 git worktree list
+if [ "$WORKTREE_COUNT" -gt 1 ]; then
+  echo ""
+  echo "Parallel tasks in progress. Each worktree is a teammate working independently."
+  echo "These merge back to the phase branch when all complete."
+else
+  echo "(No parallel worktrees active — sequential execution)"
+fi
 ```
 
 ## Verification Status
@@ -61,8 +69,8 @@ Based on current state, suggest:
 
 | Status                   | Suggestion                |
 | ------------------------ | ------------------------- |
-| No tasks                 | `/apes-plan [phase]`      |
-| Tasks exist, not started | `/apes-execute`           |
-| Task in progress         | Continue current task     |
-| Phase complete           | `/apes-plan [next-phase]` |
-| All phases complete      | Ship it!                  |
+| No tasks                 | `/apes-build --prd [file] --ralph` |
+| Tasks exist, not started | `/apes-build --prd [file] --ralph` |
+| Task in progress         | Continue current task              |
+| Phase complete           | `/apes-build --prd [file] --ralph` |
+| All phases complete      | Ship it!                           |

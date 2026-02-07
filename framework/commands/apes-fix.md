@@ -159,21 +159,35 @@ npm test -- [test file]
 Make the minimal change needed to fix the bug.
 Don't refactor unrelated code in the same commit.
 
-### Step 5: Verify Test Passes
+### Step 5: Verify Fix (with retry)
 
-```bash
-npm test -- [test file]
-# Should now pass
+```
+attempt = 1
+WHILE (reproduction test fails OR full suite has regressions) AND attempt <= 3:
+
+  IF reproduction test still fails:
+    - Re-read the error output and root cause analysis
+    - Attempt 1: Adjust the fix based on test output
+    - Attempt 2: Re-examine root cause — hypothesis may be wrong
+    - Attempt 3: Revert fix, research the code path more deeply, try new approach
+
+  IF reproduction test passes BUT full suite has regressions:
+    - Read the failing tests to understand what the fix broke
+    - Adjust the fix to avoid the regression
+    - Do NOT weaken existing tests to make them pass
+
+  Re-run: npm test
+  attempt += 1
+END WHILE
+
+IF still failing after 3 attempts:
+  Log to .planning/ISSUES.md: bug description, root cause hypothesis,
+    all 3 approaches tried, which tests fail and why
+  Pause and ask human for guidance
+  NEVER mark the fix as complete
 ```
 
-### Step 6: Run Full Suite
-
-```bash
-npm test
-# All tests should pass - no regressions
-```
-
-### Step 7: Commit
+### Step 6: Commit
 
 ```bash
 git add .
@@ -186,6 +200,17 @@ git commit -m "fix: [description]
 Fixes #[issue number if applicable]"
 ```
 
+### Step 7: Merge and Push
+
+```bash
+git checkout main
+git pull origin main 2>/dev/null || true
+git merge --squash fix/[descriptive-name]
+git commit -m "fix: [description]"
+git push origin main
+git branch -d fix/[descriptive-name]
+```
+
 ## Completion Criteria
 
 Bug fix is complete when:
@@ -196,5 +221,6 @@ Bug fix is complete when:
 - [ ] Test passes after fix
 - [ ] No regressions (full suite passes)
 - [ ] Committed with proper message
+- [ ] Merged to main and pushed
 
 Output <promise>BUG_FIXED</promise> when done.
