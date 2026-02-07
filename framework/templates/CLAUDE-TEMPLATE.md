@@ -125,6 +125,12 @@ LOG_LEVEL=              # Logging verbosity
 **Decision:** [What was decided]
 **Rationale:** [Why]
 
+## Model Guidance
+
+- Solo work / simple tasks: Lead handles directly (Sonnet-tier cost)
+- Complex implementation: Spawn builder teammate (gets Opus-tier reasoning)
+- Use teams for parallelizable work only — overhead isn't worth it for sequential tasks
+
 ## Known Issues / Tech Debt
 
 - [ ] [Issue 1 - e.g., "Need to add error boundaries"]

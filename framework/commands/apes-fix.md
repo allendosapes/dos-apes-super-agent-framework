@@ -5,6 +5,13 @@ allowed-tools: Read, Edit, Write, Bash, Grep, Glob
 
 # Fix Bug: $ARGUMENTS
 
+## Team Composition
+
+| Teammate | Skills Loaded | Role |
+|----------|--------------|------|
+| debugger | `skills/backend.md` + `skills/frontend.md` | Root cause analysis, fix implementation |
+| tester | `skills/testing.md` | Reproduction test, regression check |
+
 ## Pre-Flight
 
 ### 1. Auto-Load Context Based on Bug Area
@@ -90,60 +97,28 @@ Document findings:
 - Why it's happening
 - Confidence level (high/medium/low)
 
-### Step 4: Create Fix Plan
+### Step 4: Create Fix Tasks
 
-Create `.planning/PLAN.md`:
+Use the Tasks API to plan the fix:
 
-```xml
-<bugfix>
-  <n>$ARGUMENTS</n>
-  <type>fix</type>
+```
+TaskCreate: "Write reproduction test"
+  description: "Create a failing test that reproduces the bug.
+    Expected: [expected behavior]
+    Actual: [actual behavior]
+    Test MUST fail before the fix is applied."
 
-  <diagnosis>
-    <expected>[Expected behavior]</expected>
-    <actual>[Actual behavior]</actual>
-    <root_cause>[Why it's happening]</root_cause>
-    <affected_files>[Files involved]</affected_files>
-    <confidence>[high/medium/low]</confidence>
-  </diagnosis>
+TaskCreate: "Implement fix"
+  description: "Root cause: [explanation]
+    Fix: [minimal change needed]
+    Files: [files to modify]"
+  blockedBy: ["Write reproduction test"]
 
-  <tasks>
-    <task id="1" type="test">
-      <n>Create reproduction test</n>
-      <files>[test file]</files>
-      <action>
-        Write a failing test that reproduces the bug.
-        This test should FAIL before the fix and PASS after.
-      </action>
-      <verify>npm test -- [test file] (should fail)</verify>
-    </task>
-
-    <task id="2" type="fix">
-      <n>Implement fix</n>
-      <files>[files to modify]</files>
-      <action>[Fix implementation details]</action>
-      <verify>npm test -- [test file] (should pass)</verify>
-    </task>
-
-    <task id="3" type="regression">
-      <n>Check for regressions</n>
-      <files>-</files>
-      <action>Run full test suite</action>
-      <verify>npm test (all should pass)</verify>
-    </task>
-  </tasks>
-
-  <verification>
-    <commands>
-      npm run build
-      npm run typecheck
-      npm test
-    </commands>
-    <manual>
-      1. [Steps to manually verify fix]
-    </manual>
-  </verification>
-</bugfix>
+TaskCreate: "[GATE] Verify fix and check regressions"
+  description: "1. Reproduction test now passes
+    2. Full test suite passes (no regressions)
+    3. Build + typecheck + lint pass"
+  blockedBy: ["Implement fix"]
 ```
 
 ## Execution Phase

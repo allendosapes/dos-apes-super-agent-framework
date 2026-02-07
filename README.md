@@ -36,459 +36,394 @@
 
 **Feed it a PRD. Walk away. Come back to a shipped product.**
 
-Dos Apes is a unified AI coding framework that combines the best of [GSD](https://github.com/glittercowboy/get-shit-done), [VibeKanban](https://vibekanban.com), [Ralph Wiggum](https://awesomeclaude.ai/ralph-wiggum), and [Claude Code best practices](https://github.com/ChrisWiles/claude-code-showcase) into one autonomous building system.
+Dos Apes is a software engineering framework for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) that turns ideas into production-ready applications. It uses Agent Teams for multi-agent orchestration, an 8-level verification pyramid for quality enforcement, and automated hooks for deterministic code review — so you can focus on product decisions while Claude handles the engineering.
 
 ```bash
-npx dos-apes
+npx dos-apes-super-agent
 ```
-
----
-
-## The Vision
-
-```
-Human: "Build me a course management platform"
-       ↓
-Dos Apes: [Plans] → [Codes] → [Tests] → [Iterates] → [Ships]
-       ↓
-Human: "Here's your product" 🦍🦍
-```
-
-**This is not a helper. It's a builder.**
 
 ---
 
 ## Quick Start
 
+### Prerequisites
+
+- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code/getting-started) installed and authenticated
+- Node.js 18+
+- Git
+
 ### Install
 
 ```bash
-npx dos-apes
+# Navigate to your project (or create one)
+mkdir my-app && cd my-app && git init
+
+# Install the framework
+npx dos-apes-super-agent
 ```
 
-### Build a Product
+The installer will ask you:
+1. **Install location** — This project (recommended) or global
+2. **Project type** — Greenfield (new) or brownfield (existing)
+3. **Tech stack** — Preset or custom (generates a tailored CLAUDE.md)
+
+### Build Something
 
 ```bash
-# Full autonomous build
+# Start Claude Code
+claude
+
+# Build from a PRD
 /apes-build --prd requirements.md --ralph
 
-/apes-build --prd claude/templates/next-gen-courseware-prd.md --ralph
 # Or describe what you want
-/apes-build --idea "Build a task management app with projects, tasks, and team collaboration"
+/apes-build --idea "Build a task management app with team collaboration"
 ```
 
-### Add to Existing Project
+### Add to an Existing Project
 
 ```bash
-# Map your codebase
-/apes-map
+claude
 
-# Add a feature
-/apes-feature "Add real-time notifications"
-
-# Fix a bug
-/apes-fix "Users can't upload files over 5MB"
+/apes-map                                    # Analyze your codebase
+/apes-feature "Add real-time notifications"  # Add a feature
+/apes-fix "Login fails with special chars"   # Fix a bug
+/apes-refactor "Extract API client layer"    # Refactor safely
 ```
 
 ---
 
-## What Happens When You Run Build
+## How It Works
+
+Dos Apes is a **playbook, not a runtime**. It provides Claude Code with:
+
+- **Slash commands** that assemble agent teams for specific workflows
+- **Skills** that teach teammates domain expertise (architecture, testing, frontend, etc.)
+- **Hook scripts** that enforce quality gates automatically on every file edit
+- **CI workflows** that run scheduled quality sweeps
+
+The platform (Claude Code Agent Teams + Tasks API) handles orchestration. Dos Apes defines *how to build software properly*.
+
+### Build Flow
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                                                                 │
-│  /apes-build --prd requirements.md --ralph                      │
-│                                                                 │
-│  1. INGEST                                                      │
-│     Parse PRD → PROJECT.md, ROADMAP.md, STATE.md                │
-│                                                                 │
-│  2. PLAN                                                        │
-│     [Technical Architect] designs Phase 1                       │
-│     Creates PLAN.md with tasks                                  │
-│                                                                 │
-│  3. GIT SETUP                                                   │
-│     git checkout -b feat/phase-1-foundation                     │
-│                                                                 │
-│  4. EXECUTE (for each task)                                     │
-│     [Orchestrator] → [Backend/Frontend Developer]               │
-│     [Developer] implements task                                 │
-│     [Developer] → [QA Engineer]                                 │
-│     [QA] verifies: build, types, lint, tests, UI integration    │
-│     [QA] → [Orchestrator]                                       │
-│     [Orchestrator] commits: git commit -m "feat: ..."           │
-│                                                                 │
-│  5. PHASE COMPLETE                                              │
-│     git checkout main && git merge --squash                     │
-│     git push origin main                                        │
-│                                                                 │
-│  6. ITERATE                                                     │
-│     More phases? → Back to PLAN                                 │
-│     All done? → SHIP                                            │
-│                                                                 │
-│  7. OUTPUT                                                      │
-│     <promise>PRODUCT_COMPLETE</promise>                         │
-│     🦍🦍 We ain't monkeying around with code!                   │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+/apes-build --prd requirements.md --ralph
+       │
+       ▼
+   INGEST ─── Parse PRD → PROJECT.md, ROADMAP.md
+       │
+       ▼
+   PLAN ───── Break into phases → Create tasks via Tasks API
+       │
+       ▼
+   TEAM ───── Assemble teammates: architect, builder, tester, reviewer
+       │
+       ▼
+   BUILD ──── Each task: implement → verify → commit → tag
+       │         │
+       │         └─ Hooks fire on every edit:
+       │              • TypeScript check on .ts files
+       │              • Tests run on test file changes
+       │              • Main branch protection
+       │              • File tracking for auto-review
+       │
+       ▼
+   VERIFY ─── 8-level pyramid (build → types → lint → tests →
+       │       coverage → security → E2E → visual regression)
+       │
+       ▼
+   MERGE ──── Squash merge to main, tag phase complete
+       │
+       ▼
+   ITERATE ── More phases? Loop back to PLAN
+       │
+       ▼
+   SHIP ───── PRODUCT_COMPLETE 🦍🦍
 ```
-
----
-
-## Key Features
-
-### 🤖 Multi-Agent Orchestration (12 Agents)
-
-Work is delegated to specialized agents, each with their own rules:
-
-| Agent                   | Model  | Responsibility                                  |
-| ----------------------- | ------ | ----------------------------------------------- |
-| **Orchestrator**        | Sonnet | Git, state, coordination, handoffs              |
-| **Product Manager**     | Sonnet | PRD, user stories, MoSCoW prioritization        |
-| **Technical Architect** | Opus   | System design, ADRs, tech decisions             |
-| **UI/UX Designer**      | Sonnet | User flows, wireframes, accessibility           |
-| **Frontend Developer**  | Opus   | Components, pages, **UI integration mandatory** |
-| **Backend Developer**   | Opus   | APIs, services, database                        |
-| **Security Engineer**   | Opus   | Threat modeling, OWASP compliance               |
-| **QA Engineer**         | Sonnet | Test execution, bug reports, UAT                |
-| **Test Automation**     | Sonnet | Unit/integration/E2E test creation              |
-| **DevOps Engineer**     | Sonnet | CI/CD, deployment, infrastructure               |
-| **Code Reviewer**       | Opus   | Code quality, standards compliance              |
-| **Tech Writer**         | Sonnet | README, API docs, user guides                   |
-
-Agent handoffs are explicit:
-
-```
-[ORCHESTRATOR → BACKEND DEVELOPER]
-Task: Create user authentication service
-Context: PostgreSQL database, JWT tokens
-Files: src/services/authService.ts
-
-[BACKEND DEVELOPER] Implementing...
-[BACKEND DEVELOPER → QA ENGINEER] Ready for verification
-[QA ENGINEER] ✅ All checks passed
-[QA ENGINEER → ORCHESTRATOR] Approved
-[ORCHESTRATOR] Committed: feat(auth): add user authentication
-```
-
-### 🔄 Ralph Loop (Autonomous Iteration)
-
-The `--ralph` flag enables autonomous iteration until complete:
-
-```
-WHILE not complete:
-    find next task
-    delegate to agent
-    verify with QA
-    if fail: analyze, fix, retry
-    if pass: commit, continue
-
-OUTPUT <promise>PRODUCT_COMPLETE</promise>
-```
-
-Stop hooks prevent exit until the product ships. Failures trigger retries with failure context. The AI keeps going until it works.
-
-### 🌳 Git Workflow
-
-Proper branching strategy built in:
-
-| Situation      | Git Action                     |
-| -------------- | ------------------------------ |
-| Start phase    | `git checkout -b feat/phase-N` |
-| Complete task  | `git commit -m "feat: ..."`    |
-| Complete phase | `git merge --squash` to main   |
-| Parallel work  | Git worktrees                  |
-| Stay current   | `git rebase origin/main`       |
-
-### 📊 State Management
-
-All state persists in `.planning/`:
-
-```
-.planning/
-├── PROJECT.md      # Vision, requirements (immutable)
-├── ROADMAP.md      # All phases (status updated)
-├── STATE.md        # Current position (constantly updated)
-├── PLAN.md         # Current phase tasks
-├── ISSUES.md       # Deferred problems
-└── MEMORY.md       # Learnings, patterns
-```
-
-Resume anytime:
-
-```bash
-/apes-resume
-```
-
-### 🚦 Quality Gates (Blocking)
-
-Six gates ensure quality at each phase:
-
-| Gate   | Checkpoint           | Must Have                                   |
-| ------ | -------------------- | ------------------------------------------- |
-| **G1** | Requirements         | PRD, user stories, MVP definition           |
-| **G2** | Design               | Architecture, wireframes, threat model      |
-| **G3** | Implementation Ready | Tech stack, dev env, security model         |
-| **G4** | Code Complete        | All features, unit tests passing            |
-| **G5** | Test Complete        | All tests pass, 80%+ coverage, no criticals |
-| **G6** | Release Ready        | Docs, security review, deployment ready     |
-
-Gates are **blocking** - work cannot proceed until criteria are met.
-
-### 🧠 Context Engineering
-
-Smart context management for peak AI quality:
-
-| Context Usage | Quality   | Action                            |
-| ------------- | --------- | --------------------------------- |
-| 0-30%         | Peak      | Continue in current session       |
-| 30-50%        | Good      | Plan handoff after current task   |
-| 50-70%        | Degrading | Spawn subagent for remaining work |
-| 70%+          | Poor      | Must handoff immediately          |
-
-### ✅ Verification Stack
-
-Every task verified before commit:
-
-```
-Level 0: Build        npm run build
-Level 1: Types        npm run typecheck
-Level 2: Lint         npm run lint
-Level 3: Tests        npm test
-Level 4: UI Integration   grep -rn "[Component]" src/
-Level 5: Browser      Manual verification
-```
-
-**UI Integration is mandatory.** Creating a component isn't done until it's integrated, routed, and navigable.
 
 ---
 
 ## Commands
 
-### Build Commands
+### Build
 
-| Command                       | Purpose                         |
-| ----------------------------- | ------------------------------- |
-| `/apes-build --prd [file]`    | Full autonomous build from PRD  |
-| `/apes-build --idea "[text]"` | Build from description          |
-| `/apes-init --prd [file]`     | Initialize without auto-execute |
-| `/apes-plan [phase]`          | Plan a specific phase           |
-| `/apes-execute [phase]`       | Execute a phase                 |
+| Command | Purpose |
+|---------|---------|
+| `/apes-build` | Full autonomous build from PRD to shipped product |
 
-### Brownfield Commands
+### Brownfield
 
-| Command                   | Purpose                   |
-| ------------------------- | ------------------------- |
-| `/apes-map`               | Analyze existing codebase |
-| `/apes-feature "[desc]"`  | Add feature               |
-| `/apes-fix "[desc]"`      | Fix bug                   |
-| `/apes-refactor "[desc]"` | Refactor code             |
+| Command | Purpose |
+|---------|---------|
+| `/apes-map` | Analyze existing codebase |
+| `/apes-feature "desc"` | Add feature to existing project |
+| `/apes-fix "desc"` | Test-first bug fix |
+| `/apes-refactor "desc"` | Behavior-preserving refactor |
 
-### State Commands
+### Quality
 
-| Command         | Purpose                  |
-| --------------- | ------------------------ |
-| `/apes-status`  | Show current position    |
-| `/apes-verify`  | Run verification suite   |
-| `/apes-resume`  | Continue from last state |
-| `/apes-handoff` | Create handoff document  |
+| Command | Purpose |
+|---------|---------|
+| `/apes-verify` | Run 8-level verification pyramid |
+| `/apes-test-e2e` | Generate and run E2E tests from user stories |
+| `/apes-test-visual` | Visual regression screenshot testing |
+| `/apes-test-a11y` | WCAG 2.1 AA accessibility audit |
+| `/apes-security-scan` | Full security pipeline (npm audit, secrets, OWASP) |
+
+### Info
+
+| Command | Purpose |
+|---------|---------|
+| `/apes-status` | Show current position and progress |
+| `/apes-metrics` | Session and project metrics dashboard |
+| `/apes-help` | All commands with examples |
 
 ### Flags
 
-| Flag                 | Effect                          |
-| -------------------- | ------------------------------- |
-| `--ralph`            | Autonomous loop until complete  |
-| `--max-iterations N` | Limit iterations (default: 500) |
-| `--parallel`         | Use git worktrees               |
-
-### Claude Code Flags (for `claude` command)
-
-| Flag                            | Effect                                                    |
-| ------------------------------- | --------------------------------------------------------- |
-| `--permission-mode=dontAsk`     | Skip all permission prompts (sandboxed environments only) |
-| `--permission-mode=acceptEdits` | Auto-accept file edits                                    |
+| Flag | Effect |
+|------|--------|
+| `--ralph` | Autonomous iteration loop until complete |
+| `--max-iterations N` | Limit iterations (default: 50, build: 500) |
+| `--prd [file]` | Path to PRD document |
+| `--idea "[text]"` | Describe what to build |
 
 ---
 
-## Autonomy Levels
+## Verification Pyramid
 
-Choose your comfort level:
+Every task must pass before commit. Hooks enforce L0–L2.5 automatically.
 
-| Level   | Command                   | You Review    |
-| ------- | ------------------------- | ------------- |
-| Task    | `/apes-execute --task 1`  | Each task     |
-| Phase   | `/apes-execute 1 --ralph` | Each phase    |
-| Product | `/apes-build --ralph`     | Final product |
+```
+L7  Visual Regression    ← Screenshot diff against baselines
+L6  E2E / Browser        ← Playwright + agent-browser
+L5  Security Scan        ← npm audit + gitleaks + semgrep
+L4  UI Integration       ← Component actually used in app?
+L3  Integration Tests    ← API and E2E tests
+L2.5 Coverage Gate       ← 80% threshold enforced
+L2  Unit Tests           ← Function-level tests
+L1  Static Analysis      ← TypeScript + ESLint
+L0.5 Auto Code Review    ← Fires on every Stop (automatic)
+L0  Build                ← Does it compile?
+```
+
+**L0–L2.5** are deterministic — hooks fire on every file edit regardless of agent behavior. **L3–L5** are automated via scripts. **L6–L7** require Playwright MCP configured.
 
 ---
 
-## Example: Build a SaaS Product
+## Architecture
+
+### Skills-Based Agent Teams
+
+Instead of 12 hardcoded agents, Dos Apes uses 7 skill files that any teammate can load:
+
+| Skill | Domain |
+|-------|--------|
+| `architecture.md` | System design, ADRs, tech decisions, scaling |
+| `backend.md` | APIs, database, auth, business logic |
+| `frontend.md` | Components, state, routing, accessibility |
+| `testing.md` | TDD, coverage gates, 8-level pyramid |
+| `browser-verification.md` | Playwright, visual regression, E2E |
+| `design-integration.md` | Figma MCP, design tokens, pixel validation |
+| `review.md` | Confidence-based code review, security audit |
+
+Commands assemble the right team. `/apes-build` spawns architect + builder + tester + reviewer. `/apes-fix` spawns a focused debugger + tester pair.
+
+### Hook Scripts (Deterministic Quality)
+
+These fire automatically — no agent cooperation required:
+
+| Hook | Trigger | Action |
+|------|---------|--------|
+| `guard-main-branch.sh` | PreToolUse (Edit/Write) | Blocks edits on main branch |
+| `track-modified-files.sh` | PostToolUse (Edit/Write) | Tracks files for auto-review |
+| `check-coverage.sh` | On verify | Enforces 80% coverage threshold |
+| `check-secrets.sh` | On verify | Detects leaked secrets (gitleaks) |
+| `metrics-init.sh` | SessionStart | Initializes metrics tracking |
+| `metrics-update.sh` | PostToolUse | Updates file modification counts |
+| `check-doc-drift.sh` | On verify | Warns when source changes without doc updates |
+
+TypeScript checking, test running, and auto-formatting also fire as PostToolUse hooks (configured in `settings.json`).
+
+### What Gets Installed
+
+```
+project-root/
+├── CLAUDE.md                    # Project brain (generated for your stack)
+├── .claude/
+│   ├── commands/                # 13 slash commands
+│   │   ├── apes-build.md
+│   │   ├── apes-feature.md
+│   │   ├── apes-fix.md
+│   │   ├── apes-refactor.md
+│   │   ├── apes-map.md
+│   │   ├── apes-verify.md
+│   │   ├── apes-test-e2e.md
+│   │   ├── apes-test-visual.md
+│   │   ├── apes-test-a11y.md
+│   │   ├── apes-security-scan.md
+│   │   ├── apes-status.md
+│   │   ├── apes-metrics.md
+│   │   └── apes-help.md
+│   ├── skills/                  # 7 domain skills + README
+│   │   ├── architecture.md
+│   │   ├── backend.md
+│   │   ├── frontend.md
+│   │   ├── testing.md
+│   │   ├── browser-verification.md
+│   │   ├── design-integration.md
+│   │   └── review.md
+│   └── settings.json            # Hooks, permissions, MCP servers
+├── scripts/                     # 7 hook scripts
+│   ├── guard-main-branch.sh
+│   ├── track-modified-files.sh
+│   ├── check-coverage.sh
+│   ├── check-secrets.sh
+│   ├── check-doc-drift.sh
+│   ├── metrics-init.sh
+│   └── metrics-update.sh
+├── .planning/                   # Project state
+│   ├── PROJECT.md
+│   ├── ROADMAP.md
+│   └── MEMORY.md
+├── docs/templates/              # PRD and ADR templates
+└── .github/workflows/           # CI workflow templates (optional)
+    ├── weekly-quality.yml
+    ├── dependency-audit.yml
+    └── post-merge-verify.yml
+```
+
+---
+
+## Git Workflow
+
+Built-in branching strategy with hook-enforced main branch protection:
+
+| Action | What Happens |
+|--------|-------------|
+| Phase start | Branch from main: `feat/phase-N-description` |
+| Each task | Commit + git tag: `phase-N/task-M-complete` |
+| Phase complete | Squash merge to main |
+| Task rollback | `git reset --hard phase-N/task-M-complete` |
+| Approval gates | `[APPROVAL]` tasks block until human confirms |
+
+---
+
+## CI Workflows (Optional)
+
+Three GitHub Actions templates are installed to `.github/workflows/`:
+
+| Workflow | Schedule | Purpose |
+|----------|----------|---------|
+| `weekly-quality.yml` | Monday 3am | Full quality sweep: build, typecheck, lint, test |
+| `dependency-audit.yml` | Biweekly | npm audit + auto-update with test verification |
+| `post-merge-verify.yml` | On merge to main | Full verification pyramid after every merge |
+
+Skip with `npx dos-apes --no-ci`.
+
+---
+
+## Configuration
+
+### settings.json
+
+The main configuration file at `.claude/settings.json` controls:
+
+- **Hooks** — SessionStart, PreToolUse, PostToolUse, Stop hooks
+- **Permissions** — Allowed CLI commands (git, npm, node, etc.)
+- **MCP Servers** — Playwright MCP for browser testing
+- **Environment** — Framework version and flags
+
+### CLAUDE.md
+
+Your project brain file. The CLI generates it with your tech stack, but you should maintain it:
+
+- Add project-specific conventions as they emerge
+- Log mistakes so Claude doesn't repeat them
+- Keep it under 2000 tokens — prune aggressively
+- Commit to git so it persists across sessions
+
+### Installer Flags
 
 ```bash
-$ claude
-> /apes-build --prd ./docs/product-requirements.md --ralph --max-iterations 500
-
-[ORCHESTRATOR] Loading PRD...
-[ORCHESTRATOR] Creating PROJECT.md...
-[ORCHESTRATOR] Creating ROADMAP.md (4 phases identified)...
-[ORCHESTRATOR] Initializing STATE.md...
-
-═══ PHASE 1: Foundation ═══
-
-[ORCHESTRATOR] git checkout -b feat/phase-1-foundation
-[TECHNICAL ARCHITECT] Designing foundation architecture...
-[ORCHESTRATOR] PLAN.md created (5 tasks)
-
-Task 1/5: Project scaffolding
-[ORCHESTRATOR → BACKEND DEVELOPER]
-[BACKEND DEVELOPER] Initializing Vite + React + TypeScript...
-[BACKEND DEVELOPER → QA ENGINEER]
-[QA ENGINEER] Build: ✅ Types: ✅ Lint: ✅ Tests: ✅
-[ORCHESTRATOR] Committed: chore(init): project scaffolding
-
-Task 2/5: Database schema
-[ORCHESTRATOR → BACKEND DEVELOPER]
-...
-
-═══ PHASE 1 COMPLETE ═══
-[ORCHESTRATOR] git checkout main && git merge --squash
-[ORCHESTRATOR] Pushed to main
-
-═══ PHASE 2: Core Features ═══
-...
-
-═══ PHASE 3: User Experience ═══
-...
-
-═══ PHASE 4: Polish & Launch ═══
-...
-
-═══════════════════════════════════════════════════════════════
-🦍🦍 PRODUCT COMPLETE 🦍🦍
-═══════════════════════════════════════════════════════════════
-
-Phases: 4/4
-Tasks: 18/18
-Commits: 23
-Time: ~4 hours
-
-Dos Apes: We ain't monkeying around with code!
-<promise>PRODUCT_COMPLETE</promise>
+npx dos-apes-super-agent                   # Interactive setup
+npx dos-apes-super-agent --local           # Install to ./.claude/ (this project)
+npx dos-apes-super-agent --global          # Install to ~/.claude/ (all projects)
+npx dos-apes-super-agent --greenfield      # New project (skip prompt)
+npx dos-apes-super-agent --brownfield      # Existing project (skip prompt)
+npx dos-apes-super-agent --yes             # Accept all defaults
+npx dos-apes-super-agent --no-hooks        # Skip hook scripts
+npx dos-apes-super-agent --no-ci           # Skip CI workflow templates
+npx dos-apes-super-agent --version         # Print version
+npx dos-apes-super-agent --help            # Show all options
 ```
 
 ---
 
 ## Philosophy
 
-### Done Means Done
+### Plan First, Execute Second
 
-```
-Creating a component ≠ done
-Component in a file ≠ done
-Component imported ≠ done
+Every piece of work starts in plan mode. A good plan pays back 5x during execution. The framework enforces this — `/apes-build` plans before it builds, `/apes-feature` specs before it codes.
 
-Done = integrated + routed + navigable + tested + browser-verified
-```
+### Verify Everything
 
-### Fail Fast, Fix Fast
+Claude must prove its work, not just claim completion. Hooks make verification automatic. If Claude can't verify it, it's not done.
 
-Ralph loops embrace failure:
+### Skills Over Agents
 
-- First attempt often fails
-- Failure provides information
-- Loop fixes and retries
-- Eventually converges
+v1 had 12 hardcoded agents. v2 has 7 skill files that any teammate can load. The platform handles orchestration; the framework provides domain expertise.
 
-### Trust But Verify
+### Hooks Over Trust
 
-Every task verified. Every phase verified. Stop hooks prevent premature exit.
-
-### Parallel > Sequential
-
-Git worktrees enable multiple agents working simultaneously without conflicts.
+Quality checks fire deterministically regardless of agent behavior. TypeScript is checked on every `.ts` edit. Tests run on every test file change. Main branch is protected on every write. No cooperation required.
 
 ---
 
-## Credits & Attribution
+## Troubleshooting
 
-Built on the shoulders of giants:
+### Commands not showing up
 
-- **[GSD](https://github.com/glittercowboy/get-shit-done)** - Spec-driven development, phase planning, subagent isolation
-- **[VibeKanban](https://vibekanban.com)** - Git worktree orchestration, parallel execution
-- **[Ralph Wiggum](https://awesomeclaude.ai/ralph-wiggum)** - Iterative loops, stop hooks, persistence
-- **[Claude Code Showcase](https://github.com/ChrisWiles/claude-code-showcase)** - Hooks, skills, agents patterns
-- **Boris Cherny's Workflow** - Verification-first philosophy
+Slash commands must be in `.claude/commands/`. If you installed globally, they're in `~/.claude/commands/`. Restart Claude Code after installing.
+
+### Hooks not firing
+
+Check that `scripts/` directory exists in your project root and scripts are executable. On Windows, hooks run via `bash` which requires Git Bash or WSL.
+
+### Playwright MCP not connecting
+
+The framework configures Playwright MCP in `settings.json`, but you need `@playwright/mcp` installed. It will auto-install via `npx` on first use, but you can pre-install:
+
+```bash
+npm install -D @playwright/test
+npx playwright install
+```
+
+### Coverage gate failing
+
+The default threshold is 80%. Adjust in `scripts/check-coverage.sh` or skip with:
+
+```bash
+DOS_APES_SKIP_COVERAGE=true
+```
+
+---
+
+## Credits
+
+Built on patterns from:
+
+- **[Claude Code Agent Teams](https://docs.anthropic.com/en/docs/claude-code)** — Native multi-agent orchestration
+- **[GSD](https://github.com/glittercowboy/get-shit-done)** — Spec-driven development, context engineering
+- **[VibeKanban](https://vibekanban.com)** — Git worktree orchestration, parallel execution
+- **[Ralph Wiggum](https://github.com/anthropics/claude-code/blob/main/plugins/ralph-wiggum/README.md)** — Iterative loops, persistence
+- **Boris Cherny's Workflow** — Verification-first philosophy, shared CLAUDE.md
 
 ---
 
 ## License
 
-MIT License - Use freely, contribute back.
+MIT — Use freely, contribute back.
 
 ---
 
-## Setup & Installation
-
-See [SETUP.md](./SETUP.md) for detailed setup instructions including:
-
-- Prerequisites (Claude Code CLI, Git, Node.js)
-- Installation for new and existing projects
-- Directory structure explanation
-- Troubleshooting guide
-
-## Publishing to GitHub
-
-See [GITHUB.md](./GITHUB.md) for detailed instructions on:
-
-- Creating the repository
-- Pushing the code
-- Publishing to npm
-- Setting up CI/CD
-
-**Quick version:**
-
-```bash
-cd dos-apes
-git init
-git add .
-git commit -m "feat: initial release of Dos Apes"
-git remote add origin https://github.com/YOUR-ORG/dos-apes.git
-git push -u origin main
-```
-
----
-
-## Templates Included
-
-The framework includes comprehensive templates:
-
-| Template                      | Purpose                                        |
-| ----------------------------- | ---------------------------------------------- |
-| `PRD-TEMPLATE.md`             | Product requirements document structure        |
-| `user-story-template.md`      | Detailed user stories with acceptance criteria |
-| `adr-template.md`             | Architecture Decision Records                  |
-| `test-plan-template.md`       | Comprehensive test planning                    |
-| `security-review-template.md` | OWASP-based security checklist                 |
-| `PLAN-TEMPLATE.md`            | Phase task planning (GSD XML format)           |
-| `SUMMARY-TEMPLATE.md`         | Plan summaries with frontmatter dependencies   |
-| `STATE-TEMPLATE.md`           | Execution state tracking                       |
-| `CLAUDE-TEMPLATE.md`          | Project context file for Claude                |
-
-## Standards Library
-
-Quality standards for consistent development:
-
-| Standard                     | Coverage                             |
-| ---------------------------- | ------------------------------------ |
-| `coding-standards.md`        | Naming, TypeScript, error handling   |
-| `security-guidelines.md`     | OWASP Top 10, auth, input validation |
-| `testing-standards.md`       | 80% coverage, unit/integration/E2E   |
-| `api-standards.md`           | REST design, pagination, errors      |
-| `accessibility-standards.md` | WCAG 2.1 AA compliance               |
-| `git-workflow.md`            | Branching, commits, PRs              |
-| `frontend-design.md`         | Components, state, hooks             |
-
-Find them in `framework/templates/` and `framework/standards/`.
-
----
-
-## 🦍🦍 Dos Apes: We ain't monkeying around with code!
+🦍🦍 **Dos Apes: We ain't monkeying around with code!**

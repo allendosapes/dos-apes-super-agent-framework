@@ -5,6 +5,13 @@ allowed-tools: Read, Edit, Write, Bash, Grep, Glob
 
 # Add Feature: $ARGUMENTS
 
+## Team Composition
+
+| Teammate | Skills Loaded | Role |
+|----------|--------------|------|
+| builder | `skills/backend.md` + `skills/frontend.md` | Implementation |
+| tester | `skills/testing.md` | Verification, test coverage |
+
 ## Pre-Flight Checks
 
 ### 1. Auto-Load Context Based on Keywords
@@ -86,74 +93,34 @@ grep -rn "[relevant keywords]" src/ --include="*.ts" --include="*.tsx" | head -2
 find src/ -name "*[similar]*" -type f | head -10
 ```
 
-### Step 3: Create Feature Plan
+### Step 3: Create Feature Tasks
 
-Create `.planning/PLAN.md`:
+Use the Tasks API to plan implementation:
 
-```xml
-<feature>
-  <name>$ARGUMENTS</name>
-  <type>feature</type>
-
-  <analysis>
-    <related_files>[files that will be affected]</related_files>
-    <patterns_to_follow>[existing patterns to match]</patterns_to_follow>
-    <new_files>[files to create]</new_files>
-  </analysis>
-
-  <tasks>
-    <task id="1" type="backend">
-      <n>[Task name]</n>
-      <files>[Files]</files>
-      <action>[Implementation details]</action>
-      <verify>[How to verify]</verify>
-    </task>
-
-    <task id="2" type="frontend">
-      <n>[Task name]</n>
-      <files>[Files]</files>
-      <action>[Implementation details]</action>
-      <ui-integration>
-        <component>[Component name]</component>
-        <location>[Where to integrate]</location>
-        <route>[Route if new page]</route>
-      </ui-integration>
-      <verify>[How to verify]</verify>
-    </task>
-
-    <task id="3" type="test">
-      <n>Add tests</n>
-      <files>[Test files]</files>
-      <action>[Test implementation]</action>
-      <verify>npm test</verify>
-    </task>
-  </tasks>
-
-  <verification>
-    <commands>
-      npm run build
-      npm run typecheck
-      npm run lint
-      npm test
-    </commands>
-    <browser>
-      1. Navigate to [URL]
-      2. [Interaction]
-      3. [Expected result]
-    </browser>
-  </verification>
-</feature>
 ```
+TaskCreate: "Analyze existing patterns for [feature]"
+  description: "Find related code, identify patterns to follow,
+    determine files to create/modify."
 
-### Step 4: Update STATE.md
+TaskCreate: "Implement [backend component]"
+  description: "Create/modify backend files: [list files].
+    Follow patterns from [related existing code]."
+  blockedBy: ["Analyze existing patterns"]
 
-```markdown
-## Current Work
+TaskCreate: "Implement [frontend component]"
+  description: "Create/modify UI components: [list files].
+    Integration point: [where in app]."
+  blockedBy: ["Analyze existing patterns"]
 
-- Type: Feature
-- Description: $ARGUMENTS
-- Status: planned
-- Branch: feature/[name]
+TaskCreate: "Add tests for [feature]"
+  description: "Unit tests for new functions. Integration test
+    for the full feature flow."
+  blockedBy: ["Implement backend", "Implement frontend"]
+
+TaskCreate: "[GATE] Feature verification"
+  description: "Run build, typecheck, lint, tests. Verify UI
+    integration in browser if applicable."
+  blockedBy: ["Add tests"]
 ```
 
 ## Execution Phase

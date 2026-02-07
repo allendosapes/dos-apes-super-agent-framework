@@ -1,117 +1,125 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code when working on the Dos Apes framework itself.
 
-## Project Overview
+## What This Project Is
 
-Dos Apes is a unified AI coding framework that enables autonomous product building from PRDs. It combines multi-agent orchestration with git workflow management to take requirements and ship complete products without human intervention.
+Dos Apes is a software engineering framework for Claude Code. It installs slash commands, skills, hook scripts, and CI workflows into a project's `.claude/` directory. Users run `npx dos-apes` to install, then use `/apes-build`, `/apes-feature`, etc. inside Claude Code.
+
+This is NOT an application — it's a collection of markdown files, shell scripts, and a Node.js CLI installer.
 
 ## Commands
 
 ```bash
-# Run tests
-npm test
+# Test the CLI locally
+node bin/cli.js --help
+node bin/cli.js --version
 
-# Install framework to a project (interactive)
-npx dos-apes
+# Test installation in a temp directory
+mkdir /tmp/test-project && cd /tmp/test-project && git init
+node /path/to/dos-apes/bin/cli.js --local --yes
 
-# Install with flags
-npx dos-apes --global    # Install to ~/.claude/
-npx dos-apes --local     # Install to ./.claude/
-npx dos-apes --greenfield  # New project mode
-npx dos-apes --brownfield  # Existing project mode
+# Pack for local testing (without publishing)
+npm pack
+# Then in test project:
+npx /path/to/dos-apes-super-agent-2.0.0.tgz
+
+# Publish
+npm publish
 ```
 
-## Architecture
-
-### CLI Entry Point
-
-- `bin/cli.js` - Node.js installer that copies framework files to target project's `.claude/` directory
-
-### Framework Structure (`framework/`)
-
-The framework is a collection of markdown files that get installed into a project's `.claude/` directory:
+## Project Structure
 
 ```
-framework/
-├── ORCHESTRATOR.md        # Master orchestration engine - the "brain"
-├── agents/                # 12 specialized agent definitions
-│   ├── orchestrator.md    # (Sonnet) Planning, git, coordination
-│   ├── technical-architect.md  # (Opus) System design, ADRs
-│   ├── backend-developer.md    # (Opus) APIs, database
-│   ├── frontend-developer.md   # (Opus) React components, UI
-│   ├── qa-engineer.md          # (Sonnet) Test execution, verification
-│   └── ...
-├── commands/              # Slash command definitions
-│   ├── apes-build.md      # Full autonomous build
-│   ├── apes-execute.md    # Phase execution
-│   ├── apes-feature.md    # Add feature to existing codebase
-│   ├── apes-fix.md        # Bug fixes
-│   ├── apes-map.md        # Codebase analysis
-│   └── ...
-├── templates/             # Document templates (PRD, ADR, etc.)
-├── standards/             # Coding and quality standards
-└── skills/                # Domain knowledge documents
+dos-apes/
+├── bin/cli.js              # CLI entry point (npx dos-apes)
+├── package.json            # npm package config (v2.0.0)
+├── framework/
+│   ├── commands/           # 13 slash commands (.md files)
+│   ├── skills/             # 6 domain skills + README
+│   ├── scripts/            # 7 hook scripts (.sh files)
+│   ├── ci/                 # 3 GitHub Actions workflows
+│   ├── templates/          # CLAUDE-TEMPLATE, PRD, ADR, multi-repo-config
+│   └── settings.json       # Hooks, permissions, MCP config
+├── assets/banner.txt       # ASCII art banner for CLI
+├── README.md               # User-facing documentation
+├── ARCHITECTURE.md         # Technical architecture reference
+├── CLAUDE.md               # This file (framework development guidance)
+└── LICENSE                 # MIT
 ```
 
-### Agent Orchestration Pattern
+## How the CLI Works
 
-The framework uses agent handoffs for task execution:
+`bin/cli.js` is a zero-dependency Node.js script that:
 
-1. Orchestrator reads task from PLAN.md
-2. Determines appropriate agent based on task type
-3. Loads agent context from `.claude/agents/[agent].md`
-4. Agent executes task
-5. QA Engineer verifies (build, types, lint, tests)
-6. Orchestrator commits and continues
+1. Prompts for install location (local `.claude/` or global `~/.claude/`)
+2. Prompts for project type (greenfield/brownfield) and tech stack
+3. Copies `framework/commands/` → `.claude/commands/`
+4. Copies `framework/skills/` → `.claude/skills/`
+5. Copies `framework/settings.json` → `.claude/settings.json`
+6. Copies `framework/scripts/` → `scripts/` (unless `--no-hooks`)
+7. Copies `framework/ci/` → `.github/workflows/` (unless `--no-ci`)
+8. Generates `CLAUDE.md` from `framework/templates/CLAUDE-TEMPLATE.md` with tech stack substitution
+9. Creates `.planning/` with PROJECT.md, ROADMAP.md, MEMORY.md stubs
+10. Copies PRD and ADR templates to `docs/templates/`
 
-### State Management
+Key behaviors:
+- Won't overwrite existing CLAUDE.md, settings.json, or .planning/
+- Strips ORCHESTRATOR.md contextFiles reference from settings.json (v1 artifact)
+- Auto-detects package manager from lockfiles (brownfield)
+- chmod +x on shell scripts (Unix only, skipped on Windows)
 
-Projects using the framework maintain state in `.planning/`:
+## Architecture Decisions
 
-- `PROJECT.md` - Vision, requirements (immutable)
-- `ROADMAP.md` - All phases (status updated)
-- `STATE.md` - Current position (constantly updated)
-- `PLAN.md` - Current phase tasks
-- `ISSUES.md` - Deferred problems
-- `MEMORY.md` - Learnings, patterns
+### Skills replace agents
+v1 had 12 agent definition files. v2 has 6 skill files that any Agent Teams teammate can load. The platform orchestrates; skills provide domain knowledge.
 
-### Ralph Loop
+### Hooks replace trust
+Quality gates fire deterministically via settings.json hooks and shell scripts. No agent cooperation needed for TypeScript checking, test running, main branch protection.
 
-The autonomous execution loop (enabled with `--ralph` flag):
+### Tasks API replaces STATE.md
+Claude Code's native Tasks API handles task creation, dependency tracking, and status. No more manual XML-based PLAN.md or STATE.md files.
 
-- Iterates until all tasks/phases complete
-- Retries on failure with failure context
-- Stop hooks prevent premature exit
-- Outputs `<promise>PRODUCT_COMPLETE</promise>` when done
-
-### Git Workflow
-
-- Feature branches per phase: `feat/phase-N-description`
-- Squash merge to main on phase completion
-- Git worktrees for parallel execution (`--parallel` flag)
+### Commands are team launchers
+Each slash command assembles an appropriate Agent Teams configuration. `/apes-build` spawns architect + builder + tester + reviewer. `/apes-fix` spawns debugger + tester.
 
 ## Key Conventions
 
-### Agent Model Selection
+- All framework content is markdown or shell scripts — no build step, no compilation
+- CLI has zero npm dependencies (uses only Node.js built-ins: fs, path, readline, os, child_process)
+- Shell scripts must work in bash (Git Bash on Windows, native on Mac/Linux)
+- settings.json hooks reference scripts via relative paths from project root
+- Commands reference skills via relative paths from .claude/
 
-- **Opus**: Technical Architect, Frontend/Backend Developers, Security Engineer, Code Reviewer (heavy lifting)
-- **Sonnet**: Orchestrator, Product Manager, QA Engineer, Test Automation, DevOps, Tech Writer (coordination)
+## What NOT to Do
 
-### Verification Stack
+- Don't add npm dependencies to the CLI — it must remain zero-dep
+- Don't create files outside `framework/` that get installed — the CLI copies from `framework/` only
+- Don't reference v1 artifacts (ORCHESTRATOR.md, agents/, standards/, STATE.md, PLAN.md)
+- Don't add `settings.local.json` to git — that's user-specific permissions
 
-Every task passes through 5-level verification before commit:
+## Verification Pyramid (8 levels)
 
-1. Build passes
-2. Types pass
-3. Lint passes
-4. Tests pass
-5. UI integration verified (for frontend tasks)
+The framework teaches projects this verification stack:
 
-### Context Engineering
+```
+L7: Visual Regression     ← Screenshot diff
+L6: E2E / Browser         ← Playwright + agent-browser
+L5: Security Scan         ← npm audit + gitleaks
+L4: UI Integration        ← Component actually used?
+L3: Integration Tests     ← API/E2E tests
+L2.5: Coverage Gate       ← 80% threshold
+L2: Unit Tests            ← Function tests
+L1: Static Analysis       ← Types + Lint
+L0.5: Auto Code Review    ← Stop hook
+L0: Build                 ← Compiles?
+```
 
-Context quality degrades as usage increases. The framework manages this by:
+L0–L2.5 enforced by hooks. L3–L5 by scripts. L6–L7 require Playwright MCP.
 
-- Splitting work into 2-3 task plans
-- Fresh context per plan via subagents
-- Frontmatter-based context assembly from SUMMARYs
+## npm Package
+
+`package.json` `files` array controls what ships to npm:
+- `bin/`, `framework/commands/`, `framework/skills/`, `framework/scripts/`, `framework/ci/`, `framework/templates/`, `framework/settings.json`, `assets/`, `README.md`, `LICENSE`
+
+Test with `npm pack --dry-run` to verify included files before publishing.

@@ -18,6 +18,15 @@ allowed-tools: Read, Edit, Write, Bash, Grep, Glob
 - `--ralph` - Enable autonomous loop (default: true for build)
 - `--max-iterations N` - Max iterations (default: 500)
 
+## Team Composition
+
+| Teammate | Skills Loaded | Role |
+|----------|--------------|------|
+| architect | `skills/architecture.md` | System design, tech stack, phase planning |
+| builder | `skills/backend.md` + `skills/frontend.md` | Implementation |
+| tester | `skills/testing.md` + `skills/browser-verification.md` | Verification, coverage, E2E |
+| reviewer | `skills/review.md` | Code review, security audit |
+
 ---
 
 ## THE BUILD LOOP
@@ -36,14 +45,14 @@ allowed-tools: Read, Edit, Write, Bash, Grep, Glob
 │          ▼                                                  │
 │   ┌─────────────┐                                          │
 │   │    PLAN     │  Break into phases                       │
-│   │             │  Create PLAN.md for Phase 1              │
+│   │             │  Create tasks via Tasks API              │
 │   └──────┬──────┘                                          │
 │          │                                                  │
 │          ▼                                                  │
 │   ┌─────────────┐     ┌─────────────┐                     │
 │   │   EXECUTE   │────▶│   VERIFY    │                     │
 │   │             │◀────│             │                     │
-│   │  Agent Loop │     │ QA Engineer │                     │
+│   │  Build Loop │     │   Tester    │                     │
 │   └──────┬──────┘     └─────────────┘                     │
 │          │                                                  │
 │          ▼                                                  │
@@ -68,14 +77,14 @@ allowed-tools: Read, Edit, Write, Bash, Grep, Glob
 
 ## PHASE 1: INGEST
 
-### [ORCHESTRATOR] Parse PRD
+### Parse PRD
 
 ```bash
 # Read PRD
 cat [prd-file]
 ```
 
-### [ORCHESTRATOR] Create Project Structure
+### Create Project Structure
 
 ```bash
 # Create planning directory
@@ -85,7 +94,7 @@ mkdir -p .planning/codebase
 git init 2>/dev/null || true
 ```
 
-### [ORCHESTRATOR] Generate PROJECT.md
+### Generate PROJECT.md
 
 Extract from PRD:
 
@@ -133,7 +142,7 @@ Extract from PRD:
 [Measurable outcomes]
 ```
 
-### [ORCHESTRATOR] Generate ROADMAP.md
+### Generate ROADMAP.md
 
 Break project into phases:
 
@@ -159,40 +168,7 @@ Break project into phases:
 **Deliverable:** [Shipped product]
 ```
 
-### [ORCHESTRATOR] Initialize STATE.md
-
-```markdown
-# State
-
-## Execution Mode
-
-ralph_mode: true
-max_iterations: 500
-current_iteration: 0
-
-## Current Position
-
-phase: 1
-phase_name: "Foundation"
-task: 0
-status: planning
-
-## Git State
-
-main_branch: main
-current_branch: main
-
-## Progress
-
-phases_complete: 0/3
-all_tasks_complete: false
-
-## Session
-
-started: [timestamp]
-```
-
-### [ORCHESTRATOR] Create CLAUDE.md
+### Create CLAUDE.md
 
 ```markdown
 # [Project Name]
@@ -221,13 +197,9 @@ npm run typecheck # Type checking
 
 ## PHASE 2: PLAN FIRST PHASE
 
-### [TECHNICAL ARCHITECT] Design Phase
+### Architect Designs Phase
 
-Load architect agent:
-
-```bash
-cat .claude/agents/technical-architect.md
-```
+The architect teammate loads `skills/architecture.md` and designs the phase.
 
 For Phase 1 (Foundation), typically:
 
@@ -236,66 +208,69 @@ For Phase 1 (Foundation), typically:
 - Basic API structure
 - Initial UI shell
 
-### [ORCHESTRATOR] Generate PLAN.md
+### Create Tasks via Tasks API
 
-```xml
-<plan>
-  <metadata>
-    <phase>1</phase>
-    <name>Foundation</name>
-    <goal>Establish project structure and core infrastructure</goal>
-  </metadata>
+Use TaskCreate to define tasks with dependencies:
 
-  <tasks>
-    <task id="1" type="setup" complete="false">
-      <name>Project Scaffolding</name>
-      <action>
-        Initialize project with Vite + React + TypeScript
-        Configure ESLint, Prettier, TypeScript strict
-        Set up folder structure
-      </action>
-      <verify>npm run build passes</verify>
-    </task>
+```
+TaskCreate: "Project Scaffolding"
+  description: "Initialize project with Vite + React + TypeScript.
+    Configure ESLint, Prettier, TypeScript strict. Set up folder structure."
+  verify: "npm run build passes"
 
-    <task id="2" type="backend" complete="false">
-      <name>Core Data Models</name>
-      <action>...</action>
-      <verify>...</verify>
-    </task>
+TaskCreate: "Core Data Models"
+  description: "Define TypeScript types and database schema."
+  verify: "npm run typecheck passes"
+  blockedBy: ["Project Scaffolding"]
 
-    <task id="3" type="frontend" complete="false">
-      <name>UI Shell</name>
-      <action>...</action>
-      <ui_integration>
-        <component>Layout</component>
-        <location>App.tsx</location>
-        <route>/</route>
-      </ui_integration>
-      <verify>...</verify>
-    </task>
-  </tasks>
-</plan>
+TaskCreate: "UI Shell"
+  description: "Create layout component, routing, and basic page structure."
+  verify: "npm run build passes, routes render"
+  blockedBy: ["Project Scaffolding"]
+
+TaskCreate: "[APPROVAL] Architecture Review"
+  description: "PAUSE. Present architecture decisions to human for review.
+    Do NOT mark complete until human confirms in chat."
+  blockedBy: ["Core Data Models", "UI Shell"]
+
+TaskCreate: "[GATE] Phase 1 Verification"
+  description: "Run full verification pyramid (L0-L5). All must pass."
+  blockedBy: ["[APPROVAL] Architecture Review"]
 ```
 
 ---
 
 ## PHASE 3: EXECUTE
 
-### [ORCHESTRATOR] Start Execution Loop
+### Start Execution Loop
 
-```
-/apes-execute 1 --ralph --max-iterations [remaining]
-```
-
-This triggers the full agent orchestration:
+The build loop handles execution internally:
 
 1. Git setup (branch)
-2. Task loop with agent handoffs
-3. QA verification per task
-4. Commit per task
+2. Task loop with teammate handoffs
+3. Tester verification per task
+4. Commit per task with git tag
 5. Phase merge when complete
 
-See `apes-execute.md` for full details.
+### Task-Level Git Tags
+
+After each task commit succeeds, tag the commit for rollback support:
+
+```bash
+# After commit succeeds
+git tag -a "phase-${PHASE_NUM}/task-${TASK_ID}-complete" \
+  -m "${TASK_NAME} - verified $(date -Iseconds)"
+```
+
+This enables fine-grained rollback:
+
+```bash
+# Rollback to specific task
+git reset --hard phase-2/task-3-complete
+
+# See all task tags
+git tag -l "phase-*"
+```
 
 ---
 
@@ -303,31 +278,23 @@ See `apes-execute.md` for full details.
 
 After Phase 1 completes:
 
-### [ORCHESTRATOR] Check Progress
-
-```bash
-# Read updated state
-cat .planning/STATE.md
-
-# Check phases remaining
-grep "phases_complete:" .planning/STATE.md
-```
-
-### [ORCHESTRATOR] Plan Next Phase
+### Check Progress
 
 ```
-IF phases_complete < total_phases:
+TaskList
+# Review completed vs remaining tasks
+# Check if more phases exist in ROADMAP.md
+```
 
-  # Generate PLAN.md for next phase
-  [TECHNICAL ARCHITECT] designs phase
-  [ORCHESTRATOR] creates PLAN.md
+### Plan Next Phase
 
-  # Update state
-  phase: [N+1]
-  status: executing
+```
+IF more phases remain in ROADMAP.md:
 
-  # Continue execution
-  /apes-execute [N+1] --ralph
+  # Architect designs next phase
+  # Create tasks via Tasks API with dependencies
+
+  # Continue execution loop for next phase
 
 ELSE:
   # All done!
@@ -338,7 +305,7 @@ ELSE:
 
 ## PHASE 5: SHIP
 
-### [QA ENGINEER] Final Verification
+### Final Verification
 
 ```bash
 # Full test suite
@@ -352,7 +319,7 @@ npm run test:e2e 2>/dev/null || true
 npm audit
 ```
 
-### [DEVOPS ENGINEER] Deployment (if configured)
+### Deployment (if configured)
 
 ```bash
 # Check for deploy script
@@ -361,7 +328,7 @@ if [ -f "deploy.sh" ] || grep -q '"deploy"' package.json; then
 fi
 ```
 
-### [ORCHESTRATOR] Final Report
+### Final Report
 
 ```
 ═══════════════════════════════════════════════════════════════
@@ -405,6 +372,27 @@ Dos Apes: We ain't monkeying around with code!
 
 ---
 
+## TASK TYPES & APPROVAL GATES
+
+```
+Task types:
+  - Regular task: auto-assigned to teammates
+  - Gate task: "[GATE] ..." prefix, assigned to tester
+  - Approval task: "[APPROVAL] ..." prefix, requires human
+
+Approval tasks:
+  TaskCreate: "[APPROVAL] Architecture review before implementation"
+    blockedBy: [architect tasks]
+    description: "PAUSE. Present architecture decisions to human for review.
+    Do NOT mark complete until human confirms in chat."
+
+  All implementation tasks blockedBy: [approval task]
+```
+
+The lead pauses and waits for human input before marking the approval task complete. Downstream tasks remain blocked until approval. Use approval gates at phase boundaries or before major architectural decisions.
+
+---
+
 ## FAILURE MODES
 
 ### Iteration Limit Reached
@@ -415,10 +403,11 @@ Max iterations (500) reached.
 Progress saved:
 - Phase: [N] of [Total]
 - Task: [M] of [Total in phase]
-- State: .planning/STATE.md
+- Completed tasks visible via TaskList
 
 To continue:
-/apes-resume
+/apes-build --prd [same-prd] --ralph
+(Build will detect existing progress and resume)
 ```
 
 ### Blocked by Error
@@ -432,20 +421,18 @@ Issue: [description]
 See: .planning/ISSUES.md
 
 To retry after fixing:
-/apes-resume
+/apes-build --prd [same-prd] --ralph
 ```
 
 ### Recovery
 
 ```bash
-# Continue from where we left off
-/apes-resume
+# Continue from where we left off (detects existing tasks and progress)
+/apes-build --prd [same-prd] --ralph
 
-# Or retry the failed task
-/apes-retry
-
-# Or skip and continue
-/apes-skip --confirm
+# Rollback to a specific task tag and retry
+git reset --hard phase-2/task-3-complete
+/apes-build --prd [same-prd] --ralph
 ```
 
 ---
@@ -457,35 +444,32 @@ $ claude
 
 > /apes-build --prd ./docs/courseware-prd.md --ralph
 
-[ORCHESTRATOR] Loading PRD...
-[ORCHESTRATOR] Creating PROJECT.md...
-[ORCHESTRATOR] Creating ROADMAP.md (5 phases)...
-[ORCHESTRATOR] Creating STATE.md...
-[ORCHESTRATOR] Creating CLAUDE.md...
+Loading PRD...
+Creating PROJECT.md...
+Creating ROADMAP.md (5 phases)...
+Creating CLAUDE.md...
 
 ═══ PHASE 1: Foundation ═══
 
-[ORCHESTRATOR] Creating branch: feat/phase-1-foundation
-[ORCHESTRATOR] Planning phase...
-[TECHNICAL ARCHITECT] Designing foundation...
-[ORCHESTRATOR] PLAN.md created (4 tasks)
+Creating branch: feat/phase-1-foundation
+Architect designing foundation...
+Tasks created (4 tasks via Tasks API)
 
-[ORCHESTRATOR → BACKEND DEVELOPER]
+[architect → builder]
 Task 1: Project scaffolding
-[BACKEND DEVELOPER] Initializing Vite + React + TypeScript...
-[BACKEND DEVELOPER] Configuring tools...
-[BACKEND DEVELOPER → QA ENGINEER] Verification requested
-[QA ENGINEER] Build: ✅ Types: ✅ Lint: ✅
-[QA ENGINEER → ORCHESTRATOR] Task verified
-[ORCHESTRATOR] Committed: chore(setup): initialize project
+Builder initializing Vite + React + TypeScript...
+Builder configuring tools...
+[builder → tester] Verification requested
+Tester: Build ✅ Types ✅ Lint ✅
+Committed: chore(setup): initialize project
 
-[ORCHESTRATOR → BACKEND DEVELOPER]
+[builder]
 Task 2: Core data models...
 ...
 
 ═══ PHASE 1 COMPLETE ═══
-[ORCHESTRATOR] Merging to main...
-[ORCHESTRATOR] Merged: feat/phase-1-foundation → main
+Merging to main...
+Merged: feat/phase-1-foundation → main
 
 <promise>PHASE_1_COMPLETE</promise>
 

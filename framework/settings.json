@@ -2,18 +2,33 @@
   "$schema": "https://raw.githubusercontent.com/anthropics/claude-code/main/schemas/settings.schema.json",
   "_comment": "Dos Apes Super Agent Framework - We ain't monkeying around with code!",
 
-  "contextFiles": [
-    "framework/ORCHESTRATOR.md"
-  ],
+  "contextFiles": [],
 
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '🦍 Dos Apes session started. Branch: '$(git branch --show-current)'. Tasks:' && cat .planning/ROADMAP.md 2>/dev/null | head -5 || echo 'No roadmap yet'",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/metrics-init.sh 2>/dev/null || true",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+
     "PreToolUse": [
       {
         "matcher": "Edit|Write",
         "hooks": [
           {
             "type": "command",
-            "command": "[ \"$(git branch --show-current 2>/dev/null)\" != \"main\" ] || { echo 'Cannot edit on main branch. Create a feature branch first.' >&2; exit 1; }",
+            "command": "bash scripts/guard-main-branch.sh",
             "timeout": 5
           }
         ]
@@ -35,6 +50,41 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "Edit:*.ts|Edit:*.tsx|Write:*.ts|Write:*.tsx",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx tsc --noEmit 2>&1 | head -20 || true",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Edit:*.test.*|Write:*.test.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npm test -- --related 2>&1 | tail -10 || true",
+            "timeout": 60
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/track-modified-files.sh 2>/dev/null || true",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/metrics-update.sh 2>/dev/null || true",
+            "timeout": 5
+          }
+        ]
       }
     ],
 
@@ -42,13 +92,20 @@
       {
         "hooks": [
           {
-            "type": "command",
-            "command": "bash framework/hooks/stop.sh 2>/dev/null || exit 0",
-            "timeout": 60
+            "type": "agent",
+            "prompt": "You are a code reviewer. Read .claude/skills/review.md. Review ONLY the files listed in /tmp/dos-apes-modified-files.txt against project standards. Report issues with confidence scores. Only flag issues >= 80 confidence. Be concise.",
+            "timeout": 180
           }
         ]
       }
     ]
+  },
+
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest", "--headless"]
+    }
   },
 
   "permissions": {
@@ -73,6 +130,7 @@
           "git show *",
           "git rev-parse *",
           "git config --get *",
+          "git tag *",
           "npm *",
           "npx *",
           "yarn *",
@@ -109,7 +167,9 @@
           "uniq *",
           "tr *",
           "cut *",
-          "xargs *"
+          "xargs *",
+          "bash *",
+          "gitleaks *"
         ]
       },
       "Read": { "allowed": true },
@@ -125,6 +185,6 @@
 
   "environment": {
     "DOS_APES_FRAMEWORK": "true",
-    "DOS_APES_VERSION": "1.0.0"
+    "DOS_APES_VERSION": "2.0.0"
   }
 }

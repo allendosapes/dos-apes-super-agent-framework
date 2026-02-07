@@ -5,6 +5,13 @@ allowed-tools: Read, Edit, Write, Bash, Grep, Glob
 
 # Refactor: $ARGUMENTS
 
+## Team Composition
+
+| Teammate | Skills Loaded | Role |
+|----------|--------------|------|
+| builder | `skills/backend.md` + `skills/frontend.md` | Refactoring implementation |
+| reviewer | `skills/review.md` | Verify behavior preserved, review changes |
+
 ## Pre-Flight
 
 1. **Load Context**
@@ -52,82 +59,35 @@ find src/ -name "*.tsx" -exec grep -l "[pattern]" {} \; | wc -l
 | Dependencies         | [many/few/none]   |
 | Breaking change risk | [high/medium/low] |
 
-### Step 4: Create Refactor Plan
+### Step 4: Create Refactor Tasks
 
-Create `.planning/PLAN.md`:
+Use the Tasks API to plan the refactor:
 
-```xml
-<refactor>
-  <n>$ARGUMENTS</n>
-  <type>refactor</type>
+```
+TaskCreate: "Add safety net tests"
+  description: "Add characterization tests for any uncovered behavior
+    that will change. These tests must pass BEFORE and AFTER refactor.
+    Focus on: [specific areas with low coverage]"
 
-  <scope>
-    <files_affected>[count]</files_affected>
-    <pattern_from>[current pattern]</pattern_from>
-    <pattern_to>[target pattern]</pattern_to>
-    <behavior_preserved>true</behavior_preserved>
-  </scope>
+TaskCreate: "Refactor batch 1: [scope]"
+  description: "Files: [first batch]. Pattern change: [from] → [to].
+    Verify: typecheck + tests pass after changes."
+  blockedBy: ["Add safety net tests"]
 
-  <strategy>
-    <approach>[incremental/batch/strangler-fig]</approach>
-    <safety_net>[existing tests/new tests/both]</safety_net>
-    <rollback_plan>[how to revert if needed]</rollback_plan>
-  </strategy>
+TaskCreate: "Refactor batch 2: [scope]"
+  description: "Files: [second batch]. Same pattern change.
+    Verify: typecheck + tests pass after changes."
+  blockedBy: ["Add safety net tests"]
 
-  <tasks>
-    <task id="1" type="safety">
-      <n>Add safety net tests</n>
-      <action>
-        Add tests for any uncovered behavior that will change.
-        These tests should pass BEFORE and AFTER refactor.
-      </action>
-      <verify>npm test (all pass)</verify>
-    </task>
+TaskCreate: "Clean up dead code"
+  description: "Remove old patterns, unused imports, deprecated code
+    left over from the refactor."
+  blockedBy: ["Refactor batch 1", "Refactor batch 2"]
 
-    <task id="2" type="refactor">
-      <n>Refactor batch 1: [scope]</n>
-      <files>[first batch of files]</files>
-      <action>[Specific refactoring steps]</action>
-      <verify>
-        npm run typecheck
-        npm test
-      </verify>
-    </task>
-
-    <task id="3" type="refactor">
-      <n>Refactor batch 2: [scope]</n>
-      <files>[second batch of files]</files>
-      <action>[Specific refactoring steps]</action>
-      <verify>
-        npm run typecheck
-        npm test
-      </verify>
-    </task>
-
-    <task id="4" type="cleanup">
-      <n>Clean up dead code</n>
-      <action>
-        Remove old patterns, unused imports, deprecated code.
-      </action>
-      <verify>
-        npm run lint
-        npm run build
-      </verify>
-    </task>
-  </tasks>
-
-  <verification>
-    <commands>
-      npm run build
-      npm run typecheck
-      npm run lint
-      npm test
-    </commands>
-    <behavior_check>
-      [Steps to verify behavior unchanged]
-    </behavior_check>
-  </verification>
-</refactor>
+TaskCreate: "[GATE] Full verification"
+  description: "Run build + typecheck + lint + tests.
+    Verify behavior is unchanged. Review changes for correctness."
+  blockedBy: ["Clean up dead code"]
 ```
 
 ## Execution Phase

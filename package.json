@@ -1,10 +1,10 @@
 {
-  "name": "dos-apes",
-  "version": "1.0.0",
-  "description": "Dos Apes Super Agent Framework - A unified AI coding agent system combining GSD, VibeKanban, Ralph Wiggum, and Claude Code best practices",
+  "name": "dos-apes-super-agent",
+  "version": "2.0.0",
+  "description": "Dos Apes Super Agent Framework — Multi-agent coding framework built on Claude Code Agent Teams",
   "main": "index.js",
   "bin": {
-    "dos-apes": "./bin/cli.js"
+    "dos-apes-super-agent": "bin/cli.js"
   },
   "scripts": {
     "test": "node test/test.js"
@@ -12,13 +12,12 @@
   "keywords": [
     "claude",
     "claude-code",
+    "agent-teams",
     "ai-coding",
     "agent-framework",
-    "spec-driven-development",
-    "context-engineering",
-    "ralph-wiggum",
-    "vibekanban",
-    "gsd",
+    "multi-agent",
+    "verification",
+    "quality-gates",
     "dos-apes",
     "super-agent"
   ],
@@ -26,15 +25,24 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/dos-apes/dos-apes"
+    "url": "git+https://github.com/allendosapes/dos-apes-super-agent-framework.git"
   },
-  "homepage": "https://github.com/dos-apes/dos-apes#readme",
+  "homepage": "https://github.com/allendosapes/dos-apes-super-agent-framework#readme",
   "bugs": {
-    "url": "https://github.com/dos-apes/dos-apes/issues"
+    "url": "https://github.com/allendosapes/dos-apes-super-agent-framework/issues"
   },
   "files": [
     "bin/",
-    "framework/",
+    "framework/commands/",
+    "framework/skills/",
+    "framework/scripts/",
+    "framework/ci/",
+    "framework/templates/CLAUDE-TEMPLATE.md",
+    "framework/templates/PRD-TEMPLATE.md",
+    "framework/templates/adr-template.md",
+    "framework/templates/multi-repo-config.json",
+    "framework/settings.json",
+    "assets/",
     "README.md",
     "LICENSE"
   ],

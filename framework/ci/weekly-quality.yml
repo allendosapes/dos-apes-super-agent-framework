@@ -1,0 +1,31 @@
+name: Weekly Code Quality Sweep
+on:
+  schedule:
+    - cron: '0 3 * * 1'  # Monday 3am
+  workflow_dispatch:
+
+jobs:
+  quality-sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm ci
+      - name: Run quality sweep
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          npx @anthropic-ai/claude-code -p \
+            "Read CLAUDE.md. Run: npm run build && npm run typecheck && npm run lint && npm test.
+             Fix any issues found. Commit fixes with 'chore: weekly quality sweep'.
+             Do NOT create new features or change behavior."
+      - name: Create PR if changes
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            BRANCH="chore/quality-sweep-$(date +%Y%m%d)"
+            git checkout -b "$BRANCH"
+            git add -A && git commit -m "chore: weekly quality sweep"
+            git push origin "$BRANCH"
+            gh pr create --title "Weekly Quality Sweep" --body "Automated quality fixes"
+          fi
