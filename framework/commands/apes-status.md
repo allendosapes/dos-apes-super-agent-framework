@@ -6,10 +6,10 @@ description: Show current project status and position
 
 ## Current State
 
-Read and display `.planning/STATE.md`:
+Check active tasks and their status:
 
-```bash
-cat .planning/STATE.md
+```
+TaskList
 ```
 
 ## Progress Overview
@@ -21,14 +21,10 @@ cat .planning/ROADMAP.md | grep -E "^## Phase|Status:|Tasks:"
 
 ## Active Work
 
-```bash
-echo ""
-echo "=== Current Plan ==="
-if [ -f ".planning/PLAN.md" ]; then
-    head -50 .planning/PLAN.md
-else
-    echo "No active plan. Run /apes-plan [phase] to create one."
-fi
+```
+TaskList
+# Shows all tasks: pending, in_progress, completed
+# With dependency information (blockedBy)
 ```
 
 ## Git Status
@@ -65,8 +61,8 @@ Based on current state, suggest:
 
 | Status                   | Suggestion                |
 | ------------------------ | ------------------------- |
-| No plan                  | `/apes-plan [phase]`      |
-| Plan exists, not started | `/apes-execute`           |
+| No tasks                 | `/apes-plan [phase]`      |
+| Tasks exist, not started | `/apes-execute`           |
 | Task in progress         | Continue current task     |
 | Phase complete           | `/apes-plan [next-phase]` |
-| All phases complete      | 🎉 Ship it!               |
+| All phases complete      | Ship it!                  |

@@ -6,7 +6,7 @@
 
 **Core mechanism:** Skills-based teammates, 8-level verification pyramid, hook-enforced quality gates, Tasks API for orchestration.
 
-**Key shift from v1:** Replaced 12 hardcoded agents with 6 skill files on Claude Code's native Agent Teams platform. The framework is a playbook, not a runtime.
+**Key shift from v1:** Replaced 12 hardcoded agents with 7 skill files on Claude Code's native Agent Teams platform. The framework is a playbook, not a runtime.
 
 ---
 
@@ -71,7 +71,7 @@ Commands are the entry points. Each assembles the right team and workflow.
 | `/apes-metrics` | — (lead only) | Session and project metrics |
 | `/apes-help` | — (lead only) | Command reference |
 
-### 2. Skills (6)
+### 2. Skills (7)
 
 Skills are domain knowledge files that teammates load. They replace v1's 12 agent definitions.
 
@@ -83,6 +83,7 @@ Skills are domain knowledge files that teammates load. They replace v1's 12 agen
 | Testing | `testing.md` | TDD, coverage gates, 8-level pyramid |
 | Browser | `browser-verification.md` | Playwright, visual regression, E2E gen |
 | Design | `design-integration.md` | Figma MCP, design tokens, pixel validation |
+| Review | `review.md` | Confidence-based code review, security audit |
 
 ### 3. Hook Scripts (7)
 
@@ -205,7 +206,7 @@ Claude Code's Tasks API replaces v1's manual STATE.md and PLAN.md:
 
 ---
 
-## File Inventory (34 files)
+## File Inventory (35 files)
 
 ```
 framework/
@@ -224,13 +225,14 @@ framework/
 │   ├── apes-status.md
 │   ├── apes-metrics.md
 │   └── apes-help.md
-├── skills/                          # 6 domain skills
+├── skills/                          # 7 domain skills
 │   ├── architecture.md
 │   ├── backend.md
 │   ├── frontend.md
 │   ├── testing.md
 │   ├── browser-verification.md
 │   ├── design-integration.md
+│   ├── review.md
 │   └── README.md
 ├── scripts/                         # 7 hook scripts
 │   ├── guard-main-branch.sh
@@ -259,7 +261,7 @@ Plus: `bin/cli.js`, `package.json`, `assets/banner.txt`, `README.md`, `LICENSE`
 
 | v1 | v2 | Rationale |
 |----|-----|-----------|
-| 12 agent definitions | 6 skill files | Skills are composable; agents were rigid |
+| 12 agent definitions | 7 skill files | Skills are composable; agents were rigid |
 | ORCHESTRATOR.md | CLAUDE.md + commands | Platform orchestrates; framework provides playbook |
 | 6 standards files | Consolidated into skills | Reduce file count; skills teach patterns inline |
 | 5 hook scripts | 7 scripts + settings.json hooks | More granular enforcement |
@@ -267,7 +269,7 @@ Plus: `bin/cli.js`, `package.json`, `assets/banner.txt`, `README.md`, `LICENSE`
 | Manual STATE.md | Tasks API | Native dependency tracking and status |
 | XML-based PLAN.md | Tasks API | Platform handles task coordination |
 | 10 slash commands | 13 slash commands | Added testing + metrics commands |
-| ~50 files | 34 files | Less is more |
+| ~50 files | 35 files | Less is more |
 
 ---
 

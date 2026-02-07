@@ -214,7 +214,7 @@ L0  Build                ← Does it compile?
 
 ### Skills-Based Agent Teams
 
-Instead of 12 hardcoded agents, Dos Apes uses 6 skill files that any teammate can load:
+Instead of 12 hardcoded agents, Dos Apes uses 7 skill files that any teammate can load:
 
 | Skill | Domain |
 |-------|--------|
@@ -224,6 +224,7 @@ Instead of 12 hardcoded agents, Dos Apes uses 6 skill files that any teammate ca
 | `testing.md` | TDD, coverage gates, 8-level pyramid |
 | `browser-verification.md` | Playwright, visual regression, E2E |
 | `design-integration.md` | Figma MCP, design tokens, pixel validation |
+| `review.md` | Confidence-based code review, security audit |
 
 Commands assemble the right team. `/apes-build` spawns architect + builder + tester + reviewer. `/apes-fix` spawns a focused debugger + tester pair.
 
@@ -263,13 +264,14 @@ project-root/
 │   │   ├── apes-status.md
 │   │   ├── apes-metrics.md
 │   │   └── apes-help.md
-│   ├── skills/                  # 6 domain skills + README
+│   ├── skills/                  # 7 domain skills + README
 │   │   ├── architecture.md
 │   │   ├── backend.md
 │   │   ├── frontend.md
 │   │   ├── testing.md
 │   │   ├── browser-verification.md
-│   │   └── design-integration.md
+│   │   ├── design-integration.md
+│   │   └── review.md
 │   └── settings.json            # Hooks, permissions, MCP servers
 ├── scripts/                     # 7 hook scripts
 │   ├── guard-main-branch.sh
@@ -369,7 +371,7 @@ Claude must prove its work, not just claim completion. Hooks make verification a
 
 ### Skills Over Agents
 
-v1 had 12 hardcoded agents. v2 has 6 skill files that any teammate can load. The platform handles orchestration; the framework provides domain expertise.
+v1 had 12 hardcoded agents. v2 has 7 skill files that any teammate can load. The platform handles orchestration; the framework provides domain expertise.
 
 ### Hooks Over Trust
 

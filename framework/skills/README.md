@@ -12,6 +12,7 @@ When a command like `/apes-build` assembles a team, it assigns each teammate a s
 Teammate: "architect" → loads skills/architecture.md
 Teammate: "builder"   → loads skills/frontend.md + skills/backend.md
 Teammate: "tester"    → loads skills/testing.md
+Teammate: "reviewer"  → loads skills/review.md
 ```
 
 ## Included Skills
@@ -24,6 +25,7 @@ Teammate: "tester"    → loads skills/testing.md
 | **Testing** | `testing.md` | TDD, unit/integration/E2E, coverage gates, 8-level pyramid |
 | **Browser Verification** | `browser-verification.md` | agent-browser, Playwright MCP, visual regression, E2E generation |
 | **Design Integration** | `design-integration.md` | Figma MCP, design tokens, pixel-level validation |
+| **Code Review** | `review.md` | Confidence-based review, security audit, issue classification |
 
 ## Adding Project-Specific Skills
 
@@ -37,6 +39,7 @@ Create additional skills for patterns specific to your project:
 ├── testing.md               # Framework-provided
 ├── browser-verification.md  # Framework-provided
 ├── design-integration.md    # Framework-provided
+├── review.md                # Framework-provided
 ├── your-domain-logic.md     # Your custom skill
 └── your-api-patterns.md     # Your custom skill
 ```

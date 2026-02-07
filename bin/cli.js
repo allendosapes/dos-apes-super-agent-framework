@@ -324,7 +324,7 @@ ${c.bold}Flags:${c.reset}
 
 ${c.bold}What gets installed:${c.reset}
   .claude/
-  ├── commands/        14 slash commands (build, test, review, etc.)
+  ├── commands/        13 slash commands (build, test, review, etc.)
   ├── skills/          7 domain skills (architecture, testing, security, etc.)
   └── settings.json    Permissions, hooks, MCP servers
 

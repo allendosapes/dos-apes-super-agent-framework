@@ -218,29 +218,17 @@ fi
 
 ---
 
-## STEP 3: UPDATE STATE
+## STEP 3: UPDATE STATUS
 
-If all checks pass, update `.planning/STATE.md`:
+If all checks pass, update the current gate task:
 
-```markdown
-## Verification Status
-
-build: pass
-types: pass
-lint: pass
-tests: pass
-coverage: pass/warn
-integration: pass
-ui_integration: pass
-security_scan: pass/warn
-e2e: pass/skipped
-visual_regression: pass/skipped
-browser_verified: pending
-
-## Last Verified
-
-timestamp: [now]
 ```
+TaskUpdate: "[GATE] Verification"
+  status: completed
+  description: "All levels passed at [timestamp]"
+```
+
+If checks fail, keep the gate task in progress and report failures.
 
 ---
 

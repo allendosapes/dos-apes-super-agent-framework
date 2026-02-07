@@ -52,7 +52,7 @@ This will:
 
 1. Parse your PRD → Create PROJECT.md, ROADMAP.md
 2. Plan phases → Break into tasks
-3. Execute with agent handoffs → Backend, Frontend, QA, etc.
+3. Execute with Agent Teams → architect, builder, tester, reviewer
 4. Git workflow → Branch per phase, squash merge to main
 5. Verify everything → 8-level pyramid (build, types, lint, tests, coverage, security, E2E, visual)
 6. Iterate until complete → Ralph loop handles failures

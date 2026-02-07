@@ -261,7 +261,9 @@ If CLAUDE.md exists, merge findings. If not, create it:
 [Discovered patterns that must be followed]
 ```
 
-### Step 10: Update STATE.md
+### Step 10: Update MEMORY.md
+
+Add mapping results to `.planning/MEMORY.md`:
 
 ```markdown
 ## Codebase Analysis
