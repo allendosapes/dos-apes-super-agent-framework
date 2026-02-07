@@ -46,5 +46,8 @@ pnpm-lock.yaml
 # Cleanup scripts (one-time use)
 cleanup-v1.*
 
+# Test scripts (dev only)
+test-cli.ps1
+
 # Planning state (project-specific, not framework)
 .planning/

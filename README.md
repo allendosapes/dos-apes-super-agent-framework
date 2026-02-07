@@ -39,7 +39,7 @@
 Dos Apes is a software engineering framework for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) that turns ideas into production-ready applications. It uses Agent Teams for multi-agent orchestration, an 8-level verification pyramid for quality enforcement, and automated hooks for deterministic code review — so you can focus on product decisions while Claude handles the engineering.
 
 ```bash
-npx dos-apes
+npx dos-apes-super-agent
 ```
 
 ---
@@ -59,7 +59,7 @@ npx dos-apes
 mkdir my-app && cd my-app && git init
 
 # Install the framework
-npx dos-apes
+npx dos-apes-super-agent
 ```
 
 The installer will ask you:
@@ -343,16 +343,16 @@ Your project brain file. The CLI generates it with your tech stack, but you shou
 ### Installer Flags
 
 ```bash
-npx dos-apes                   # Interactive setup
-npx dos-apes --local           # Install to ./.claude/ (this project)
-npx dos-apes --global          # Install to ~/.claude/ (all projects)
-npx dos-apes --greenfield      # New project (skip prompt)
-npx dos-apes --brownfield      # Existing project (skip prompt)
-npx dos-apes --yes             # Accept all defaults
-npx dos-apes --no-hooks        # Skip hook scripts
-npx dos-apes --no-ci           # Skip CI workflow templates
-npx dos-apes --version         # Print version
-npx dos-apes --help            # Show all options
+npx dos-apes-super-agent                   # Interactive setup
+npx dos-apes-super-agent --local           # Install to ./.claude/ (this project)
+npx dos-apes-super-agent --global          # Install to ~/.claude/ (all projects)
+npx dos-apes-super-agent --greenfield      # New project (skip prompt)
+npx dos-apes-super-agent --brownfield      # Existing project (skip prompt)
+npx dos-apes-super-agent --yes             # Accept all defaults
+npx dos-apes-super-agent --no-hooks        # Skip hook scripts
+npx dos-apes-super-agent --no-ci           # Skip CI workflow templates
+npx dos-apes-super-agent --version         # Print version
+npx dos-apes-super-agent --help            # Show all options
 ```
 
 ---

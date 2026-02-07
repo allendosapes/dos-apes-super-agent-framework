@@ -22,7 +22,7 @@ node /path/to/dos-apes/bin/cli.js --local --yes
 # Pack for local testing (without publishing)
 npm pack
 # Then in test project:
-npx /path/to/dos-apes-2.0.0.tgz
+npx /path/to/dos-apes-super-agent-2.0.0.tgz
 
 # Publish
 npm publish

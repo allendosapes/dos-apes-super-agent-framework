@@ -309,9 +309,9 @@ async function main() {
 ${c.bold}dos-apes v${VERSION}${c.reset} — Multi-agent framework for Claude Code
 
 ${c.bold}Usage:${c.reset}
-  npx dos-apes              Interactive setup
-  npx dos-apes --local      Install to ./.claude/ (this project)
-  npx dos-apes --global     Install to ~/.claude/ (all projects)
+  npx dos-apes-super-agent              Interactive setup
+  npx dos-apes-super-agent --local      Install to ./.claude/ (this project)
+  npx dos-apes-super-agent --global     Install to ~/.claude/ (all projects)
 
 ${c.bold}Flags:${c.reset}
   --greenfield      New project (skip prompt)

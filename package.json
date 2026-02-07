@@ -1,10 +1,10 @@
 {
-  "name": "dos-apes",
+  "name": "dos-apes-super-agent",
   "version": "2.0.0",
   "description": "Dos Apes Super Agent Framework — Multi-agent coding framework built on Claude Code Agent Teams",
   "main": "index.js",
   "bin": {
-    "dos-apes": "./bin/cli.js"
+    "dos-apes-super-agent": "bin/cli.js"
   },
   "scripts": {
     "test": "node test/test.js"
@@ -25,7 +25,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/allendosapes/dos-apes-super-agent-framework"
+    "url": "git+https://github.com/allendosapes/dos-apes-super-agent-framework.git"
   },
   "homepage": "https://github.com/allendosapes/dos-apes-super-agent-framework#readme",
   "bugs": {
