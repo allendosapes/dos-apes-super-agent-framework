@@ -6,13 +6,13 @@ THRESHOLD=${COVERAGE_THRESHOLD:-80}
 # Detect test runner and run coverage
 if grep -q '"vitest"' package.json 2>/dev/null; then
   RUNNER="vitest"
-  npx vitest run --coverage --coverage.reporter=json-summary 2>/dev/null
+  npx vitest run --coverage --coverage.reporter json-summary 2>/dev/null
 elif grep -q '"jest"' package.json 2>/dev/null; then
   RUNNER="jest"
   npx jest --coverage --coverageReporters=json-summary 2>/dev/null
 elif [ -f "vitest.config.ts" ] || [ -f "vitest.config.js" ] || [ -f "vitest.config.mts" ]; then
   RUNNER="vitest"
-  npx vitest run --coverage --coverage.reporter=json-summary 2>/dev/null
+  npx vitest run --coverage --coverage.reporter json-summary 2>/dev/null
 elif [ -f "jest.config.ts" ] || [ -f "jest.config.js" ] || [ -f "jest.config.mjs" ]; then
   RUNNER="jest"
   npx jest --coverage --coverageReporters=json-summary 2>/dev/null
