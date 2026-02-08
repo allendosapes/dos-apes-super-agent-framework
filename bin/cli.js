@@ -328,7 +328,7 @@ ${c.bold}What gets installed:${c.reset}
   ├── skills/          7 domain skills (architecture, testing, security, etc.)
   └── settings.json    Permissions, hooks, MCP servers
 
-  scripts/             7 hook scripts (quality gates, metrics, etc.)
+  scripts/             10 hook scripts (quality gates, metrics, etc.)
   .planning/           Project state directory
   CLAUDE.md            Project brain (customized for your stack)
   docs/templates/      PRD and ADR templates

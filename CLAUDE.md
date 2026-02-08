@@ -37,7 +37,7 @@ dos-apes/
 ├── framework/
 │   ├── commands/           # 13 slash commands (.md files)
 │   ├── skills/             # 7 domain skills + README
-│   ├── scripts/            # 7 hook scripts (.sh files)
+│   ├── scripts/            # 10 hook scripts (.sh files)
 │   ├── ci/                 # 3 GitHub Actions workflows
 │   ├── templates/          # CLAUDE-TEMPLATE, PRD, ADR, multi-repo-config
 │   └── settings.json       # Hooks, permissions, MCP config

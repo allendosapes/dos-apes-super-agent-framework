@@ -85,13 +85,16 @@ Skills are domain knowledge files that teammates load. They replace v1's 12 agen
 | Design | `design-integration.md` | Figma MCP, design tokens, pixel validation |
 | Review | `review.md` | Confidence-based code review, security audit |
 
-### 3. Hook Scripts (7)
+### 3. Hook Scripts (10)
 
 Deterministic quality enforcement. Fire regardless of agent behavior.
 
 | Script | Hook Point | Purpose |
 |--------|-----------|---------|
 | `guard-main-branch.sh` | PreToolUse (Edit/Write) | Block edits on main |
+| `hook-format-and-stage.sh` | PostToolUse (Edit/Write) | Prettier format + git add |
+| `hook-typecheck.sh` | PostToolUse (Edit/Write) | TypeScript check on .ts/.tsx files |
+| `hook-test-related.sh` | PostToolUse (Edit/Write) | Run related tests on .test.* files |
 | `track-modified-files.sh` | PostToolUse (Edit/Write) | Track files for auto-review |
 | `check-coverage.sh` | Verify | Enforce 80% coverage |
 | `check-secrets.sh` | Verify | Detect leaked secrets |
@@ -105,9 +108,6 @@ Additional hooks configured in settings.json (not separate scripts):
 
 | Trigger | Action |
 |---------|--------|
-| PostToolUse: `*.ts`/`*.tsx` | Run `tsc --noEmit` |
-| PostToolUse: `*.test.*` | Run related tests |
-| PostToolUse: Edit/Write | Prettier format + git add |
 | SessionStart | Print branch + roadmap status |
 | Stop | Auto code review subagent |
 
@@ -234,8 +234,11 @@ framework/
 │   ├── design-integration.md
 │   ├── review.md
 │   └── README.md
-├── scripts/                         # 7 hook scripts
+├── scripts/                         # 10 hook scripts
 │   ├── guard-main-branch.sh
+│   ├── hook-format-and-stage.sh
+│   ├── hook-typecheck.sh
+│   ├── hook-test-related.sh
 │   ├── track-modified-files.sh
 │   ├── check-coverage.sh
 │   ├── check-secrets.sh

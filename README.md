@@ -273,8 +273,11 @@ project-root/
 │   │   ├── design-integration.md
 │   │   └── review.md
 │   └── settings.json            # Hooks, permissions, MCP servers
-├── scripts/                     # 7 hook scripts
+├── scripts/                     # 10 hook scripts
 │   ├── guard-main-branch.sh
+│   ├── hook-format-and-stage.sh
+│   ├── hook-typecheck.sh
+│   ├── hook-test-related.sh
 │   ├── track-modified-files.sh
 │   ├── check-coverage.sh
 │   ├── check-secrets.sh
