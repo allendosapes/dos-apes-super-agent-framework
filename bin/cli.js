@@ -266,15 +266,9 @@ function customizeSettings(config) {
 
   let settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
 
-  // Remove contextFiles reference to v1 ORCHESTRATOR.md
-  if (settings.contextFiles) {
-    settings.contextFiles = settings.contextFiles.filter(
-      (f) => !f.includes("ORCHESTRATOR")
-    );
-    if (settings.contextFiles.length === 0) {
-      delete settings.contextFiles;
-    }
-  }
+  // Remove v1 artifacts if present
+  delete settings.contextFiles;
+  delete settings._comment;
 
   return JSON.stringify(settings, null, 2);
 }
@@ -532,7 +526,69 @@ ${c.bold}Optional:${c.reset}
     printStep("Settings", ".claude/settings.json (hooks, permissions, MCP)");
     totalFiles++;
   } else {
-    printSkip("Settings", ".claude/settings.json already exists — preserved");
+    // Migrate existing settings.json for schema compatibility
+    let migrated = false;
+    let existingSettings;
+    try {
+      existingSettings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
+    } catch (_) {
+      printSkip("Settings", ".claude/settings.json exists but could not parse — preserved");
+      existingSettings = null;
+    }
+
+    if (existingSettings) {
+      // Migrate deprecated $schema URL
+      const OLD_SCHEMA = "https://raw.githubusercontent.com/anthropics/claude-code/main/schemas/settings.schema.json";
+      const NEW_SCHEMA = "https://json.schemastore.org/claude-code-settings.json";
+      if (existingSettings.$schema === OLD_SCHEMA) {
+        existingSettings.$schema = NEW_SCHEMA;
+        migrated = true;
+      }
+
+      // Migrate environment → env
+      if (existingSettings.environment && !existingSettings.env) {
+        existingSettings.env = existingSettings.environment;
+        delete existingSettings.environment;
+        migrated = true;
+      }
+
+      // Remove invalid keys
+      if (existingSettings._comment !== undefined) {
+        delete existingSettings._comment;
+        migrated = true;
+      }
+      if (existingSettings.contextFiles !== undefined) {
+        delete existingSettings.contextFiles;
+        migrated = true;
+      }
+
+      // Migrate permissions.allowedTools → permissions.allow
+      if (existingSettings.permissions?.allowedTools && !existingSettings.permissions?.allow) {
+        const allowedTools = existingSettings.permissions.allowedTools;
+        const allow = [];
+
+        for (const [tool, config] of Object.entries(allowedTools)) {
+          if (tool === "Bash" && config.allowedCommands) {
+            for (const cmd of config.allowedCommands) {
+              allow.push(`Bash(${cmd})`);
+            }
+          } else if (config.allowed === true) {
+            allow.push(tool);
+          }
+        }
+
+        delete existingSettings.permissions.allowedTools;
+        existingSettings.permissions.allow = allow;
+        migrated = true;
+      }
+
+      if (migrated) {
+        fs.writeFileSync(settingsPath, JSON.stringify(existingSettings, null, 2));
+        printStep("Settings", ".claude/settings.json — migrated to current schema");
+      } else {
+        printSkip("Settings", ".claude/settings.json already exists — preserved");
+      }
+    }
   }
 
   // ── 6. CLAUDE.md ──

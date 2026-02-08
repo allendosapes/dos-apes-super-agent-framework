@@ -65,7 +65,7 @@ dos-apes/
 
 Key behaviors:
 - Won't overwrite existing CLAUDE.md, settings.json, or .planning/
-- Strips ORCHESTRATOR.md contextFiles reference from settings.json (v1 artifact)
+- Strips v1 artifacts (_comment, contextFiles) from settings.json
 - Auto-detects package manager from lockfiles (brownfield)
 - chmod +x on shell scripts (Unix only, skipped on Windows)
 
