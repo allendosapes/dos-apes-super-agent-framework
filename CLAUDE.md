@@ -72,7 +72,7 @@ Key behaviors:
 ## Architecture Decisions
 
 ### Skills replace agents
-v1 had 12 agent definition files. v2 has 6 skill files that any Agent Teams teammate can load. The platform orchestrates; skills provide domain knowledge.
+v1 had 12 agent definition files. v2 has 7 skill files that any Agent Teams teammate can load. The platform orchestrates; skills provide domain knowledge.
 
 ### Hooks replace trust
 Quality gates fire deterministically via settings.json hooks and shell scripts. No agent cooperation needed for TypeScript checking, test running, main branch protection.
