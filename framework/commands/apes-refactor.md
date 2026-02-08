@@ -174,6 +174,32 @@ After all refactoring complete:
 
 Manually verify key user flows still work as expected.
 
+### Step 6: Merge and Push
+
+```bash
+git checkout main
+git pull origin main 2>/dev/null || true
+git merge --squash refactor/[descriptive-name]
+git commit -m "refactor: [refactor description]"
+```
+
+If merge conflicts occur:
+```bash
+git status
+# Resolve conflicts, then:
+git add [resolved-files]
+git commit -m "refactor: [refactor description] (resolved conflicts)"
+```
+
+If conflict resolution is ambiguous, pause and ask the human for guidance.
+
+### Step 7: Push and Clean Up
+
+```bash
+git push origin main
+git branch -d refactor/[descriptive-name]
+```
+
 ## Commit History
 
 Refactor should result in clean, atomic commits:
@@ -202,5 +228,7 @@ Refactor is complete when:
 - [ ] Dead code removed
 - [ ] Behavior verified unchanged
 - [ ] Clean commit history
+- [ ] Merged to main and pushed
+- [ ] Refactor branch cleaned up
 
 Output <promise>REFACTOR_COMPLETE</promise> when done.
