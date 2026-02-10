@@ -620,6 +620,27 @@ ${c.bold}Optional:${c.reset}
         migrated = true;
       }
 
+      // Migrate /tmp/ paths to project-relative .planning/ paths in hook prompts
+      const hooksJson = JSON.stringify(existingSettings.hooks || {});
+      if (hooksJson.includes("/tmp/dos-apes-")) {
+        for (const hookGroups of Object.values(existingSettings.hooks || {})) {
+          if (!Array.isArray(hookGroups)) continue;
+          for (const group of hookGroups) {
+            if (!group.hooks || !Array.isArray(group.hooks)) continue;
+            for (const hook of group.hooks) {
+              if (typeof hook.prompt === "string" && hook.prompt.includes("/tmp/dos-apes-modified-files.txt")) {
+                hook.prompt = "You are a code reviewer. Read .claude/skills/review.md for guidelines. Check if .planning/.modified-files.txt exists. If it exists, review ONLY the files listed in it against project standards. If it does not exist or is empty, respond with 'No files modified this session.' Report issues with confidence scores. Only flag issues >= 80 confidence. Be concise.";
+              }
+              if (typeof hook.command === "string") {
+                hook.command = hook.command.replace(/\/tmp\/dos-apes-modified-files\.txt/g, ".planning/.modified-files.txt");
+                hook.command = hook.command.replace(/\/tmp\/dos-apes-current-metrics\.txt/g, ".planning/.current-metrics.txt");
+              }
+            }
+          }
+        }
+        migrated = true;
+      }
+
       // Windows: patch hook commands to use Git Bash wrapper
       if (process.platform === "win32") {
         const hasUnpatchedBash = JSON.stringify(existingSettings.hooks || {}).includes('"bash ');
