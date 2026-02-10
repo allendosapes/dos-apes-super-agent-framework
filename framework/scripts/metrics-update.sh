@@ -1,6 +1,6 @@
 #!/bin/bash
 # PostToolUse hook: Update session metrics (pure bash — no Node.js overhead)
-METRICS_FILE=$(cat /tmp/dos-apes-current-metrics.txt 2>/dev/null)
+METRICS_FILE=$(cat .planning/.current-metrics.txt 2>/dev/null)
 [ -z "$METRICS_FILE" ] || [ ! -f "$METRICS_FILE" ] && exit 0
 
 # Count modified files

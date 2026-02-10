@@ -14,4 +14,4 @@ cat > "$METRICS_FILE" << EOF
   "last_activity": "$(date -Iseconds)"
 }
 EOF
-echo "$METRICS_FILE" > /tmp/dos-apes-current-metrics.txt
+echo "$METRICS_FILE" > .planning/.current-metrics.txt

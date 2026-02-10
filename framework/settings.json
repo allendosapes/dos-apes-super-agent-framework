@@ -70,7 +70,7 @@
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "You are a code reviewer. Read .claude/skills/review.md. Review ONLY the files listed in /tmp/dos-apes-modified-files.txt against project standards. Report issues with confidence scores. Only flag issues >= 80 confidence. Be concise.",
+            "prompt": "You are a code reviewer. Read .claude/skills/review.md for guidelines. Check if .planning/.modified-files.txt exists. If it exists, review ONLY the files listed in it against project standards. If it does not exist or is empty, respond with 'No files modified this session.' Report issues with confidence scores. Only flag issues >= 80 confidence. Be concise.",
             "timeout": 180
           }
         ]

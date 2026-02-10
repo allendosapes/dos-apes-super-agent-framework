@@ -270,13 +270,18 @@ function patchHooksForWindows(settings) {
       if (!group.hooks || !Array.isArray(group.hooks)) continue;
       for (const hook of group.hooks) {
         if (hook.type !== "command" || typeof hook.command !== "string") continue;
-        // Skip already-patched commands
         if (hook.command.includes("run-hook.cmd")) continue;
 
         const cmd = hook.command;
-        // Escape inner double quotes for wrapping in -c "..."
-        const escaped = cmd.replace(/"/g, '\\"');
-        hook.command = `scripts\\run-hook.cmd -c "${escaped}"`;
+        // Script-file invocation: bash scripts/foo.sh [args]
+        const scriptMatch = cmd.match(/^bash\s+(scripts\/[\w.-]+\.sh(?:\s+.*)?)$/);
+        if (scriptMatch) {
+          hook.command = `scripts\\run-hook.cmd ${scriptMatch[1]}`;
+        } else {
+          // Inline command: wrap with -c for Git Bash evaluation
+          const escaped = cmd.replace(/"/g, '\\"');
+          hook.command = `scripts\\run-hook.cmd -c "${escaped}"`;
+        }
       }
     }
   }
@@ -728,7 +733,8 @@ _Add requirements here or run /apes-build with a PRD._
   const gitignoreAdditions = [
     "# Dos Apes",
     ".planning/metrics/",
-    "/tmp/dos-apes-*",
+    ".planning/.modified-files.txt",
+    ".planning/.current-metrics.txt",
   ];
 
   if (fs.existsSync(gitignorePath)) {

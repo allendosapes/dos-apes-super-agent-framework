@@ -19,7 +19,7 @@ Read metrics from .planning/metrics/ and summarize:
 ### 1. Current Session
 
 ```bash
-CURRENT=$(cat /tmp/dos-apes-current-metrics.txt 2>/dev/null)
+CURRENT=$(cat .planning/.current-metrics.txt 2>/dev/null)
 if [ -n "$CURRENT" ] && [ -f "$CURRENT" ]; then
   echo "Current Session:"
   cat "$CURRENT" | node -e "
