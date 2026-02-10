@@ -254,6 +254,34 @@ _Managed by [Dos Apes Super Agent Framework v${VERSION}](https://github.com/alle
   return claudeMd;
 }
 
+// ─── Windows Hook Patching ──────────────────────────────────────────────────
+
+/**
+ * On Windows, the bare `bash` command often resolves to WSL's bash, which may
+ * be broken or misconfigured. This rewrites hook commands to use
+ * `scripts/run-hook.cmd` — a wrapper that finds Git Bash explicitly.
+ */
+function patchHooksForWindows(settings) {
+  if (!settings.hooks) return;
+
+  for (const hookGroups of Object.values(settings.hooks)) {
+    if (!Array.isArray(hookGroups)) continue;
+    for (const group of hookGroups) {
+      if (!group.hooks || !Array.isArray(group.hooks)) continue;
+      for (const hook of group.hooks) {
+        if (hook.type !== "command" || typeof hook.command !== "string") continue;
+        // Skip already-patched commands
+        if (hook.command.includes("run-hook.cmd")) continue;
+
+        const cmd = hook.command;
+        // Escape inner double quotes for wrapping in -c "..."
+        const escaped = cmd.replace(/"/g, '\\"');
+        hook.command = `scripts\\run-hook.cmd -c "${escaped}"`;
+      }
+    }
+  }
+}
+
 // ─── Settings.json Customizer ───────────────────────────────────────────────
 
 function customizeSettings(config) {
@@ -269,6 +297,11 @@ function customizeSettings(config) {
   // Remove v1 artifacts if present
   delete settings.contextFiles;
   delete settings._comment;
+
+  // Windows: route hook commands through Git Bash wrapper
+  if (process.platform === "win32") {
+    patchHooksForWindows(settings);
+  }
 
   return JSON.stringify(settings, null, 2);
 }
@@ -580,6 +613,15 @@ ${c.bold}Optional:${c.reset}
         delete existingSettings.permissions.allowedTools;
         existingSettings.permissions.allow = allow;
         migrated = true;
+      }
+
+      // Windows: patch hook commands to use Git Bash wrapper
+      if (process.platform === "win32") {
+        const hasUnpatchedBash = JSON.stringify(existingSettings.hooks || {}).includes('"bash ');
+        if (hasUnpatchedBash) {
+          patchHooksForWindows(existingSettings);
+          migrated = true;
+        }
       }
 
       if (migrated) {
