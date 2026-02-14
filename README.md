@@ -86,9 +86,12 @@ claude
 claude
 
 /apes-map                                    # Analyze your codebase
-/apes-feature "Add real-time notifications"  # Add a feature
+/apes-feature "Add real-time notifications"  # Add a feature (single-phase)
 /apes-fix "Login fails with special chars"   # Fix a bug
 /apes-refactor "Extract API client layer"    # Refactor safely
+
+# For multi-phase features with a PRD, use build (works for brownfield too)
+/apes-build --prd feature-prd.md --ralph
 ```
 
 ---
@@ -149,14 +152,14 @@ The platform (Claude Code Agent Teams + Tasks API) handles orchestration. Dos Ap
 
 | Command | Purpose |
 |---------|---------|
-| `/apes-build` | Full autonomous build from PRD to shipped product |
+| `/apes-build` | Full autonomous build from PRD to shipped product (works for greenfield and brownfield) |
 
 ### Brownfield
 
 | Command | Purpose |
 |---------|---------|
 | `/apes-map` | Analyze existing codebase |
-| `/apes-feature "desc"` | Add feature to existing project |
+| `/apes-feature "desc"` | Add a single-phase feature (for multi-phase PRDs, use `/apes-build`) |
 | `/apes-fix "desc"` | Test-first bug fix |
 | `/apes-refactor "desc"` | Behavior-preserving refactor |
 

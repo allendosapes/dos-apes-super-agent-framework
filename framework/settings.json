@@ -69,8 +69,8 @@
       {
         "hooks": [
           {
-            "type": "prompt",
-            "prompt": "You are a code reviewer. Read .claude/skills/review.md for guidelines. Check if .planning/.modified-files.txt exists. If it exists, review ONLY the files listed in it against project standards. If it does not exist or is empty, respond with 'No files modified this session.' Report issues with confidence scores. Only flag issues >= 80 confidence. Be concise.",
+            "type": "agent",
+            "prompt": "You are an automated code review gate. Check if files modified in this session have issues.\n\nFirst: if stop_hook_active is true in the hook input, respond immediately with: {\"ok\": true}\n\nSteps:\n1. Read .planning/.modified-files.txt for the list of modified files\n2. If the file does not exist or is empty, respond with: {\"ok\": true}\n3. Read .claude/skills/review.md for review guidelines\n4. Review each modified file. Only flag issues with confidence >= 80\n5. If no issues >= 80 confidence, respond with: {\"ok\": true}\n6. If issues found, respond with: {\"ok\": false, \"reason\": \"Fix before completing: [file:line - category (confidence: N) - description for each issue]\"}\n\nYou MUST respond with ONLY JSON: {\"ok\": true} or {\"ok\": false, \"reason\": \"...\"}",
             "timeout": 180
           }
         ]

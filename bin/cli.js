@@ -5,7 +5,7 @@ const path = require("path");
 const readline = require("readline");
 
 const FRAMEWORK_DIR = path.join(__dirname, "..", "framework");
-const VERSION = "2.0.0";
+const VERSION = "2.0.0-beta.7";
 
 // ─── ANSI Colors ────────────────────────────────────────────────────────────
 
@@ -629,7 +629,8 @@ ${c.bold}Optional:${c.reset}
             if (!group.hooks || !Array.isArray(group.hooks)) continue;
             for (const hook of group.hooks) {
               if (typeof hook.prompt === "string" && hook.prompt.includes("/tmp/dos-apes-modified-files.txt")) {
-                hook.prompt = "You are a code reviewer. Read .claude/skills/review.md for guidelines. Check if .planning/.modified-files.txt exists. If it exists, review ONLY the files listed in it against project standards. If it does not exist or is empty, respond with 'No files modified this session.' Report issues with confidence scores. Only flag issues >= 80 confidence. Be concise.";
+                hook.type = "agent";
+                hook.prompt = "You are an automated code review gate. Check if files modified in this session have issues.\n\nFirst: if stop_hook_active is true in the hook input, respond immediately with: {\"ok\": true}\n\nSteps:\n1. Read .planning/.modified-files.txt for the list of modified files\n2. If the file does not exist or is empty, respond with: {\"ok\": true}\n3. Read .claude/skills/review.md for review guidelines\n4. Review each modified file. Only flag issues with confidence >= 80\n5. If no issues >= 80 confidence, respond with: {\"ok\": true}\n6. If issues found, respond with: {\"ok\": false, \"reason\": \"Fix before completing: [file:line - category (confidence: N) - description for each issue]\"}\n\nYou MUST respond with ONLY JSON: {\"ok\": true} or {\"ok\": false, \"reason\": \"...\"}";
               }
               if (typeof hook.command === "string") {
                 hook.command = hook.command.replace(/\/tmp\/dos-apes-modified-files\.txt/g, ".planning/.modified-files.txt");
@@ -639,6 +640,21 @@ ${c.bold}Optional:${c.reset}
           }
         }
         migrated = true;
+      }
+
+      // Migrate broken prompt-type Stop hook to agent-type
+      const stopHooks = existingSettings.hooks?.Stop;
+      if (Array.isArray(stopHooks)) {
+        for (const group of stopHooks) {
+          if (!group.hooks || !Array.isArray(group.hooks)) continue;
+          for (const hook of group.hooks) {
+            if (hook.type === "prompt" && typeof hook.prompt === "string" && hook.prompt.includes("You are a code reviewer")) {
+              hook.type = "agent";
+              hook.prompt = "You are an automated code review gate. Check if files modified in this session have issues.\n\nFirst: if stop_hook_active is true in the hook input, respond immediately with: {\"ok\": true}\n\nSteps:\n1. Read .planning/.modified-files.txt for the list of modified files\n2. If the file does not exist or is empty, respond with: {\"ok\": true}\n3. Read .claude/skills/review.md for review guidelines\n4. Review each modified file. Only flag issues with confidence >= 80\n5. If no issues >= 80 confidence, respond with: {\"ok\": true}\n6. If issues found, respond with: {\"ok\": false, \"reason\": \"Fix before completing: [file:line - category (confidence: N) - description for each issue]\"}\n\nYou MUST respond with ONLY JSON: {\"ok\": true} or {\"ok\": false, \"reason\": \"...\"}";
+              migrated = true;
+            }
+          }
+        }
       }
 
       // Windows: patch hook commands to use Git Bash wrapper

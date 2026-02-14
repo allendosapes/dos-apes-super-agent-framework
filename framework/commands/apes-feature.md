@@ -5,6 +5,14 @@ allowed-tools: Read, Edit, Write, Bash, Grep, Glob
 
 # Add Feature: $ARGUMENTS
 
+## Scope
+
+This command is for **single-phase** feature work — one set of tasks planned and executed in a single pass. The feature description or requirements doc should describe work that can be broken into tasks but completed in one phase.
+
+**If your feature requires multiple phases** (e.g., a multi-phase PRD with foundation → core → polish), use `/apes-build --prd your-prd.md --ralph` instead — even for brownfield projects. `/apes-build` has phase iteration, resume detection, and ROADMAP-driven planning that `/apes-feature` does not.
+
+**Rule of thumb:** If you can describe it in a sentence or a short requirements doc → `/apes-feature`. If it needs a phased PRD → `/apes-build`.
+
 ## Team Composition
 
 | Teammate | Skills Loaded | Role |

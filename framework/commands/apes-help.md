@@ -66,14 +66,14 @@ This will:
 
 | Command        | Purpose                                               |
 | -------------- | ----------------------------------------------------- |
-| `/apes-build`  | **Full autonomous build from PRD to shipped product** |
+| `/apes-build`  | **Full autonomous build from PRD to shipped product (greenfield or brownfield)** |
 
 ### Brownfield Commands
 
 | Command                 | Purpose                         |
 | ----------------------- | ------------------------------- |
 | `/apes-map`             | Analyze existing codebase       |
-| `/apes-feature "desc"`  | Add feature to existing project |
+| `/apes-feature "desc"`  | Add a single-phase feature (for multi-phase PRDs, use `/apes-build`) |
 | `/apes-fix "desc"`      | Fix a bug                       |
 | `/apes-refactor "desc"` | Refactor existing code          |
 
@@ -141,11 +141,17 @@ L0: Build                 ← Compiles?
 /apes-build --prd ./docs/requirements.md --ralph --max-iterations 500
 ```
 
-### Add Feature to Existing
+### Add Feature to Existing (single-phase)
 
 ```bash
 /apes-map
 /apes-feature "Add dark mode with system preference detection"
+```
+
+### Add Complex Feature with PRD (multi-phase)
+
+```bash
+/apes-build --prd ./docs/notifications-prd.md --ralph
 ```
 
 ### Fix a Bug
