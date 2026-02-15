@@ -135,6 +135,12 @@ TaskCreate: "[GATE] Feature verification"
   description: "Run build, typecheck, lint, tests. Verify UI
     integration in browser if applicable."
   blockedBy: ["Add tests"]
+
+TaskCreate: "[GATE] Browser verification"
+  description: "If playwright.config exists, run E2E tests related to this feature.
+    If no Playwright config, use Playwright MCP tools: open app, navigate to the
+    feature, interact with it, verify it works. Take screenshot evidence."
+  blockedBy: ["[GATE] Feature verification"]
 ```
 
 ## Execution Phase
@@ -192,7 +198,23 @@ IF still failing after 3 attempts:
    ```
 
 5. **Final Verification**
-   Full suite + browser verification.
+
+   ```bash
+   npm run build && npm run typecheck && npm run lint && npm test
+   ```
+
+   Browser verification:
+   ```bash
+   if [ -f "playwright.config.ts" ] || [ -f "playwright.config.js" ]; then
+     npx playwright test --reporter=list
+   fi
+   ```
+
+   If no Playwright config, use Playwright MCP tools to verify:
+   - Open the app and navigate to the new feature
+   - Walk through the primary user flow
+   - Verify it renders and responds correctly
+   - Screenshot for evidence
 
 6. **Push Feature Branch**
    ```bash
@@ -232,9 +254,8 @@ IF still failing after 3 attempts:
 Feature is complete when:
 
 - [ ] All tasks implemented
-- [ ] All tests passing
-- [ ] UI integration verified (if applicable)
-- [ ] Browser tested
+- [ ] All tests passing (unit + integration)
+- [ ] E2E tests pass (if Playwright configured) OR browser smoke test done via MCP
 - [ ] Merged to main and pushed
 - [ ] Feature branch cleaned up
 

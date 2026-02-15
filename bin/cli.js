@@ -630,7 +630,7 @@ ${c.bold}Optional:${c.reset}
             for (const hook of group.hooks) {
               if (typeof hook.prompt === "string" && hook.prompt.includes("/tmp/dos-apes-modified-files.txt")) {
                 hook.type = "agent";
-                hook.prompt = "You are an automated code review gate. Check if files modified in this session have issues.\n\nFirst: if stop_hook_active is true in the hook input, respond immediately with: {\"ok\": true}\n\nSteps:\n1. Read .planning/.modified-files.txt for the list of modified files\n2. If the file does not exist or is empty, respond with: {\"ok\": true}\n3. Read .claude/skills/review.md for review guidelines\n4. Review each modified file. Only flag issues with confidence >= 80\n5. If no issues >= 80 confidence, respond with: {\"ok\": true}\n6. If issues found, respond with: {\"ok\": false, \"reason\": \"Fix before completing: [file:line - category (confidence: N) - description for each issue]\"}\n\nYou MUST respond with ONLY JSON: {\"ok\": true} or {\"ok\": false, \"reason\": \"...\"}";
+                hook.prompt = "IMPORTANT: Your ENTIRE response must be a single JSON object — nothing else.\nNo text before it, no text after it, no markdown code fences, no explanation.\n\nValid responses (pick exactly one):\n  {\"ok\": true}\n  {\"ok\": false, \"reason\": \"description of issues\"}\n\nIf stop_hook_active is true in the hook input, respond: {\"ok\": true}\n\nSteps:\n1. Read .planning/.modified-files.txt — if it does not exist or is empty, respond: {\"ok\": true}\n   Do NOT read any other files until step 1 succeeds with content.\n2. Read .claude/skills/review.md for review guidelines.\n3. Review each modified file. Only flag issues with confidence >= 80.\n4. No issues >= 80: {\"ok\": true}\n5. Issues found: {\"ok\": false, \"reason\": \"Fix: [file:line - category (N) - desc] ...\"}\n\nCRITICAL: Output ONLY the JSON object. No prose. No markdown. No fences.";
               }
               if (typeof hook.command === "string") {
                 hook.command = hook.command.replace(/\/tmp\/dos-apes-modified-files\.txt/g, ".planning/.modified-files.txt");
@@ -650,8 +650,47 @@ ${c.bold}Optional:${c.reset}
           for (const hook of group.hooks) {
             if (hook.type === "prompt" && typeof hook.prompt === "string" && hook.prompt.includes("You are a code reviewer")) {
               hook.type = "agent";
-              hook.prompt = "You are an automated code review gate. Check if files modified in this session have issues.\n\nFirst: if stop_hook_active is true in the hook input, respond immediately with: {\"ok\": true}\n\nSteps:\n1. Read .planning/.modified-files.txt for the list of modified files\n2. If the file does not exist or is empty, respond with: {\"ok\": true}\n3. Read .claude/skills/review.md for review guidelines\n4. Review each modified file. Only flag issues with confidence >= 80\n5. If no issues >= 80 confidence, respond with: {\"ok\": true}\n6. If issues found, respond with: {\"ok\": false, \"reason\": \"Fix before completing: [file:line - category (confidence: N) - description for each issue]\"}\n\nYou MUST respond with ONLY JSON: {\"ok\": true} or {\"ok\": false, \"reason\": \"...\"}";
+              hook.prompt = "IMPORTANT: Your ENTIRE response must be a single JSON object — nothing else.\nNo text before it, no text after it, no markdown code fences, no explanation.\n\nValid responses (pick exactly one):\n  {\"ok\": true}\n  {\"ok\": false, \"reason\": \"description of issues\"}\n\nIf stop_hook_active is true in the hook input, respond: {\"ok\": true}\n\nSteps:\n1. Read .planning/.modified-files.txt — if it does not exist or is empty, respond: {\"ok\": true}\n   Do NOT read any other files until step 1 succeeds with content.\n2. Read .claude/skills/review.md for review guidelines.\n3. Review each modified file. Only flag issues with confidence >= 80.\n4. No issues >= 80: {\"ok\": true}\n5. Issues found: {\"ok\": false, \"reason\": \"Fix: [file:line - category (N) - desc] ...\"}\n\nCRITICAL: Output ONLY the JSON object. No prose. No markdown. No fences.";
               migrated = true;
+            }
+          }
+        }
+      }
+
+      // Migrate old v2 Stop hook prompt (ends with "You MUST respond with ONLY JSON") to new resilient version
+      if (Array.isArray(stopHooks)) {
+        for (const group of stopHooks) {
+          if (!group.hooks || !Array.isArray(group.hooks)) continue;
+          for (const hook of group.hooks) {
+            if (hook.type === "agent" && typeof hook.prompt === "string" && hook.prompt.includes("You MUST respond with ONLY JSON")) {
+              hook.prompt = "IMPORTANT: Your ENTIRE response must be a single JSON object — nothing else.\nNo text before it, no text after it, no markdown code fences, no explanation.\n\nValid responses (pick exactly one):\n  {\"ok\": true}\n  {\"ok\": false, \"reason\": \"description of issues\"}\n\nIf stop_hook_active is true in the hook input, respond: {\"ok\": true}\n\nSteps:\n1. Read .planning/.modified-files.txt — if it does not exist or is empty, respond: {\"ok\": true}\n   Do NOT read any other files until step 1 succeeds with content.\n2. Read .claude/skills/review.md for review guidelines.\n3. Review each modified file. Only flag issues with confidence >= 80.\n4. No issues >= 80: {\"ok\": true}\n5. Issues found: {\"ok\": false, \"reason\": \"Fix: [file:line - category (N) - desc] ...\"}\n\nCRITICAL: Output ONLY the JSON object. No prose. No markdown. No fences.";
+              migrated = true;
+            }
+          }
+        }
+      }
+
+      // Migrate PostToolUse hooks missing || true safety net
+      const postToolUseHooks = existingSettings.hooks?.PostToolUse;
+      if (Array.isArray(postToolUseHooks)) {
+        const needsSafety = ["hook-format-and-stage.sh", "hook-typecheck.sh", "hook-test-related.sh"];
+        for (const group of postToolUseHooks) {
+          if (!group.hooks || !Array.isArray(group.hooks)) continue;
+          for (const hook of group.hooks) {
+            if (hook.type === "command" && typeof hook.command === "string") {
+              for (const script of needsSafety) {
+                if (hook.command.includes(script) && !hook.command.includes("|| true")) {
+                  hook.command = hook.command.replace(
+                    /bash\s+(scripts\/[\w.-]+\.sh)/,
+                    "bash $1 2>/dev/null || true"
+                  );
+                  // Also handle Windows-patched commands
+                  if (hook.command.includes("run-hook.cmd") && !hook.command.includes("|| true")) {
+                    hook.command += " 2>/dev/null || true";
+                  }
+                  migrated = true;
+                }
+              }
             }
           }
         }

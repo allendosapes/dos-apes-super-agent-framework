@@ -196,7 +196,7 @@ fi
 
 ---
 
-## STEP 2: BROWSER LEVELS (if --browser or Playwright configured)
+## STEP 2: BROWSER LEVELS (automatic when Playwright configured)
 
 ```bash
 # Level 6: E2E (if configured)

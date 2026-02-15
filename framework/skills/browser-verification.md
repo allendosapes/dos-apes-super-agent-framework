@@ -75,3 +75,45 @@ Generate Playwright test:
   Playwright tests: Before merge, comprehensive E2E suites
   Visual regression: After UI changes, catch unintended visual breaks
   Accessibility: Before every release, WCAG compliance gate
+
+## Phase-Specific Browser Test Plans
+
+Reference these checklists when executing `[GATE] UI Smoke Test` tasks during builds.
+
+### Foundation Phase Checklist
+
+  1. Start dev server (npm run dev)
+  2. Open root URL — page loads without errors
+  3. Check browser console — no JS errors or unhandled promise rejections
+  4. Navigate to each defined route — all render content (not blank/404)
+  5. Verify basic layout: header, navigation, content area present
+  6. Click each nav link — routing works without full page reload
+  7. Screenshot each page for evidence
+
+### Core Features Phase Checklist
+
+  1. For each new feature implemented this phase:
+     a. Navigate to the feature's entry point
+     b. Walk through the primary user flow end-to-end
+     c. Submit forms — verify validation, success, and error states
+     d. Verify data persists after CRUD operations (create → read back)
+     e. Check cross-feature navigation (e.g., list → detail → back)
+  2. Verify no regressions on Foundation phase pages
+  3. Test with empty states (no data) and populated states
+  4. Screenshot key states for evidence
+
+### Polish & Launch Phase Checklist
+
+  1. Run full E2E suite: npx playwright test --reporter=list
+  2. Cross-browser: run against Chromium AND Firefox minimum
+     npx playwright test --project=chromium
+     npx playwright test --project=firefox
+  3. Visual regression: capture baselines, compare against previous
+  4. Accessibility audit:
+     a. All images have alt text
+     b. All form inputs have labels
+     c. Color contrast >= 4.5:1
+     d. Keyboard navigation works (Tab through all interactive elements)
+     e. Screen reader landmarks present (main, nav, header)
+  5. Performance: pages load under 3s on simulated slow 3G
+  6. Screenshot full-page captures of every route for release evidence

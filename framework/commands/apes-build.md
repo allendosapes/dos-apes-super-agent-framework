@@ -346,7 +346,36 @@ TaskCreate: "[APPROVAL] Architecture Review"
 TaskCreate: "[GATE] Phase 1 Verification"
   description: "Run full verification pyramid (L0-L5). All must pass."
   blockedBy: ["[APPROVAL] Architecture Review"]
+
+TaskCreate: "[GATE] UI Smoke Test"
+  description: "If playwright.config exists: start dev server, run E2E smoke tests,
+    verify pages render and navigation works. Load skills/browser-verification.md.
+    If no Playwright config: use Playwright MCP tools to open the app, navigate major
+    routes, verify no errors. Mark completed with evidence (test output or screenshots)."
+  blockedBy: ["[GATE] Phase 1 Verification"]
 ```
+
+### Phase-End UI Test Plans
+
+Each phase should include browser verification appropriate to the phase's scope:
+
+**Foundation phase:**
+- App loads at root URL without errors
+- Routing works (navigate between defined routes)
+- No console errors on any page
+- Basic layout renders (header, nav, content area)
+
+**Core Features phase:**
+- Each feature's primary user flow works E2E in browser
+- Forms submit and validation shows correctly
+- Data displays after CRUD operations
+- Navigation between features works
+
+**Polish & Launch phase:**
+- Full E2E suite passes across Chromium + Firefox minimum
+- Visual regression baselines captured and clean
+- Accessibility audit passes (WCAG 2.1 AA)
+- Performance: pages load under 3s on throttled connection
 
 ---
 
@@ -414,6 +443,15 @@ git merge task/${TASK_ID_C}-${SLUG_C} --no-edit
 
 # Run verification on the combined result
 npm run build && npm run typecheck && npm test
+
+# Phase-end browser verification (if Playwright configured)
+if [ -f "playwright.config.ts" ] || [ -f "playwright.config.js" ]; then
+  echo "Running phase-end E2E smoke test..."
+  npx playwright test --reporter=list
+  # E2E failures block the phase merge
+fi
+# If no Playwright config, tester teammate should use Playwright MCP tools:
+# open app, navigate major routes, screenshot evidence
 
 # Clean up worktrees and task branches
 git worktree remove ../$(basename "$PWD")-wt-task-${TASK_ID_A}
@@ -607,7 +645,10 @@ npm run build
 npm run typecheck
 npm run lint
 npm test
-npm run test:e2e 2>/dev/null || true
+# E2E tests — blocking when Playwright is configured
+if [ -f "playwright.config.ts" ] || [ -f "playwright.config.js" ]; then
+  npx playwright test --reporter=list
+fi
 
 # Security check
 npm audit
@@ -823,7 +864,7 @@ Task 1: Project scaffolding
 Builder initializing Vite + React + TypeScript...
 Builder configuring tools...
 [builder → tester] Verification requested
-Tester: Build ✅ Types ✅ Lint ✅
+Tester: Build ✅ Types ✅ Lint ✅ E2E Smoke ✅
 Committed: chore(setup): initialize project
 
 [builder]
