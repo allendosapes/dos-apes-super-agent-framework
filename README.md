@@ -135,6 +135,9 @@ The platform (Claude Code Agent Teams + Tasks API) handles orchestration. Dos Ap
        │       coverage → security → E2E → visual regression)
        │
        ▼
+   BROWSER ── UI smoke test gate (Playwright or MCP fallback)
+       │
+       ▼
    MERGE ──── Squash merge to main, tag phase complete
        │
        ▼
@@ -209,7 +212,7 @@ L0.5 Auto Code Review    ← Fires on every Stop (automatic)
 L0  Build                ← Does it compile?
 ```
 
-**L0–L2.5** are deterministic — hooks fire on every file edit regardless of agent behavior. **L3–L5** are automated via scripts. **L6–L7** require Playwright MCP configured.
+**L0–L2.5** are deterministic — hooks fire on every file edit regardless of agent behavior. **L3–L5** are automated via scripts. **L6–L7** run automatically when `playwright.config.ts/js` exists in your project. When Playwright isn't configured, the tester uses Playwright MCP tools as a fallback — opening the app, navigating routes, and taking screenshots for evidence. Either way, browser verification is part of every build and feature flow.
 
 ---
 
@@ -245,7 +248,7 @@ These fire automatically — no agent cooperation required:
 | `metrics-update.sh` | PostToolUse | Updates file modification counts |
 | `check-doc-drift.sh` | On verify | Warns when source changes without doc updates |
 
-TypeScript checking, test running, and auto-formatting also fire as PostToolUse hooks (configured in `settings.json`).
+TypeScript checking, test running, and auto-formatting also fire as PostToolUse hooks (configured in `settings.json`). All PostToolUse hooks include safety nets (`|| true`) to prevent cascading failures when bash can't start (common on Windows).
 
 ### What Gets Installed
 
@@ -311,6 +314,7 @@ Built-in branching strategy with hook-enforced main branch protection:
 | Phase complete | Squash merge to main |
 | Task rollback | `git reset --hard phase-N/task-M-complete` |
 | Approval gates | `[APPROVAL]` tasks block until human confirms |
+| Browser gate | `[GATE] UI Smoke Test` verifies app works in browser after each phase |
 
 ---
 
@@ -393,7 +397,7 @@ Slash commands must be in `.claude/commands/`. If you installed globally, they'r
 
 ### Hooks not firing
 
-Check that `scripts/` directory exists in your project root and scripts are executable. On Windows, hooks run via `bash` which requires Git Bash or WSL.
+Check that `scripts/` directory exists in your project root and scripts are executable. On Windows, hooks route through `scripts/run-hook.cmd` which locates Git Bash automatically. If Git Bash isn't installed, hooks degrade gracefully (skip with a warning rather than failing the session).
 
 ### Playwright MCP not connecting
 
