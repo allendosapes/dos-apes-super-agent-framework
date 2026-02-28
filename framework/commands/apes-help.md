@@ -89,10 +89,11 @@ This will:
 
 ### State & Metrics Commands
 
-| Command         | Purpose                          |
-| --------------- | -------------------------------- |
-| `/apes-status`  | Show current position            |
-| `/apes-metrics` | Show session and project metrics |
+| Command         | Purpose                                    |
+| --------------- | ------------------------------------------ |
+| `/apes-board`   | Kanban board view with critical path       |
+| `/apes-status`  | Show current position (quick summary)      |
+| `/apes-metrics` | Show session and project metrics           |
 
 ---
 
