@@ -1,12 +1,12 @@
-# Dos Apes Framework — Architecture v2
+# Dos Apes Framework — Architecture v3
 
 ## Executive Summary
 
 **What it does:** Takes a PRD → ships complete, tested product autonomously using Claude Code Agent Teams.
 
-**Core mechanism:** Skills-based teammates, 8-level verification pyramid, hook-enforced quality gates, Tasks API for orchestration.
+**Core mechanism:** 10 skills, role-based agent spawning, gate-enforced task state machine, 8-level verification pyramid, acceptance criteria verification loop, hook-enforced quality gates.
 
-**Key shift from v1:** Replaced 12 hardcoded agents with 7 skill files on Claude Code's native Agent Teams platform. The framework is a playbook, not a runtime.
+**Key shift from v2:** Added product analysis and orchestration roles. Tasks now follow a gate-enforced state machine (BACKLOG → MERGED). Every acceptance criterion must have a passing test before a task can be verified. The installer captures richer project context (product description, deployment target, testing strategy).
 
 ---
 
@@ -22,42 +22,78 @@
                          │  (slash command) │
                          └────────┬────────┘
                                   │
-                    ┌─────────────┼─────────────┐
-                    │             │             │
-            ┌───────▼──────┐ ┌───▼────┐ ┌──────▼───────┐
-            │   PLAN       │ │ TEAM   │ │   EXECUTE    │
-            │ Tasks API    │ │ Agent  │ │ Build loop   │
-            │ creates deps │ │ Teams  │ │ per task     │
-            └──────────────┘ └────────┘ └──────┬───────┘
-                                               │
-                          ┌────────────────────┤
-                          │                    │
-              ┌───────────▼──────────┐ ┌───────▼───────────┐
-              │   HOOKS (automatic)  │ │   VERIFICATION    │
-              │ • guard main branch  │ │ 8-level pyramid   │
-              │ • TypeScript check   │ │ L0 → L7           │
-              │ • test on edit       │ │ (see below)       │
-              │ • track files        │ └───────┬───────────┘
-              │ • auto-review (Stop) │         │
-              └──────────────────────┘ ┌───────▼───────────┐
-                                       │   GIT WORKFLOW    │
-                                       │ Branch → Commit → │
-                                       │ Tag → Squash →    │
-                                       │ Merge to main     │
-                                       └───────────────────┘
+              ┌───────────────────┼───────────────────┐
+              │                   │                   │
+     ┌────────▼───────┐ ┌────────▼────────┐ ┌────────▼────────┐
+     │    INGEST       │ │     PLAN        │ │    EXECUTE       │
+     │ Product agent   │ │ Orchestrator    │ │ Build loop       │
+     │ parses PRD →    │ │ creates tasks   │ │ per task with    │
+     │ BACKLOG.md      │ │ with gates      │ │ state machine    │
+     └────────────────┘ └─────────────────┘ └────────┬────────┘
+                                                      │
+                          ┌──────────────────────────┤
+                          │                          │
+              ┌───────────▼──────────┐ ┌─────────────▼──────────┐
+              │   HOOKS (automatic)  │ │   VERIFICATION          │
+              │ • guard main branch  │ │ 8-level pyramid         │
+              │ • TypeScript check   │ │ + acceptance criteria   │
+              │ • test on edit       │ │   verification loop     │
+              │ • structure check    │ │ + gate-enforced         │
+              │ • auto-review (Stop) │ │   state transitions     │
+              └──────────────────────┘ └─────────────┬──────────┘
+                                       ┌─────────────▼──────────┐
+                                       │   GIT WORKFLOW          │
+                                       │ Branch → Commit → Tag → │
+                                       │ Squash → Merge to main  │
+                                       └────────────────────────┘
 ```
+
+---
+
+## Task State Machine
+
+Every task follows this state flow. Each transition has a gate check enforced by `scripts/check-task-gates.sh`.
+
+```
+BACKLOG → READY → IN_PROGRESS → IN_REVIEW → IN_QA → VERIFIED → MERGED
+```
+
+| Transition | Gate | Enforced By |
+|-----------|------|-------------|
+| BACKLOG → READY | Has acceptance criteria + all blockers resolved | check-task-gates.sh |
+| READY → IN_PROGRESS | Agent role assigned + branch exists | check-task-gates.sh |
+| IN_PROGRESS → IN_REVIEW | L0 build + L1 types + L2 tests pass | check-task-gates.sh |
+| IN_REVIEW → IN_QA | No critical review findings (confidence >= 90) | check-task-gates.sh |
+| IN_QA → VERIFIED | All acceptance criteria have passing tests + coverage met | Tester agent |
+| VERIFIED → MERGED | Full pyramid passes on merge branch | check-task-gates.sh |
+
+---
+
+## Role-Based Agent Teams
+
+Each role loads specific skills and owns a bounded domain (see `skills/orchestration.md` for full details).
+
+| Role | Skills Loaded | Owns |
+|------|--------------|------|
+| **Lead** | `product.md` + `orchestration.md` | Requirements analysis, task planning, coordination |
+| **Architect** | `architecture.md` | System design, ADRs, interface contracts |
+| **Builder** | `backend.md` + `frontend.md` + `devops.md` | Implementation + unit tests |
+| **Tester** | `testing.md` + `browser-verification.md` + `observability.md` | Verification, coverage, E2E |
+| **Reviewer** | `review.md` + `observability.md` | Code review, security audit |
+
+**Role boundaries:** Product never writes code. Architect writes schemas and contracts, not implementation. Builder implements against Architect's contracts. Tester writes tests against Product's acceptance criteria. Reviewer reads and reports — never fixes directly.
 
 ---
 
 ## Core Components
 
-### 1. Slash Commands (13)
+### 1. Slash Commands (15)
 
 Commands are the entry points. Each assembles the right team and workflow.
 
 | Command | Team Assembled | Workflow |
 |---------|---------------|----------|
-| `/apes-build` | architect + builder + tester + reviewer | Full PRD → product pipeline |
+| `/apes-build` | lead + architect + builder + tester + reviewer | Full PRD → product pipeline |
 | `/apes-feature` | builder + tester | Plan → implement → test → commit |
 | `/apes-fix` | debugger + tester | Reproduce → root cause → fix → verify |
 | `/apes-refactor` | builder + reviewer | Preserve behavior → refactor → verify |
@@ -67,25 +103,31 @@ Commands are the entry points. Each assembles the right team and workflow.
 | `/apes-test-visual` | tester | Screenshot comparison against baselines |
 | `/apes-test-a11y` | tester | WCAG 2.1 AA compliance audit |
 | `/apes-security-scan` | reviewer | npm audit + secrets + OWASP checks |
+| `/apes-board` | — (lead only) | Kanban board with critical path |
+| `/apes-gc` | reviewer | Codebase garbage collection sweep |
 | `/apes-status` | — (lead only) | Show progress and git state |
 | `/apes-metrics` | — (lead only) | Session and project metrics |
 | `/apes-help` | — (lead only) | Command reference |
 
-### 2. Skills (7)
+### 2. Skills (10)
 
 Skills are domain knowledge files that teammates load. They replace v1's 12 agent definitions.
 
 | Skill | File | Teaches |
 |-------|------|---------|
-| Architecture | `architecture.md` | System design, ADRs, tech decisions, scaling |
+| Architecture | `architecture.md` | System design, ADRs, ExecPlans, architecture rules |
 | Backend | `backend.md` | APIs, database, auth, business logic |
 | Frontend | `frontend.md` | Components, state, routing, a11y, responsive |
-| Testing | `testing.md` | TDD, coverage gates, 8-level pyramid |
+| Testing | `testing.md` | TDD, coverage gates, acceptance criteria verification |
 | Browser | `browser-verification.md` | Playwright, visual regression, E2E gen |
 | Design | `design-integration.md` | Figma MCP, design tokens, pixel validation |
 | Review | `review.md` | Confidence-based code review, security audit |
+| Product | `product.md` | PRD parsing, acceptance criteria, backlog structuring |
+| Orchestration | `orchestration.md` | Agent roles, handoff contracts, parallel execution |
+| Observability | `observability.md` | Structured logging, performance verification, health checks |
+| DevOps | `devops.md` | Deployment pipelines, environments, platform config |
 
-### 3. Hook Scripts (10)
+### 3. Hook Scripts (12)
 
 Deterministic quality enforcement. Fire regardless of agent behavior.
 
@@ -94,24 +136,17 @@ Deterministic quality enforcement. Fire regardless of agent behavior.
 | `guard-main-branch.sh` | PreToolUse (Edit/Write) | Block edits on main |
 | `hook-format-and-stage.sh` | PostToolUse (Edit/Write) | Prettier format + git add |
 | `hook-typecheck.sh` | PostToolUse (Edit/Write) | TypeScript check on .ts/.tsx files |
+| `check-structure.sh` | PostToolUse (Edit/Write) | Architectural boundary enforcement |
 | `hook-test-related.sh` | PostToolUse (Edit/Write) | Run related tests on .test.* files |
 | `track-modified-files.sh` | PostToolUse (Edit/Write) | Track files for auto-review |
+| `check-task-gates.sh` | Explicit (orchestrator) | State transition enforcement |
 | `check-coverage.sh` | Verify | Enforce 80% coverage |
 | `check-secrets.sh` | Verify | Detect leaked secrets |
 | `check-doc-drift.sh` | Verify | Warn on undocumented changes |
 | `metrics-init.sh` | SessionStart | Initialize metrics JSON |
 | `metrics-update.sh` | PostToolUse | Update file modification counts |
 
-### 4. Settings.json Hooks
-
-Additional hooks configured in settings.json (not separate scripts):
-
-| Trigger | Action |
-|---------|--------|
-| SessionStart | Print branch + roadmap status |
-| Stop | Auto code review subagent |
-
-### 5. CI Workflows (3)
+### 4. CI Workflows (3)
 
 GitHub Actions for scheduled quality enforcement:
 
@@ -180,15 +215,17 @@ Tasks prefixed with `[APPROVAL]` block downstream work until human confirms in c
 
 | File | Purpose | Update Frequency |
 |------|---------|------------------|
-| PROJECT.md | Vision, requirements | Once at init |
+| PROJECT.md | Vision, target users, success criteria | Once at init |
 | ROADMAP.md | Phase breakdown, status | Per phase |
-| MEMORY.md | Cross-session learnings | Continuously |
+| BACKLOG.md | Structured requirements with acceptance criteria | Once at ingest |
+| MEMORY.md | Cross-session learnings, capability gaps | Continuously |
+| ARCHITECTURE_RULES.md | Dependency direction + boundary walls | Per architecture change |
 
 ### Tasks API (Native)
 
 Claude Code's Tasks API replaces v1's manual STATE.md and PLAN.md:
-- Task creation with dependencies
-- Status tracking (pending → in-progress → complete)
+- Task creation with dependencies and acceptance criteria
+- Gate-enforced state transitions (BACKLOG → MERGED)
 - Dependency resolution for parallel execution
 
 ---
@@ -200,18 +237,18 @@ Claude Code's Tasks API replaces v1's manual STATE.md and PLAN.md:
 | **Skills** | Teach | Domain knowledge, patterns, anti-patterns |
 | **Commands** | Assemble | Team composition, workflow sequencing |
 | **Hooks** | Enforce | Deterministic quality checks on every action |
-| **Scripts** | Implement | The actual verification logic |
+| **Scripts** | Implement | The actual verification and gate logic |
 | **CI** | Schedule | Automated maintenance and quality sweeps |
-| **Templates** | Scaffold | PRDs, ADRs, CLAUDE.md for new projects |
+| **Templates** | Scaffold | PRDs, ADRs, ExecPlans, architecture rules, CLAUDE.md |
 
 ---
 
-## File Inventory (35 files)
+## File Inventory (44 files)
 
 ```
 framework/
 ├── settings.json                    # Hooks, permissions, MCP, env
-├── commands/                        # 13 slash commands
+├── commands/                        # 15 slash commands
 │   ├── apes-build.md
 │   ├── apes-feature.md
 │   ├── apes-fix.md
@@ -222,10 +259,12 @@ framework/
 │   ├── apes-test-visual.md
 │   ├── apes-test-a11y.md
 │   ├── apes-security-scan.md
+│   ├── apes-board.md
+│   ├── apes-gc.md
 │   ├── apes-status.md
 │   ├── apes-metrics.md
 │   └── apes-help.md
-├── skills/                          # 7 domain skills
+├── skills/                          # 11 domain skills + README
 │   ├── architecture.md
 │   ├── backend.md
 │   ├── frontend.md
@@ -233,8 +272,12 @@ framework/
 │   ├── browser-verification.md
 │   ├── design-integration.md
 │   ├── review.md
+│   ├── product.md
+│   ├── orchestration.md
+│   ├── observability.md
+│   ├── devops.md
 │   └── README.md
-├── scripts/                         # 10 hook scripts
+├── scripts/                         # 12 hook scripts
 │   ├── guard-main-branch.sh
 │   ├── hook-format-and-stage.sh
 │   ├── hook-typecheck.sh
@@ -243,16 +286,21 @@ framework/
 │   ├── check-coverage.sh
 │   ├── check-secrets.sh
 │   ├── check-doc-drift.sh
+│   ├── check-task-gates.sh
+│   ├── check-structure.sh
 │   ├── metrics-init.sh
 │   └── metrics-update.sh
 ├── ci/                              # 3 CI workflows
 │   ├── weekly-quality.yml
 │   ├── dependency-audit.yml
 │   └── post-merge-verify.yml
-└── templates/                       # 4 templates
+└── templates/                       # 7 templates
     ├── CLAUDE-TEMPLATE.md
     ├── PRD-TEMPLATE.md
     ├── adr-template.md
+    ├── execplan-template.md
+    ├── architecture-rules-template.md
+    ├── pipeline-test-scenario.md
     └── multi-repo-config.json
 ```
 
@@ -260,19 +308,18 @@ Plus: `bin/cli.js`, `package.json`, `assets/banner.txt`, `README.md`, `LICENSE`
 
 ---
 
-## v1 → v2 Migration
+## v2 → v3 Migration
 
-| v1 | v2 | Rationale |
+| v2 | v3 | Rationale |
 |----|-----|-----------|
-| 12 agent definitions | 7 skill files | Skills are composable; agents were rigid |
-| ORCHESTRATOR.md | CLAUDE.md + commands | Platform orchestrates; framework provides playbook |
-| 6 standards files | Consolidated into skills | Reduce file count; skills teach patterns inline |
-| 5 hook scripts | 7 scripts + settings.json hooks | More granular enforcement |
-| 5-level verification | 8-level pyramid | Added coverage gate, auto-review, security, visual |
-| Manual STATE.md | Tasks API | Native dependency tracking and status |
-| XML-based PLAN.md | Tasks API | Platform handles task coordination |
-| 10 slash commands | 13 slash commands | Added testing + metrics commands |
-| ~50 files | 35 files | Less is more |
+| 7 skill files | 11 skills (+ product, orchestration, observability, devops) | Agents need product analysis, coordination patterns, runtime diagnosis, and deployment knowledge |
+| Ad-hoc task tracking | Gate-enforced state machine (BACKLOG → MERGED) | Mechanical enforcement over documentation |
+| Verification at end of phase | Verification at every state transition | Catch issues early, not at merge time |
+| 13 slash commands | 15 commands (+ /apes-board, /apes-gc) | Kanban visibility and periodic codebase cleanup |
+| 10 hook scripts | 12 scripts (+ check-task-gates.sh, check-structure.sh) | Gate enforcement and architectural boundary checking |
+| 3-question installer | 6-question installer with project context | Product description, deployment target, testing strategy flow into generated files |
+| No acceptance criteria loop | Every criterion must have a passing test | Closes the gap from product intent to verified implementation |
+| 4 templates | 7 templates (+ execplan, architecture rules, pipeline test) | Richer scaffolding for builder handoffs and boundary enforcement |
 
 ---
 
@@ -280,5 +327,6 @@ Plus: `bin/cli.js`, `package.json`, `assets/banner.txt`, `README.md`, `LICENSE`
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 3.0.0 | 2026-02 | Product/orchestration roles, gate-enforced state machine, acceptance criteria verification, 4 new skills, /apes-board, /apes-gc, ExecPlans, architecture boundary enforcement, enhanced installer |
 | 2.0.0 | 2025-02 | Agent Teams rebuild, skills architecture, 8-level pyramid, hooks |
 | 1.0.0 | 2025-02 | Initial release with 12 agents, 5-level verification |
