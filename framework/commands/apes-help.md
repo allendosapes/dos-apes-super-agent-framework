@@ -95,6 +95,13 @@ This will:
 | `/apes-status`  | Show current position (quick summary)      |
 | `/apes-metrics` | Show session and project metrics           |
 
+### Maintenance Commands
+
+| Command         | Purpose                                    |
+| --------------- | ------------------------------------------ |
+| `/apes-gc`      | Codebase garbage collection sweep          |
+| `/apes-gc --fix`| GC with auto-fix for safe issues           |
+
 ---
 
 ## Flags
