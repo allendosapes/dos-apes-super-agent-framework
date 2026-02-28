@@ -5,7 +5,7 @@ const path = require("path");
 const readline = require("readline");
 
 const FRAMEWORK_DIR = path.join(__dirname, "..", "framework");
-const VERSION = "2.0.0-beta.9";
+const VERSION = "3.0.0";
 
 // ─── ANSI Colors ────────────────────────────────────────────────────────────
 
@@ -887,7 +887,13 @@ _Add requirements here or run /apes-build with a PRD._
   const docsTemplateDir = path.join(installBase, "docs", "templates");
   ensureDir(docsTemplateDir);
 
-  const templatesToCopy = ["PRD-TEMPLATE.md", "adr-template.md"];
+  const templatesToCopy = [
+    "PRD-TEMPLATE.md",
+    "adr-template.md",
+    "execplan-template.md",
+    "architecture-rules-template.md",
+    "pipeline-test-scenario.md",
+  ];
   let templateCount = 0;
 
   for (const tmpl of templatesToCopy) {

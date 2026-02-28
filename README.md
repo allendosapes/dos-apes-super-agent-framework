@@ -65,7 +65,10 @@ npx dos-apes-super-agent
 The installer will ask you:
 1. **Install location** — This project (recommended) or global
 2. **Project type** — Greenfield (new) or brownfield (existing)
-3. **Tech stack** — Preset or custom (generates a tailored CLAUDE.md)
+3. **Product description** — What you're building (flows into PROJECT.md)
+4. **Tech stack** — Preset or custom (generates a tailored CLAUDE.md)
+5. **Deployment target** — Vercel, Railway, Docker, AWS, GCP, Azure, etc.
+6. **Testing strategy** — Local dev, preview deploys, staging, CI-only
 
 ### Build Something
 
@@ -176,10 +179,18 @@ The platform (Claude Code Agent Teams + Tasks API) handles orchestration. Dos Ap
 | `/apes-test-a11y` | WCAG 2.1 AA accessibility audit |
 | `/apes-security-scan` | Full security pipeline (npm audit, secrets, OWASP) |
 
+### Maintenance
+
+| Command | Purpose |
+|---------|---------|
+| `/apes-gc` | Codebase garbage collection (stale docs, dead code, drift) |
+| `/apes-gc --fix` | GC with auto-fix for safe issues |
+
 ### Info
 
 | Command | Purpose |
 |---------|---------|
+| `/apes-board` | Kanban board with critical path and phase progress |
 | `/apes-status` | Show current position and progress |
 | `/apes-metrics` | Session and project metrics dashboard |
 | `/apes-help` | All commands with examples |
@@ -218,21 +229,25 @@ L0  Build                ← Does it compile?
 
 ## Architecture
 
-### Skills-Based Agent Teams
+### Role-Based Agent Teams
 
-Instead of 12 hardcoded agents, Dos Apes uses 7 skill files that any teammate can load:
+Each `/apes-build` run assembles a role-based team. 11 skill files provide domain expertise:
 
 | Skill | Domain |
 |-------|--------|
-| `architecture.md` | System design, ADRs, tech decisions, scaling |
+| `product.md` | PRD parsing, acceptance criteria, backlog structuring |
+| `orchestration.md` | Agent roles, handoff contracts, parallel execution |
+| `architecture.md` | System design, ADRs, ExecPlans, architecture rules |
 | `backend.md` | APIs, database, auth, business logic |
 | `frontend.md` | Components, state, routing, accessibility |
-| `testing.md` | TDD, coverage gates, 8-level pyramid |
+| `testing.md` | TDD, coverage gates, acceptance criteria verification |
 | `browser-verification.md` | Playwright, visual regression, E2E |
 | `design-integration.md` | Figma MCP, design tokens, pixel validation |
 | `review.md` | Confidence-based code review, security audit |
+| `observability.md` | Structured logging, performance verification, health checks |
+| `devops.md` | Deployment pipelines, environments, platform config |
 
-Commands assemble the right team. `/apes-build` spawns architect + builder + tester + reviewer. `/apes-fix` spawns a focused debugger + tester pair.
+Commands assemble the right team. `/apes-build` spawns lead + architect + builder + tester + reviewer. `/apes-fix` spawns a focused debugger + tester pair. Each role has defined handoff gates — work doesn't proceed until the gate passes.
 
 ### Hook Scripts (Deterministic Quality)
 
@@ -247,6 +262,8 @@ These fire automatically — no agent cooperation required:
 | `metrics-init.sh` | SessionStart | Initializes metrics tracking |
 | `metrics-update.sh` | PostToolUse | Updates file modification counts |
 | `check-doc-drift.sh` | On verify | Warns when source changes without doc updates |
+| `check-task-gates.sh` | Explicit (orchestrator) | Enforces state machine transitions |
+| `check-structure.sh` | PostToolUse (Edit/Write) | Architectural boundary enforcement |
 
 TypeScript checking, test running, and auto-formatting also fire as PostToolUse hooks (configured in `settings.json`). All PostToolUse hooks include safety nets (`|| true`) to prevent cascading failures when bash can't start (common on Windows).
 
@@ -256,7 +273,7 @@ TypeScript checking, test running, and auto-formatting also fire as PostToolUse 
 project-root/
 ├── CLAUDE.md                    # Project brain (generated for your stack)
 ├── .claude/
-│   ├── commands/                # 13 slash commands
+│   ├── commands/                # 15 slash commands
 │   │   ├── apes-build.md
 │   │   ├── apes-feature.md
 │   │   ├── apes-fix.md
@@ -267,19 +284,25 @@ project-root/
 │   │   ├── apes-test-visual.md
 │   │   ├── apes-test-a11y.md
 │   │   ├── apes-security-scan.md
+│   │   ├── apes-board.md
+│   │   ├── apes-gc.md
 │   │   ├── apes-status.md
 │   │   ├── apes-metrics.md
 │   │   └── apes-help.md
-│   ├── skills/                  # 7 domain skills + README
+│   ├── skills/                  # 11 domain skills + README
+│   │   ├── product.md
+│   │   ├── orchestration.md
 │   │   ├── architecture.md
 │   │   ├── backend.md
 │   │   ├── frontend.md
 │   │   ├── testing.md
 │   │   ├── browser-verification.md
 │   │   ├── design-integration.md
-│   │   └── review.md
+│   │   ├── review.md
+│   │   ├── observability.md
+│   │   └── devops.md
 │   └── settings.json            # Hooks, permissions, MCP servers
-├── scripts/                     # 10 hook scripts
+├── scripts/                     # 12 hook scripts
 │   ├── guard-main-branch.sh
 │   ├── hook-format-and-stage.sh
 │   ├── hook-typecheck.sh
@@ -288,13 +311,15 @@ project-root/
 │   ├── check-coverage.sh
 │   ├── check-secrets.sh
 │   ├── check-doc-drift.sh
+│   ├── check-task-gates.sh
+│   ├── check-structure.sh
 │   ├── metrics-init.sh
 │   └── metrics-update.sh
 ├── .planning/                   # Project state
 │   ├── PROJECT.md
 │   ├── ROADMAP.md
 │   └── MEMORY.md
-├── docs/templates/              # PRD and ADR templates
+├── docs/templates/              # PRD, ADR, ExecPlan, architecture rules templates
 └── .github/workflows/           # CI workflow templates (optional)
     ├── weekly-quality.yml
     ├── dependency-audit.yml
@@ -369,6 +394,20 @@ npx dos-apes-super-agent --help            # Show all options
 
 ---
 
+## The AI Software Company
+
+Every `/apes-build` run assembles an AI software company:
+
+- **Product Manager** (lead) — Parses the PRD, writes acceptance criteria, structures the backlog
+- **Architect** — Designs the system, writes ADRs and ExecPlans, defines architecture rules
+- **Engineers** (builder) — Implement against the architect's contracts, write unit tests
+- **QA** (tester) — Verifies every acceptance criterion has a passing test, runs the pyramid
+- **Reviewer** — Confidence-scored code review, security audit, never fixes directly
+
+Each role loads specific skills and has defined handoff gates. The task state machine (BACKLOG → READY → IN_PROGRESS → IN_REVIEW → IN_QA → VERIFIED → MERGED) enforces that work doesn't skip steps. Gate checks are mechanical — no agent can bypass them.
+
+---
+
 ## Philosophy
 
 ### Plan First, Execute Second
@@ -381,7 +420,7 @@ Claude must prove its work, not just claim completion. Hooks make verification a
 
 ### Skills Over Agents
 
-v1 had 12 hardcoded agents. v2 has 7 skill files that any teammate can load. The platform handles orchestration; the framework provides domain expertise.
+v1 had 12 hardcoded agents. v3 has 11 skill files that any teammate can load, plus product and orchestration roles for requirements analysis and coordination. The platform handles orchestration; the framework provides domain expertise.
 
 ### Hooks Over Trust
 
@@ -408,6 +447,10 @@ npm install -D @playwright/test
 npx playwright install
 ```
 
+### Gate check failing
+
+Task state transitions are enforced by `scripts/check-task-gates.sh`. If a gate blocks progression, fix the underlying issue (e.g., failing tests for IN_PROGRESS → IN_REVIEW). The gate will tell you which check failed. Do not bypass gates — they exist to catch issues early.
+
 ### Coverage gate failing
 
 The default threshold is 80%. Adjust in `scripts/check-coverage.sh` or skip with:
@@ -427,6 +470,7 @@ Built on patterns from:
 - **[VibeKanban](https://vibekanban.com)** — Git worktree orchestration, parallel execution
 - **[Ralph Wiggum](https://github.com/anthropics/claude-code/blob/main/plugins/ralph-wiggum/README.md)** — Iterative loops, persistence
 - **Boris Cherny's Workflow** — Verification-first philosophy, shared CLAUDE.md
+- **[OpenAI Harness Engineering](https://x.com/GrantSlatton/status/1888657344296124680)** — "Map not manual", mechanical enforcement over documentation
 
 ---
 

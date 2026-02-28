@@ -1,7 +1,7 @@
 {
   "name": "dos-apes-super-agent",
-  "version": "2.0.0-beta.9",
-  "description": "Dos Apes Super Agent Framework — Multi-agent coding framework built on Claude Code Agent Teams",
+  "version": "3.0.0",
+  "description": "Dos Apes Super Agent Framework — PRD-to-product pipeline with role-based agent teams, gate-enforced task state machine, and 8-level verification pyramid for Claude Code",
   "main": "bin/cli.js",
   "bin": {
     "dos-apes-super-agent": "bin/cli.js"
@@ -40,6 +40,9 @@
     "framework/templates/CLAUDE-TEMPLATE.md",
     "framework/templates/PRD-TEMPLATE.md",
     "framework/templates/adr-template.md",
+    "framework/templates/execplan-template.md",
+    "framework/templates/architecture-rules-template.md",
+    "framework/templates/pipeline-test-scenario.md",
     "framework/templates/multi-repo-config.json",
     "framework/settings.json",
     "assets/",

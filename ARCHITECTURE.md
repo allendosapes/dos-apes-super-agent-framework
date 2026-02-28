@@ -4,7 +4,7 @@
 
 **What it does:** Takes a PRD → ships complete, tested product autonomously using Claude Code Agent Teams.
 
-**Core mechanism:** 10 skills, role-based agent spawning, gate-enforced task state machine, 8-level verification pyramid, acceptance criteria verification loop, hook-enforced quality gates.
+**Core mechanism:** 11 skills, role-based agent spawning, gate-enforced task state machine, 8-level verification pyramid, acceptance criteria verification loop, hook-enforced quality gates.
 
 **Key shift from v2:** Added product analysis and orchestration roles. Tasks now follow a gate-enforced state machine (BACKLOG → MERGED). Every acceptance criterion must have a passing test before a task can be verified. The installer captures richer project context (product description, deployment target, testing strategy).
 
@@ -109,7 +109,7 @@ Commands are the entry points. Each assembles the right team and workflow.
 | `/apes-metrics` | — (lead only) | Session and project metrics |
 | `/apes-help` | — (lead only) | Command reference |
 
-### 2. Skills (10)
+### 2. Skills (11)
 
 Skills are domain knowledge files that teammates load. They replace v1's 12 agent definitions.
 
