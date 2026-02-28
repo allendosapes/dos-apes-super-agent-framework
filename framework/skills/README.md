@@ -51,3 +51,34 @@ Create additional skills for patterns specific to your project:
 - Include anti-patterns — show what to avoid
 - Reference other skills where domains overlap
 - Write for the teammate context — they'll read this at task start
+
+## Framework Conventions
+
+Iron rules that apply to every skill, command, and hook in the framework.
+
+### 1. All agent-readable state lives in the repository
+
+No external databases, no API-only state, no runtime-only configuration. If it's not in the repo, it doesn't exist for agents.
+
+| State | Where it lives |
+|-------|---------------|
+| Task status | Tasks API (persists to the session) |
+| Cross-session state | `.planning/` files |
+| Architecture decisions | ADRs in `docs/` |
+| Configuration | `CLAUDE.md` + `settings.json` |
+
+### 2. Skills are generic — project context goes in CLAUDE.md and .planning/
+
+Never add project-specific logic to a skill file. Skills teach **how** to build well. `CLAUDE.md` provides **what** to build and **where** it deploys. `.planning/` provides **why** (product vision, roadmap, learnings).
+
+### 3. Hooks enforce — skills teach — commands assemble
+
+If a quality check must always happen, it's a **hook** (deterministic). If an agent needs domain knowledge, it's a **skill** (composable). If a workflow needs to be kicked off, it's a **command** (team launcher).
+
+### 4. Capability gaps become infrastructure
+
+When an agent struggles with a task, diagnose what's missing (tool, abstraction, documentation) and build it into the repo. Each solved gap becomes infrastructure for all future tasks.
+
+---
+
+These conventions align with the principles from OpenAI's Harness Engineering: "a map not a manual" (skills provide patterns, not step-by-step scripts), "mechanical enforcement over documentation" (hooks enforce what skills only teach), and "what the agent can't see doesn't exist" (all state must be repo-visible).
