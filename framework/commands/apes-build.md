@@ -23,6 +23,7 @@ allowed-tools: Read, Edit, Write, Bash, Grep, Glob
 
 | Teammate | Skills Loaded | Role |
 |----------|--------------|------|
+| lead | `skills/product.md` + `skills/orchestration.md` | Requirements analysis, task planning, coordination |
 | architect | `skills/architecture.md` | System design, tech stack, phase planning |
 | builder | `skills/backend.md` + `skills/frontend.md` | Implementation |
 | tester | `skills/testing.md` + `skills/browser-verification.md` | Verification, coverage, E2E |
@@ -204,6 +205,40 @@ mkdir -p .planning/codebase
 git init 2>/dev/null || true
 ```
 
+### Analyze Requirements (Product Agent)
+
+Before the architect designs anything, the lead loads `skills/product.md` and analyzes the PRD:
+
+```
+1. Read .planning/PROJECT.md for domain context (product vision, target users, success criteria
+   captured during install). Use this to inform priority classification.
+
+2. Parse the PRD/idea into a structured task backlog:
+   - Extract every stated requirement with priority (P0/P1/P2)
+   - Identify happy paths, edge cases, and error states
+   - Write acceptance criteria in GIVEN/WHEN/THEN format for each requirement
+
+3. Flag ambiguous requirements that need human clarification:
+   - Vague adjectives ("fast", "intuitive", "seamless")
+   - Missing specifics ("support multiple formats" — which formats?)
+   - Implicit assumptions not stated in the PRD
+   → If any P0 requirements are ambiguous, PAUSE and ask the human before proceeding.
+
+4. Output the structured backlog to .planning/BACKLOG.md:
+
+   ## [Requirement Name] (P0)
+   **What:** [capability]
+   **Who:** [user/actor]
+   **Why:** [business value]
+   ### Acceptance Criteria
+   - GIVEN [context] WHEN [action] THEN [outcome]
+   - GIVEN [context] WHEN [action] THEN [outcome]
+
+   Repeat for each requirement, grouped by priority.
+```
+
+This backlog feeds into PHASE 2 — every task created via Tasks API must trace back to a requirement here.
+
 ### Generate PROJECT.md
 
 Extract from PRD:
@@ -309,7 +344,7 @@ npm run typecheck # Type checking
 
 ### Architect Designs Phase
 
-The architect teammate loads `skills/architecture.md` and designs the phase.
+The architect teammate loads `skills/architecture.md` and designs the phase. The lead loads `skills/orchestration.md` to plan execution.
 
 For Phase 1 (Foundation), typically:
 
@@ -320,31 +355,41 @@ For Phase 1 (Foundation), typically:
 
 ### Create Tasks via Tasks API
 
+Every task must include acceptance criteria from the BACKLOG.md analysis, a verification approach, and a role assignment per `skills/orchestration.md`:
+
 Use TaskCreate to define tasks with dependencies:
 
 ```
 TaskCreate: "Project Scaffolding"
   description: "Initialize project with Vite + React + TypeScript.
     Configure ESLint, Prettier, TypeScript strict. Set up folder structure."
+  acceptance: "GIVEN a fresh repo WHEN npm run build is executed THEN it exits 0"
   verify: "npm run build passes"
+  role: builder
 
 TaskCreate: "Core Data Models"
   description: "Define TypeScript types and database schema."
+  acceptance: "GIVEN the type definitions WHEN npm run typecheck runs THEN zero errors"
   verify: "npm run typecheck passes"
+  role: builder
   blockedBy: ["Project Scaffolding"]
 
 TaskCreate: "UI Shell"
   description: "Create layout component, routing, and basic page structure."
+  acceptance: "GIVEN the app WHEN navigating to each route THEN the page renders without errors"
   verify: "npm run build passes, routes render"
+  role: builder
   blockedBy: ["Project Scaffolding"]
 
 TaskCreate: "[APPROVAL] Architecture Review"
   description: "PAUSE. Present architecture decisions to human for review.
     Do NOT mark complete until human confirms in chat."
+  role: lead
   blockedBy: ["Core Data Models", "UI Shell"]
 
 TaskCreate: "[GATE] Phase 1 Verification"
   description: "Run full verification pyramid (L0-L5). All must pass."
+  role: tester
   blockedBy: ["[APPROVAL] Architecture Review"]
 
 TaskCreate: "[GATE] UI Smoke Test"
@@ -352,8 +397,11 @@ TaskCreate: "[GATE] UI Smoke Test"
     verify pages render and navigation works. Load skills/browser-verification.md.
     If no Playwright config: use Playwright MCP tools to open the app, navigate major
     routes, verify no errors. Mark completed with evidence (test output or screenshots)."
+  role: tester
   blockedBy: ["[GATE] Phase 1 Verification"]
 ```
+
+The lead should identify execution waves and determine parallel vs sequential execution based on dependency analysis patterns in `skills/orchestration.md`.
 
 ### Phase-End UI Test Plans
 
@@ -556,6 +604,13 @@ TASK RETRY LOOP (max 3 attempts per task):
            Try a DIFFERENT approach:
            - Attempt 1: Direct fix based on error output
            - Attempt 2: Re-read related code for context, try alternative impl
+           - Attempt 2→3 BRIDGE: Capability gap detection
+             Ask: "What capability is missing — tool, abstraction, or documentation?"
+             IF a gap is identified:
+               Create a sub-task to build the missing capability
+               Log the gap in .planning/MEMORY.md:
+                 "## Capability Gap: [description] — resolved by [sub-task]"
+               Complete the sub-task, then retry the original task
            - Attempt 3: Rollback task to last good state, rewrite from scratch
 
   END WHILE
