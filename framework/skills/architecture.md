@@ -44,6 +44,31 @@ Decisions that require ADRs:
 - Deployment architecture
 - Third-party service integrations
 
+### ExecPlans
+
+ADRs and ExecPlans serve different purposes:
+
+- **ADRs** record **decisions** — why we chose X over Y. They go through an `[APPROVAL]` gate.
+- **ExecPlans** record **implementation plans** — how to build X. They are the builder handoff artifact.
+
+The architect produces both: ADR first (for the approval gate), then ExecPlan (for builder handoff). The flow is:
+
+```
+PRD requirement → ADR (decision) → [APPROVAL] → ExecPlan (blueprint) → Builder implements
+```
+
+ExecPlans live in `.planning/execplans/` and each one maps to one or more tasks in the backlog. They define file scope, interface contracts, implementation steps, and verification plan — enough detail that a builder agent can implement end-to-end without additional context.
+
+Use the template at `docs/templates/execplan-template.md` to create new ExecPlans.
+
+When to create an ExecPlan:
+- Any task that touches 3+ files
+- Any task that introduces a new interface or data flow
+- Any task where the implementation approach isn't obvious from the acceptance criteria alone
+
+When to skip:
+- Single-file fixes, config changes, or tasks where the acceptance criteria fully specify the implementation
+
 ## Phase Decomposition
 
 Break projects into 3-5 phases. Each phase should be independently deployable.
