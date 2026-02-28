@@ -158,6 +158,7 @@
 
   "env": {
     "DOS_APES_FRAMEWORK": "true",
-    "DOS_APES_VERSION": "2.0.0"
+    "DOS_APES_VERSION": "2.0.0",
+    "DOS_APES_GATE_SCRIPT": "scripts/check-task-gates.sh"
   }
 }
