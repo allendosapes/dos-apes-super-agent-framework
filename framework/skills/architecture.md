@@ -69,6 +69,15 @@ When to create an ExecPlan:
 When to skip:
 - Single-file fixes, config changes, or tasks where the acceptance criteria fully specify the implementation
 
+### Architecture Rules File
+
+After making tech stack decisions in Phase 1, the architect should generate `.planning/ARCHITECTURE_RULES.md` from the template at `docs/templates/architecture-rules-template.md`. This file defines:
+
+- **Dependency direction:** Which directories can import from which (e.g., `src/services -> src/types, src/lib`)
+- **Boundary walls:** Explicit "never import" rules (e.g., `src/services -> src/components`)
+
+The `scripts/check-structure.sh` hook reads this file and enforces boundaries on every `.ts`/`.tsx` file edit — violations block the agent automatically. Update the rules file when adding new layers or reorganizing modules.
+
 ## Phase Decomposition
 
 Break projects into 3-5 phases. Each phase should be independently deployable.

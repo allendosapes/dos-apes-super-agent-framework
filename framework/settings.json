@@ -48,6 +48,11 @@
           },
           {
             "type": "command",
+            "command": "bash scripts/check-structure.sh 2>/dev/null || true",
+            "timeout": 15
+          },
+          {
+            "type": "command",
             "command": "bash scripts/hook-test-related.sh 2>/dev/null || true",
             "timeout": 60
           },
