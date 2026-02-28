@@ -104,6 +104,26 @@ async function askChoice(question, options) {
   });
 }
 
+async function askMultiChoice(question, options) {
+  console.log(`\n${c.bold}  ${question}${c.reset}`);
+  options.forEach((opt, i) => {
+    console.log(`    ${c.cyan}${i + 1}.${c.reset} ${opt.label}${opt.desc ? c.dim + " — " + opt.desc + c.reset : ""}`);
+  });
+  console.log();
+
+  const rl = createPrompt();
+  return new Promise((resolve) => {
+    rl.question(`${c.white}  Choose (comma-separated, e.g. 1,3): ${c.reset}`, (answer) => {
+      rl.close();
+      const indices = answer.split(",").map(s => parseInt(s.trim(), 10) - 1);
+      const selected = indices
+        .filter(i => i >= 0 && i < options.length)
+        .map(i => options[i].value);
+      resolve(selected.length > 0 ? selected : [options[0].value]);
+    });
+  });
+}
+
 // ─── File Operations ────────────────────────────────────────────────────────
 
 function copyDir(src, dest, label) {
@@ -166,6 +186,9 @@ function generateClaudeMd(config) {
     testing,
     deployment,
     packageManager,
+    productDescription,
+    deployTarget,
+    testingStrategy,
   } = config;
 
   const techStackLines = [];
@@ -175,6 +198,40 @@ function generateClaudeMd(config) {
   if (styling) techStackLines.push(`- **Styling:** ${styling}`);
   if (testing) techStackLines.push(`- **Testing:** ${testing}`);
   if (deployment) techStackLines.push(`- **Deployment:** ${deployment}`);
+
+  // Deploy target label mapping
+  const deployTargetLabels = {
+    vercel: "Vercel",
+    railway: "Railway",
+    gcp: "Google Cloud (GCP)",
+    aws: "AWS",
+    azure: "Azure",
+    "github-pages": "GitHub Pages (static)",
+    docker: "Docker / self-hosted",
+    undecided: "Not decided yet",
+  };
+
+  // Testing strategy label mapping
+  const testingStrategyLabels = {
+    localhost: "Local dev server (localhost)",
+    preview: "Preview deployments (Vercel/Netlify previews)",
+    staging: "Cloud staging environment",
+    "ci-only": "CI-only (no manual testing)",
+  };
+
+  const deploySection = deployTarget
+    ? `## Deployment\n\n- **Target:** ${deployTargetLabels[deployTarget] || deployTarget}`
+    : "";
+
+  let testSection = "";
+  if (testingStrategy && testingStrategy.length > 0) {
+    const strategyLines = testingStrategy.map(s => `- ${testingStrategyLabels[s] || s}`).join("\n");
+    testSection = `## Testing Strategy\n\n${strategyLines}`;
+    const hasBrowserEnv = testingStrategy.some(s => ["localhost", "preview", "staging"].includes(s));
+    if (!hasBrowserEnv) {
+      testSection += `\n\n> **Note:** No browser testing environment selected. L6 (E2E/Browser) and L7 (Visual Regression) verification levels are deferred until a test environment is configured.`;
+    }
+  }
 
   const pm = packageManager || "npm";
   const run = pm === "yarn" ? "yarn" : pm === "pnpm" ? "pnpm" : pm === "bun" ? "bun" : "npm run";
@@ -190,6 +247,10 @@ ${description || "[Describe what this project is and its current state]"}
 ## Tech Stack
 
 ${techStackLines.length > 0 ? techStackLines.join("\n") : "- **TBD** — Run /apes-build with a PRD to set up tech stack"}
+
+${deploySection}
+
+${testSection}
 
 ## Commands
 
@@ -306,6 +367,15 @@ function customizeSettings(config) {
   // Windows: route hook commands through Git Bash wrapper
   if (process.platform === "win32") {
     patchHooksForWindows(settings);
+  }
+
+  // Add cloud CLI permissions based on deploy target
+  if (config.deployTarget === "gcp") {
+    settings.permissions.allow.push("Bash(gcloud *)");
+  } else if (config.deployTarget === "aws") {
+    settings.permissions.allow.push("Bash(aws *)");
+  } else if (config.deployTarget === "azure") {
+    settings.permissions.allow.push("Bash(az *)");
   }
 
   return JSON.stringify(settings, null, 2);
@@ -429,6 +499,9 @@ ${c.bold}Optional:${c.reset}
     testing: "",
     deployment: "",
     packageManager: "npm",
+    productDescription: "",
+    deployTarget: "",
+    testingStrategy: [],
   };
 
   if (!flags.yes) {
@@ -438,6 +511,13 @@ ${c.bold}Optional:${c.reset}
 
     if (projectType === "brownfield") {
       config.description = await ask("Brief description");
+
+      console.log(`${c.dim}  Example: A B2B SaaS platform for managing restaurant inventory with real-time supplier integration${c.reset}`);
+      config.productDescription = await ask(
+        "Describe your product in 1-2 sentences",
+        "A web application"
+      );
+
       // Detect package manager
       if (fs.existsSync(path.join(process.cwd(), "bun.lockb"))) {
         config.packageManager = "bun";
@@ -448,6 +528,12 @@ ${c.bold}Optional:${c.reset}
       }
     } else {
       config.description = await ask("What are you building?");
+
+      console.log(`${c.dim}  Example: A B2B SaaS platform for managing restaurant inventory with real-time supplier integration${c.reset}`);
+      config.productDescription = await ask(
+        "Describe your product in 1-2 sentences",
+        "A web application"
+      );
 
       const stack = await askChoice("Tech stack preset?", [
         { value: "react-node", label: "React + Node.js", desc: "TypeScript, Tailwind, Vitest, PostgreSQL" },
@@ -494,8 +580,29 @@ ${c.bold}Optional:${c.reset}
         { value: "bun", label: "bun" },
       ]);
     }
+
+    config.deployTarget = await askChoice("Where will this deploy?", [
+      { value: "vercel", label: "Vercel" },
+      { value: "railway", label: "Railway" },
+      { value: "gcp", label: "Google Cloud (GCP)" },
+      { value: "aws", label: "AWS" },
+      { value: "azure", label: "Azure" },
+      { value: "github-pages", label: "GitHub Pages (static)" },
+      { value: "docker", label: "Docker / self-hosted" },
+      { value: "undecided", label: "Not sure yet" },
+    ]);
+
+    config.testingStrategy = await askMultiChoice("How will you test? (select all that apply)", [
+      { value: "localhost", label: "Local dev server", desc: "localhost" },
+      { value: "preview", label: "Preview deployments", desc: "Vercel/Netlify previews" },
+      { value: "staging", label: "Cloud staging environment" },
+      { value: "ci-only", label: "CI-only", desc: "no manual testing" },
+    ]);
   } else {
     config.projectName = path.basename(process.cwd());
+    config.productDescription = "A web application";
+    config.deployTarget = "docker";
+    config.testingStrategy = ["localhost"];
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -734,9 +841,17 @@ ${c.bold}Optional:${c.reset}
     // Create PROJECT.md stub
     const projectMd = `# ${config.projectName || "Project"}
 
-## Vision
+## Product Vision
 
-${config.description || "[Describe the product vision]"}
+${config.productDescription || config.description || "[Describe the product vision]"}
+
+## Target Users
+
+(To be defined)
+
+## Success Criteria
+
+(To be defined)
 
 ## Status
 

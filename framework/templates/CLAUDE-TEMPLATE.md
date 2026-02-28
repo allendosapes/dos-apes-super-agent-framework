@@ -56,6 +56,14 @@ You don't need to understand the technical sections below — they're for the AI
 - **Testing:** [e.g., Vitest + React Testing Library]
 - **Deployment:** [e.g., Vercel + Railway]
 
+## Deployment
+
+{{DEPLOYMENT_TARGET}}
+
+## Testing Strategy
+
+{{TESTING_STRATEGY}}
+
 ## Project Structure
 
 ```
