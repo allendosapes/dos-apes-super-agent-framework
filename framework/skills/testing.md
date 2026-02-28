@@ -103,6 +103,60 @@ When coverage drops below threshold:
 3. Focus on uncovered branches first (most common gap)
 4. Write tests for error paths and edge cases
 
+## Acceptance Criteria Verification
+
+This closes the loop from product intent to verified implementation. Every acceptance criterion from the product agent must have a corresponding passing test.
+
+### Reading Acceptance Criteria
+
+The tester reads the task's acceptance criteria (GIVEN/WHEN/THEN format from `.planning/BACKLOG.md`). Each criterion becomes **at least one** test case. The criterion wording drives the test name.
+
+### Test-to-Criteria Mapping
+
+Every test file should include a comment block mapping tests to acceptance criteria:
+
+```typescript
+// Acceptance Criteria Coverage:
+// AC-1: "GIVEN a logged-in user WHEN they click 'New Task' THEN a modal appears"
+//   → test: "shows new task modal on button click"
+// AC-2: "GIVEN an empty task name WHEN user submits THEN validation error shows"
+//   → test: "displays validation error for empty task name"
+```
+
+This makes traceability explicit — reviewers and future agents can verify coverage at a glance.
+
+### Criteria Coverage Report
+
+After running tests, produce a criteria coverage report:
+
+```
+═══ ACCEPTANCE CRITERIA VERIFICATION ═══
+Task: [task name]
+Criteria: 5 defined, 5 covered, 0 uncovered
+
+✅ AC-1: Modal appears on click       → shows-modal.test.ts:12
+✅ AC-2: Validation error              → validation.test.ts:24
+✅ AC-3: Task saves to DB              → api.test.ts:45
+✅ AC-4: Success toast                 → shows-modal.test.ts:38
+✅ AC-5: List refreshes                → task-list.test.ts:67
+═════════════════════════════════════════
+```
+
+### Blocking Rule
+
+A task **cannot** transition to VERIFIED if any acceptance criterion lacks a corresponding passing test. This is enforced by the tester agent — not a hook — because mapping criteria to tests requires judgment. See `scripts/check-task-gates.sh` for how state transitions are gated.
+
+### Edge Case & Error Testing
+
+For every happy-path criterion, verify at least one error/edge case:
+
+- **Invalid input** — What happens with empty strings, null, wrong types?
+- **Network failure** — What happens when an API call fails or times out?
+- **Empty/null data** — What renders when the list is empty or data is missing?
+- **Boundary values** — What happens at limits (max length, zero, negative)?
+
+Name error tests with the criterion they guard: `"AC-1: shows error when modal fails to load"`.
+
 ## Integration Testing
 
 ### API Integration Tests
