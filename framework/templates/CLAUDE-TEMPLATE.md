@@ -64,6 +64,59 @@ You don't need to understand the technical sections below — they're for the AI
 
 {{TESTING_STRATEGY}}
 
+## Planning & Missions
+
+Strategic phases live in `.planning/ROADMAP.md`. Atomic execution units — **missions** — live as individual markdown files under `.planning/missions/<state>/`, where `<state>` is one of `todo`, `doing`, `review`, `done`, or `canceled`. A mission's location on disk is its lifecycle state; transitions happen via `git mv`, so the audit trail is the file's git history.
+
+Missions optionally claim a phase via the `phase` field in their frontmatter; standalone missions (bug fixes, quick wins) are first-class and need no phase. The full mission file format, state machine, dependency rules, and workpad protocol are documented in `.claude/skills/missions.md` — load that skill before creating, transitioning, or reviewing missions.
+
+### Writing good acceptance criteria
+
+The `acceptance` array in a mission's frontmatter is the contract. A reviewer reads it to decide "did this mission deliver what it promised?" Bad criteria block reviewer judgment; good criteria make the answer mechanical.
+
+Three properties to aim for:
+
+- **Specific.** Name the input, the action, and the observable outcome. No "works correctly", "looks good", "performs well".
+- **Testable.** A test or a screenshot can prove or disprove the claim without arguing about interpretation.
+- **Atomic.** One claim per criterion. If you find yourself writing "and", split it.
+
+| Good | Bad | Why |
+|---|---|---|
+| `"POST /todos with valid body returns 201 and the created todo"` | `"The endpoint works"` | "works" is unobservable |
+| `"Validation error returns 400 with field-level error messages"` | `"Bad input is handled gracefully"` | "gracefully" can't be tested |
+| `"Login form rejects passwords shorter than 8 characters with inline error"` | `"Login is secure"` | "secure" is too broad to verify in one mission |
+| `"Page TTI under 2.5s on throttled 3G in Lighthouse CI"` | `"Page is fast"` | "fast" needs a number |
+
+If a criterion can't be checked off without a human's subjective opinion, it's underspecified — sharpen it before moving the mission to `doing`.
+
+### Workpad convention
+
+The `## Workpad` section of each mission file is an append-only log of everything that happens during execution. It survives across sessions; a future agent picking up the mission reads the workpad first to understand where to resume.
+
+Format every entry as a heading with timestamp + role, then bullet points:
+
+```markdown
+### 2026-05-01 14:22 — builder
+- Scaffolded route in `src/routes/todos.ts`; followed thin-handler pattern from `backend.md`.
+- Validation schema in `src/schemas/todo.ts` using Zod (matches existing convention).
+- Blocked: existing test fixture loader doesn't support POST bodies. Patched it; will discuss in review.
+
+### 2026-05-01 16:10 — tester
+- Added 6 unit tests for the route (happy + 5 validation cases). All green.
+- L0/L1/L2/L2.5 pass locally. Evidence packet at .planning/missions/review/M-0001/evidence/.
+- [x] "Endpoint POST /todos returns 201 with created todo body" — verified by todos.test.ts:42
+- [x] "Validation error returns 400 with field-level error messages" — verified by todos.test.ts:71
+```
+
+Rules:
+
+- **Append only.** Never edit or delete prior entries; if you were wrong, append a correction below.
+- **Timestamp every block.** `### YYYY-MM-DD HH:MM — <role>` is the parseable form (status dashboard reads it).
+- **One block per work session.** Don't fragment a continuous session into a dozen micro-entries.
+- **Acceptance check-offs go here.** When verifying, append `- [x] "<criterion>"` lines that quote the criterion verbatim and cite the evidence (test path:line, screenshot, log).
+
+The skill `.claude/skills/missions.md` has the full anti-pattern list. The most common mistakes: editing `done` missions, skipping the `review` state, and creating missions with no acceptance criteria. Don't.
+
 ## Project Structure
 
 ```

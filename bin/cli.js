@@ -5,7 +5,7 @@ const path = require("path");
 const readline = require("readline");
 
 const FRAMEWORK_DIR = path.join(__dirname, "..", "framework");
-const VERSION = "3.0.0";
+const VERSION = "3.1.0";
 
 // ─── ANSI Colors ────────────────────────────────────────────────────────────
 
@@ -430,10 +430,14 @@ ${c.bold}What gets installed:${c.reset}
   ├── skills/          7 domain skills (architecture, testing, security, etc.)
   └── settings.json    Permissions, hooks, MCP servers
 
-  scripts/             10 hook scripts (quality gates, metrics, etc.)
-  .planning/           Project state directory
+  scripts/             10+ hook scripts (quality gates, metrics, evidence, etc.)
+  .planning/
+  ├── PROJECT.md       Vision, users, success criteria
+  ├── ROADMAP.md       Strategic phases + auto-tracked missions
+  ├── MEMORY.md        Cross-session learnings
+  └── missions/        Mission files per state (todo/doing/review/done/canceled)
   CLAUDE.md            Project brain (customized for your stack)
-  docs/templates/      PRD and ADR templates
+  docs/templates/      PRD, ADR, ExecPlan, mission, and pipeline templates
 
 ${c.bold}Optional:${c.reset}
   .github/workflows/   CI templates (weekly quality, dep audit, post-merge)
@@ -837,7 +841,9 @@ ${c.bold}Optional:${c.reset}
   // ── 7. .planning/ directory ──
   const planningDir = path.join(installBase, ".planning");
 
-  if (ensureDir(planningDir)) {
+  const planningCreated = ensureDir(planningDir);
+
+  if (planningCreated) {
     // Create PROJECT.md stub
     const projectMd = `# ${config.projectName || "Project"}
 
@@ -865,22 +871,60 @@ _Add requirements here or run /apes-build with a PRD._
 `;
     fs.writeFileSync(path.join(planningDir, "PROJECT.md"), projectMd);
 
-    // Create ROADMAP.md stub
-    fs.writeFileSync(
-      path.join(planningDir, "ROADMAP.md"),
-      `# Roadmap\n\n_Run /apes-build to generate phases from PRD._\n`
-    );
-
     // Create MEMORY.md
     fs.writeFileSync(
       path.join(planningDir, "MEMORY.md"),
       `# Memory\n\nCross-session learnings and patterns.\n\n- ${new Date().toISOString().split("T")[0]}: Project initialized with Dos Apes v${VERSION}\n`
     );
 
-    printStep("Planning", ".planning/ (PROJECT.md, ROADMAP.md, MEMORY.md)");
-    totalFiles += 3;
+    printStep("Planning", ".planning/ (PROJECT.md, MEMORY.md)");
+    totalFiles += 2;
   } else {
     printSkip("Planning", ".planning/ already exists — preserved");
+  }
+
+  // Mission state directories — scaffold only when the tree does not exist.
+  // If .planning/missions/ already exists we leave it entirely alone so that
+  // re-running the installer never disturbs in-flight missions.
+  const missionsRoot = path.join(planningDir, "missions");
+  const missionStates = ["todo", "doing", "review", "done", "canceled"];
+
+  if (!fs.existsSync(missionsRoot)) {
+    fs.mkdirSync(missionsRoot, { recursive: true });
+    for (const state of missionStates) {
+      const stateDir = path.join(missionsRoot, state);
+      fs.mkdirSync(stateDir, { recursive: true });
+      // .gitkeep keeps the empty state directory tracked by git
+      fs.writeFileSync(path.join(stateDir, ".gitkeep"), "");
+    }
+    printStep(
+      "Missions",
+      `.planning/missions/{${missionStates.join(",")}}/ (.gitkeep in each)`
+    );
+    totalFiles += missionStates.length; // count the .gitkeep files
+  } else {
+    printSkip("Missions", ".planning/missions/ already exists — preserved");
+  }
+
+  // ROADMAP.md — copy template only if no roadmap exists
+  const roadmapPath = path.join(planningDir, "ROADMAP.md");
+  if (!fs.existsSync(roadmapPath)) {
+    const roadmapTemplate = path.join(FRAMEWORK_DIR, "templates", "ROADMAP-TEMPLATE.md");
+    if (fs.existsSync(roadmapTemplate)) {
+      fs.copyFileSync(roadmapTemplate, roadmapPath);
+      printStep("Roadmap", ".planning/ROADMAP.md (phase + mission tracker)");
+      totalFiles++;
+    } else {
+      // Fallback if template is missing from the package for any reason
+      fs.writeFileSync(
+        roadmapPath,
+        `# Roadmap\n\n_Run /apes-build to generate phases from PRD._\n`
+      );
+      printStep("Roadmap", ".planning/ROADMAP.md (stub — template not found)");
+      totalFiles++;
+    }
+  } else {
+    printSkip("Roadmap", ".planning/ROADMAP.md already exists — preserved");
   }
 
   // ── 8. Templates ──
@@ -893,6 +937,7 @@ _Add requirements here or run /apes-build with a PRD._
     "execplan-template.md",
     "architecture-rules-template.md",
     "pipeline-test-scenario.md",
+    "mission-template.md",
   ];
   let templateCount = 0;
 

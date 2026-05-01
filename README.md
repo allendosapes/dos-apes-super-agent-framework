@@ -152,13 +152,72 @@ The platform (Claude Code Agent Teams + Tasks API) handles orchestration. Dos Ap
 
 ---
 
+## Missions
+
+A **mission** is the atomic unit of work — one focused outcome a team finishes, verifies, and merges. Each mission lives as a single markdown file under `.planning/missions/<state>/M-NNNN-<slug>.md`, where `<state>` is one of `todo`, `doing`, `review`, `done`, or `canceled`. The file's location on disk *is* its lifecycle state; transitions happen via `git mv`, so the audit trail is the file's git history.
+
+### Why missions?
+
+Missions are atomic; **roadmap phases** are strategic. A phase says "where we're going next quarter"; a mission says "this specific change, with these acceptance criteria, verified by these levels, finished and merged." Multiple missions can claim a phase via the optional `phase` frontmatter field, but missions also stand alone — bug fixes and quick wins don't need a phase. Missions replace ad-hoc TODOs scattered through chat, issue trackers, and code: there is now exactly one place a unit of work lives, and one filesystem-driven state machine governs how it moves.
+
+### Lifecycle
+
+```bash
+# 1. Create a mission in .planning/missions/todo/
+/apes-mission new "Add POST /todos endpoint" --priority 2 --label backend
+
+# 2. Build it — moves to doing/, creates an isolated worktree, runs verification
+/apes-build --mission M-0001
+
+# 3. Generate the evidence packet (verification log + diff + auto-review + screenshots)
+/apes-evidence M-0001
+
+# 4. Submit for review (move into review/), reviewer reads the packet, then approves
+/apes-mission move M-0001 review
+/apes-mission move M-0001 done
+```
+
+Or chain through several at once:
+
+```bash
+/apes-build --prd requirements.md --ralph    # PRD generates missions, then builds them in priority order
+```
+
+`/apes-status` summarizes everything — what's in flight, what's blocked, what's done this week.
+
+### State machine
+
+```
+todo ──▶ doing ──▶ review ──▶ done
+                      │
+                      └──▶ doing  (rejected revision)
+
+any state ──▶ canceled  (except done; done is terminal)
+```
+
+Every transition has preconditions: dependencies must be `done` to leave `todo`; required verification levels must show `pass` to leave `doing`; an evidence packet must exist to leave `review`. The framework refuses transitions that skip those gates.
+
+---
+
 ## Commands
 
 ### Build
 
 | Command | Purpose |
 |---------|---------|
-| `/apes-build` | Full autonomous build from PRD to shipped product (works for greenfield and brownfield) |
+| `/apes-build` | Full autonomous build from PRD, idea, or specific mission |
+| `/apes-build --mission M-NNNN` | Build a single mission end-to-end (todo → review) |
+
+### Missions
+
+| Command | Purpose |
+|---------|---------|
+| `/apes-mission new "<title>"` | Create a mission in `todo/` with auto-incremented ID |
+| `/apes-mission list` | List missions, filterable by state, phase, or label |
+| `/apes-mission show <M-NNNN>` | Display a mission's full file and per-mission directory |
+| `/apes-mission move <M-NNNN> <state>` | Transition a mission via `git mv` with precondition checks |
+| `/apes-mission workpad <M-NNNN> "<note>"` | Append a timestamped workpad entry |
+| `/apes-evidence <M-NNNN>` | Generate the evidence packet (proof-of-work bundle for review) |
 
 ### Brownfield
 
@@ -199,10 +258,11 @@ The platform (Claude Code Agent Teams + Tasks API) handles orchestration. Dos Ap
 
 | Flag | Effect |
 |------|--------|
-| `--ralph` | Autonomous iteration loop until complete |
-| `--max-iterations N` | Limit iterations (default: 50, build: 500) |
-| `--prd [file]` | Path to PRD document |
-| `--idea "[text]"` | Describe what to build |
+| `--mission <M-NNNN>` | Build a specific mission (mutually exclusive with `--prd`/`--idea`) |
+| `--prd [file]` | Generate missions from a PRD; combine with `--ralph` to build them |
+| `--idea "[text]"` | Generate missions from a one-line idea; combine with `--ralph` to build |
+| `--ralph` | Autonomous iteration loop until `todo/` is drained |
+| `--max-iterations N` | Per-mission iteration cap (default: 50) |
 
 ---
 
@@ -273,12 +333,14 @@ TypeScript checking, test running, and auto-formatting also fire as PostToolUse 
 project-root/
 ├── CLAUDE.md                    # Project brain (generated for your stack)
 ├── .claude/
-│   ├── commands/                # 15 slash commands
+│   ├── commands/                # 17 slash commands
 │   │   ├── apes-build.md
 │   │   ├── apes-feature.md
 │   │   ├── apes-fix.md
 │   │   ├── apes-refactor.md
 │   │   ├── apes-map.md
+│   │   ├── apes-mission.md      # Mission CRUD and state transitions
+│   │   ├── apes-evidence.md     # Generate evidence packets
 │   │   ├── apes-verify.md
 │   │   ├── apes-test-e2e.md
 │   │   ├── apes-test-visual.md
@@ -289,7 +351,7 @@ project-root/
 │   │   ├── apes-status.md
 │   │   ├── apes-metrics.md
 │   │   └── apes-help.md
-│   ├── skills/                  # 11 domain skills + README
+│   ├── skills/                  # 14 domain skills + README
 │   │   ├── product.md
 │   │   ├── orchestration.md
 │   │   ├── architecture.md
@@ -300,9 +362,12 @@ project-root/
 │   │   ├── design-integration.md
 │   │   ├── review.md
 │   │   ├── observability.md
-│   │   └── devops.md
+│   │   ├── devops.md
+│   │   ├── missions.md          # Mission file format and lifecycle
+│   │   ├── worktrees.md         # Mission worktree management
+│   │   └── evidence-packets.md  # Evidence packet format and review
 │   └── settings.json            # Hooks, permissions, MCP servers
-├── scripts/                     # 12 hook scripts
+├── scripts/                     # 15 hook + helper scripts
 │   ├── guard-main-branch.sh
 │   ├── hook-format-and-stage.sh
 │   ├── hook-typecheck.sh
@@ -314,12 +379,22 @@ project-root/
 │   ├── check-task-gates.sh
 │   ├── check-structure.sh
 │   ├── metrics-init.sh
-│   └── metrics-update.sh
+│   ├── metrics-update.sh
+│   ├── mission-worktree.js      # Worktree create/sync/remove/list
+│   ├── log-verification.js      # Append run to active mission's verification.jsonl
+│   └── evidence-packet.js       # Generate the proof-of-work bundle
 ├── .planning/                   # Project state
-│   ├── PROJECT.md
-│   ├── ROADMAP.md
-│   └── MEMORY.md
-├── docs/templates/              # PRD, ADR, ExecPlan, architecture rules templates
+│   ├── PROJECT.md               # Vision, users, success criteria
+│   ├── ROADMAP.md               # Strategic phases + auto-tracked missions
+│   ├── MEMORY.md                # Cross-session learnings
+│   ├── active-mission           # Single line: ID of mission this session is executing
+│   └── missions/                # Mission files per state
+│       ├── todo/
+│       ├── doing/
+│       ├── review/
+│       ├── done/
+│       └── canceled/
+├── docs/templates/              # PRD, ADR, ExecPlan, mission, architecture rules
 └── .github/workflows/           # CI workflow templates (optional)
     ├── weekly-quality.yml
     ├── dependency-audit.yml

@@ -14,6 +14,7 @@ The Dos Apes framework uses an 8-level verification pyramid:
 L0:   Build                    ← npm run build
 L0.5: Auto Code Review         ← Stop hook (runs automatically)
 L1:   Static Analysis          ← typecheck + lint
+L1.5: Documentation Drift      ← scripts/check-doc-drift.sh
 L2:   Unit Tests               ← npm test
 L2.5: Coverage Gate            ← scripts/check-coverage.sh
 L3:   Integration Tests        ← npm run test:integration
@@ -24,6 +25,81 @@ L7:   Visual Regression        ← Playwright screenshot diff
 ```
 
 Levels 0-5 are mandatory. Levels 6-7 activate when Playwright is configured.
+
+## Verification Logs
+
+Every verification run is appended as one line to a JSON-Lines log under the active mission's directory. This log is the source of truth for "did this mission pass" and is consumed by the evidence-packet generator and the status dashboard.
+
+### File location
+
+```
+.planning/missions/<state>/M-NNNN/verification.jsonl
+```
+
+The per-mission directory (`M-NNNN/`) lives alongside the mission's markdown file (`M-NNNN-<slug>.md`) inside the current state folder. When a mission transitions states, both move together.
+
+### Record schema
+
+One JSON object per line:
+
+```json
+{
+  "timestamp": "2026-04-30T15:23:01Z",
+  "level": "L2",
+  "level_name": "Unit Tests",
+  "outcome": "pass",
+  "duration_ms": 12340,
+  "details": {},
+  "summary": "All 47 unit tests passed"
+}
+```
+
+| Field | Type | Notes |
+|---|---|---|
+| `timestamp` | string | ISO 8601 UTC, second precision |
+| `level` | string | Pyramid level ID: `L0`, `L0.5`, `L1`, `L1.5`, `L2`, `L2.5`, `L3`, `L4`, `L5`, `L6`, `L7` |
+| `level_name` | string | Human-readable name; canonical mapping in `log-verification.js` |
+| `outcome` | string | `pass` \| `fail` \| `skip` |
+| `duration_ms` | number \| null | Wall-clock duration; `null` if not measured |
+| `details` | object | Level-specific freeform JSON (coverage percentages, tool name, etc.) |
+| `summary` | string | One-line human-readable result |
+
+The schema is intentionally minimal — anything that varies between levels lives in `details`.
+
+### How to log a run
+
+Verification scripts call the helper after their main work:
+
+```bash
+node scripts/log-verification.js <level> <outcome> <summary> [details-json]
+```
+
+Example from `check-coverage.sh`:
+
+```bash
+node scripts/log-verification.js L2.5 pass \
+  "Coverage 80% threshold met (lines=82 branches=78 functions=85)" \
+  '{"runner":"vitest","threshold":80,"lines":82,"branches":78,"functions":85}'
+```
+
+The helper resolves the active mission ID by reading `.planning/active-mission` (a one-line file written when a mission transitions to `doing`).
+
+### Graceful degradation contract
+
+The verification log is **best-effort**. If any of these conditions hold, the helper prints a single warning to stderr and exits zero:
+
+- `.planning/active-mission` does not exist or is unreadable.
+- The active-mission file contains an invalid mission ID.
+- The mission file cannot be located in any state directory.
+- The log file cannot be written (permissions, disk full, etc.).
+
+Calling scripts must therefore never fail because of logging. The pattern in every script is:
+
+```bash
+node scripts/log-verification.js <args> 2>/dev/null || true
+```
+
+Argument-validation errors (unknown level, invalid outcome, malformed JSON) exit with code 2 — these are programmer errors and should surface in development, but the `|| true` in the call site keeps the verification pipeline running.
 
 ## Unit Testing Patterns
 

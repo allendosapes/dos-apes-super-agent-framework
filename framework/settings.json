@@ -117,6 +117,7 @@
       "Bash(pnpm *)",
       "Bash(bun *)",
       "Bash(node *)",
+      "Bash(node scripts/mission-worktree.js:*)",
       "Bash(tsc *)",
       "Bash(tsx *)",
       "Bash(vitest *)",

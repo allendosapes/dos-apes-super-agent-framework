@@ -5,19 +5,36 @@ allowed-tools: Read, Edit, Write, Bash, Grep, Glob
 
 # Build Product
 
-**The "hands off" command. Feed it a PRD, walk away, come back to a shipped product.**
+**The "hands off" command. Feed it a PRD or a mission, walk away, come back to a shipped product.**
 
 ```bash
-/apes-build --prd requirements.md --ralph --max-iterations 500
+/apes-build                                  # Pick the highest-priority unblocked mission and build it
+/apes-build --mission M-0001                 # Build one specific mission
+/apes-build --prd requirements.md --ralph    # Generate missions from a PRD, then build them in priority order
+/apes-build --idea "..." --ralph             # Same, from a one-line idea
 ```
 
 ## Arguments
 
-- `--prd [file]` - Path to PRD or requirements document
-- `--idea "[text]"` - Or just describe what you want to build
-- `--ralph` - Enable autonomous loop (default: true for build)
-- `--max-iterations N` - Max iterations (default: 500)
-- `--fresh` - Ignore existing progress and start from scratch
+- `--mission <M-NNNN>` — Build a specific mission. Mutually exclusive with `--prd` and `--idea`.
+- `--prd <file>` — Generate missions from a PRD, then (with `--ralph`) build them in priority order.
+- `--idea "<text>"` — Generate missions from a one-line idea, then (with `--ralph`) build them.
+- `--ralph` — After mission generation, iterate through the generated missions. Without `--ralph` the command stops after generating missions to `todo/` so a human can review them first.
+- `--max-iterations N` — Per-mission iteration cap. Overrides the mission's `max_iterations` frontmatter (default 50).
+- `--fresh` — Ignore existing progress and start from scratch.
+
+### Flag interaction matrix
+
+| Flags                          | Behavior                                                                                  |
+|--------------------------------|-------------------------------------------------------------------------------------------|
+| (none)                         | Pick highest-priority unblocked mission from `todo/`, build it. Refuse if `todo/` is empty. |
+| `--mission M-NNNN`             | Build that mission. Refuse if mission is missing, already in `doing`/`review`, or has unmet deps. |
+| `--prd file.md`                | Generate missions to `todo/` from the PRD. Stop. Human reviews; runs `/apes-build` later. |
+| `--prd file.md --ralph`        | Generate missions, then build them sequentially in priority order until `todo/` is drained or a mission fails. |
+| `--idea "..."`                 | Same as `--prd` but with a one-line input.                                                |
+| `--idea "..." --ralph`         | Same as `--prd --ralph`.                                                                  |
+| `--mission` + `--prd`/`--idea` | **Error.** Mutually exclusive — `--mission` consumes a mission, `--prd`/`--idea` produce them. |
+| `--fresh`                      | Combinable with any of the above. Wipes existing progress (tasks, workpads, evidence) before starting. |
 
 ## Team Composition
 
@@ -28,6 +45,200 @@ allowed-tools: Read, Edit, Write, Bash, Grep, Glob
 | builder | `skills/backend.md` + `skills/frontend.md` | Implementation |
 | tester | `skills/testing.md` + `skills/browser-verification.md` | Verification, coverage, E2E |
 | reviewer | `skills/review.md` | Code review, security audit |
+
+---
+
+## MISSION MODE
+
+`/apes-build` is mission-aware. Most invocations execute exactly one mission
+end-to-end (todo → doing → review). PRD/idea flows generate one or more
+missions first, then chain through them when `--ralph` is set.
+
+Before doing anything else, load the supporting skills once at the top of
+the session:
+
+```
+Read .claude/skills/missions.md
+Read .claude/skills/worktrees.md
+Read .claude/skills/evidence-packets.md
+Read .claude/skills/testing.md
+```
+
+The five state directories under `.planning/missions/` are the single source
+of truth for what work exists and where it lives. The `.planning/active-mission`
+file (single line, `M-NNNN`) marks which mission this session is currently
+executing — verification scripts read it to log to the right place.
+
+### Step 1 — Resolve the target mission
+
+```
+IF --mission <id> is set:
+  TARGET = <id>
+  IF mission file is not found in any state dir:
+    FAIL: "mission <id> not found"
+  IF mission is in doing/ or review/:
+    FAIL: "mission <id> is already in <state>; use /apes-mission show or /apes-status to inspect"
+  IF mission is in done/ or canceled/:
+    FAIL: "mission <id> is in <state>; missions are immutable after completion"
+  IF mission has unmet dependencies (any depends_on not in done/):
+    FAIL: "mission <id> blocked by: <unmet ids>"
+
+ELIF --prd or --idea is set:
+  Generate missions (Step 1b below). If --ralph is not set, stop here.
+  Otherwise enter the loop in Step 5.
+
+ELSE (no flags):
+  Scan .planning/missions/todo/ for missions with all depends_on in done/.
+  Sort by priority (1 = highest), then created (oldest first).
+  TARGET = first entry, or FAIL: "no unblocked missions in todo/"
+```
+
+### Step 1b — PRD/idea ingestion (only with `--prd` or `--idea`)
+
+The product agent (`.claude/skills/product.md`) and architect
+(`.claude/skills/architecture.md`) decompose the input into one or more
+missions. Each generated mission MUST be valid per the missions skill
+(populated `acceptance`, declared `verification.required_levels`,
+`workspace.branch` and `workspace.worktree` set, `phase` claimed if a
+roadmap phase exists). Write each to `.planning/missions/todo/`.
+
+Print a summary table of what was created. Without `--ralph`, stop. With
+`--ralph`, fall through to Step 5 with the generated missions queued.
+
+### Step 2 — Move target into `doing`
+
+For the resolved `TARGET` mission ID:
+
+```bash
+# Move the mission file (and any per-mission directory) atomically.
+SRC=$(find .planning/missions/todo -name "${TARGET}-*.md")
+SLUG=$(basename "$SRC")
+git mv "$SRC" ".planning/missions/doing/$SLUG"
+if [ -d ".planning/missions/todo/${TARGET}" ]; then
+  git mv ".planning/missions/todo/${TARGET}" ".planning/missions/doing/${TARGET}"
+fi
+# Update frontmatter: state -> doing, updated -> today
+# Commit: "mission(${TARGET}): todo → doing"
+```
+
+### Step 3 — Create the worktree
+
+```bash
+node scripts/mission-worktree.js create "$TARGET"
+```
+
+Errors from this script (path collision, invalid path, missing main, git
+version too old) are non-recoverable for this run — see [Error paths](#error-paths-and-cleanup).
+
+### Step 4 — Mark active and execute
+
+```bash
+echo "$TARGET" > .planning/active-mission
+```
+
+From this point on, all work happens **inside the worktree directory**
+(`.worktrees/${TARGET}`). The build phases below (PHASE 0 through PHASE 5
+in this file) run against that directory, not the main checkout. The
+mission's frontmatter declares the team composition and required
+verification levels; honor both.
+
+After every significant action (scaffolding, implementing a module, a
+verification pass), append a workpad entry:
+
+```bash
+node -e '...append `### YYYY-MM-DD HH:MM — <role>` block to ## Workpad...'
+```
+
+The `### YYYY-MM-DD HH:MM — <role>` heading format is required — the
+status dashboard parses it. See `.claude/skills/missions.md` "Workpad
+protocol" for the rules.
+
+The verification pyramid runs as documented in `.claude/skills/testing.md`.
+Each verification script (`check-coverage.sh`, `check-secrets.sh`,
+`check-doc-drift.sh`, etc.) appends a JSONL record to
+`.planning/missions/doing/${TARGET}/verification.jsonl` via
+`scripts/log-verification.js` — that log feeds the evidence packet.
+
+If any required level fails after the full retry protocol below (see
+"Task Retry & Recovery"), the mission does NOT advance to review — it
+stays in `doing/` so the next session can pick up where this one stopped.
+
+### Step 5 — Generate evidence and submit for review
+
+Once all `verification.required_levels` show `pass` in the latest log
+entry per level:
+
+```bash
+node scripts/evidence-packet.js generate "$TARGET"
+```
+
+The generator refuses if any required level is missing or failing — that
+is the moat. If it refuses, the mission is not ready; loop back to Step 4.
+
+After a successful packet:
+
+```bash
+git mv ".planning/missions/doing/${TARGET}-*.md" ".planning/missions/review/"
+git mv ".planning/missions/doing/${TARGET}" ".planning/missions/review/${TARGET}"
+# Update frontmatter: state -> review, updated -> today
+# Commit: "mission(${TARGET}): doing → review"
+```
+
+Clear the active-mission marker so the next invocation starts clean:
+
+```bash
+rm -f .planning/active-mission
+```
+
+Print a completion summary with the mission ID, branch, and the path to
+the evidence packet (`.planning/missions/review/${TARGET}/evidence/summary.md`).
+
+### Step 6 — Continue the loop (Ralph mode only)
+
+If `--ralph` was supplied AND there is at least one more mission with all
+dependencies satisfied (including any missions that just landed in `done/`
+during this run), go back to Step 1's "no flags" branch and pick the next
+target. Stop when:
+
+- `todo/` has no unblocked missions, OR
+- A mission fails to advance out of `doing/` after exhausting retries, OR
+- `--max-iterations` is exhausted across the cumulative mission run.
+
+### Error paths and cleanup
+
+Every failure that aborts the run MUST clean up `.planning/active-mission`
+so the next session is not falsely anchored to a half-baked mission:
+
+```bash
+trap 'rm -f .planning/active-mission' EXIT
+```
+
+(Or its equivalent in the agent's flow control — the contract is
+"active-mission is removed on any abort.")
+
+Specific failure messages, all exit non-zero:
+
+| Condition                                              | Message                                                        | Cleanup                                  |
+|--------------------------------------------------------|----------------------------------------------------------------|------------------------------------------|
+| `--mission` ID does not match any mission file         | `apes-build: mission <id> not found`                           | active-mission untouched (was never set) |
+| Mission already in `doing/` or `review/`               | `apes-build: mission <id> is already in <state>`               | unchanged                                |
+| Mission in `done/` or `canceled/`                      | `apes-build: mission <id> is in <state>; immutable`            | unchanged                                |
+| Unmet dependencies                                     | `apes-build: mission <id> blocked by: M-XXXX, M-YYYY`          | unchanged                                |
+| Worktree path collision                                | `apes-build: worktree .worktrees/<id> already exists — run \`node scripts/mission-worktree.js remove <id>\` after confirming no work is in flight` | mission stays in `todo/`; active-mission cleared |
+| Required verification level fails after retries       | `apes-build: mission <id> stuck in doing — required level(s) <levels> failing`  | active-mission cleared; mission stays in `doing/` |
+| `--mission` combined with `--prd` or `--idea`         | `apes-build: --mission is mutually exclusive with --prd and --idea`             | nothing was done                          |
+| Empty `todo/` (no flags supplied)                     | `apes-build: no unblocked missions in todo/ — create one with /apes-mission new` | nothing was done                          |
+| `--ralph` reaches end of queue                        | (informational — print summary, exit 0)                                          | active-mission cleared                    |
+
+When a run aborts mid-flight, the user can recover by:
+
+1. Running `/apes-status` to see which mission is in `doing/` and what
+   blockers remain.
+2. Inspecting `.planning/missions/doing/<id>/verification.jsonl` for the
+   most recent failures.
+3. Either fixing the issue and re-running `/apes-build --mission <id>`,
+   or transitioning the mission to `canceled/` via
+   `/apes-mission move <id> canceled`.
 
 ---
 

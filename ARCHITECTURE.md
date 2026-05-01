@@ -13,39 +13,58 @@
 ## Architecture Overview
 
 ```
-                         ┌─────────────────┐
-                         │   PRD / Idea     │
-                         └────────┬────────┘
-                                  │
-                         ┌────────▼────────┐
-                         │  /apes-build     │
-                         │  (slash command) │
-                         └────────┬────────┘
-                                  │
-              ┌───────────────────┼───────────────────┐
-              │                   │                   │
-     ┌────────▼───────┐ ┌────────▼────────┐ ┌────────▼────────┐
-     │    INGEST       │ │     PLAN        │ │    EXECUTE       │
-     │ Product agent   │ │ Orchestrator    │ │ Build loop       │
-     │ parses PRD →    │ │ creates tasks   │ │ per task with    │
-     │ BACKLOG.md      │ │ with gates      │ │ state machine    │
-     └────────────────┘ └─────────────────┘ └────────┬────────┘
-                                                      │
-                          ┌──────────────────────────┤
-                          │                          │
-              ┌───────────▼──────────┐ ┌─────────────▼──────────┐
-              │   HOOKS (automatic)  │ │   VERIFICATION          │
-              │ • guard main branch  │ │ 8-level pyramid         │
-              │ • TypeScript check   │ │ + acceptance criteria   │
-              │ • test on edit       │ │   verification loop     │
-              │ • structure check    │ │ + gate-enforced         │
-              │ • auto-review (Stop) │ │   state transitions     │
-              └──────────────────────┘ └─────────────┬──────────┘
-                                       ┌─────────────▼──────────┐
-                                       │   GIT WORKFLOW          │
-                                       │ Branch → Commit → Tag → │
-                                       │ Squash → Merge to main  │
-                                       └────────────────────────┘
+                       ┌─────────────────────────┐
+                       │   PRD / Idea / Mission   │
+                       └────────────┬────────────┘
+                                    │
+                       ┌────────────▼────────────┐
+                       │   /apes-build (lead)    │
+                       └────────────┬────────────┘
+                                    │
+                       ┌────────────▼────────────┐
+                       │  MISSION RESOLUTION      │
+                       │  • PRD → generate todos  │
+                       │  • --mission → resolve   │
+                       │  • (none) → top of todo  │
+                       └────────────┬────────────┘
+                                    │
+                       ┌────────────▼────────────┐
+                       │  WORKSPACE ISOLATION     │
+                       │  scripts/mission-worktree│
+                       │  → .worktrees/M-NNNN/    │
+                       └────────────┬────────────┘
+                                    │
+            ┌───────────────────────┼───────────────────────┐
+            │                       │                       │
+   ┌────────▼────────┐    ┌─────────▼─────────┐    ┌────────▼────────┐
+   │    INGEST       │    │     PLAN          │    │    EXECUTE      │
+   │ Product agent   │    │ Orchestrator      │    │ Build loop      │
+   │ parses PRD →    │    │ creates tasks     │    │ per task with   │
+   │ BACKLOG.md      │    │ with gates        │    │ state machine   │
+   └─────────────────┘    └───────────────────┘    └────────┬────────┘
+                                                            │
+                       ┌───────────────────────────────────┤
+                       │                                   │
+            ┌──────────▼──────────┐               ┌────────▼─────────┐
+            │  HOOKS (automatic)  │               │  VERIFICATION    │
+            │ • guard main branch │               │ 8-level pyramid  │
+            │ • TypeScript check  │               │ + acceptance     │
+            │ • test on edit      │               │   criteria loop  │
+            │ • structure check   │               │ + JSONL log per  │
+            │ • auto-review(Stop) │               │   active mission │
+            └─────────────────────┘               └────────┬─────────┘
+                                                           │
+                                            ┌──────────────▼─────────────┐
+                                            │  EVIDENCE PACKET           │
+                                            │  scripts/evidence-packet   │
+                                            │  → review/M-NNNN/evidence/ │
+                                            └──────────────┬─────────────┘
+                                                           │
+                                            ┌──────────────▼─────────────┐
+                                            │  GIT WORKFLOW              │
+                                            │  Branch → Commit → Tag →   │
+                                            │  state mv → Merge to main  │
+                                            └────────────────────────────┘
 ```
 
 ---
@@ -158,6 +177,77 @@ GitHub Actions for scheduled quality enforcement:
 
 ---
 
+## Mission Layer
+
+The mission layer sits between strategic planning (roadmap phases) and tactical execution (the verification pyramid). A **mission** is the atomic unit of work — one focused outcome with its own acceptance criteria, verification requirements, and audit trail.
+
+### Mission file as filesystem state machine
+
+Missions live as single markdown files at `.planning/missions/<state>/M-NNNN-<slug>.md`. The five state directories — `todo`, `doing`, `review`, `done`, `canceled` — *are* the state machine. Transitions happen via `git mv`, so the audit trail is reconstructed from `git log --follow`. There is no separate state database.
+
+```
+.planning/missions/
+├── todo/        ← created, not yet started
+├── doing/       ← actively being implemented (one worktree per mission)
+├── review/      ← evidence packet generated, awaiting human review
+├── done/        ← merged, immutable
+└── canceled/    ← abandoned (record kept)
+```
+
+Each mission file has YAML frontmatter (machine-readable: id, state, dependencies, required verification levels, workspace branch) and a markdown body (`## Context`, `## Implementation notes`, `## Out of scope`, `## Workpad`). The workpad is append-only — the running log of what every agent did, with timestamped entries that survive across sessions.
+
+### Workspace isolation via worktrees
+
+Every `doing` mission runs in its own git worktree at `.worktrees/M-NNNN/`, on its own branch (`feat/m-nnnn-<slug>`). This unlocks parallel missions on the same repo without working-tree thrash and lets a mission survive across Claude Code sessions, machine reboots, and human takeover. Worktrees are managed by `scripts/mission-worktree.js` (zero-dep, pure Node, no shell). The script enforces git ≥ 2.20, validates mission ID format, sanitizes paths, and refuses to remove a worktree with uncommitted changes or whose mission isn't in `done`/`canceled`.
+
+### Evidence packets — proof of work for review
+
+When a mission is ready for review, `scripts/evidence-packet.js` assembles a single bundle at `.planning/missions/review/M-NNNN/evidence/`:
+
+- `summary.md` — cover sheet (acceptance status, verification table, diff stats, links)
+- `verification.jsonl` — full structured log of every verification run (level, outcome, duration, summary, freeform details)
+- `diff-stats.txt` + `diff.patch` — what changed against `main`
+- `auto-review.md` — most recent L0.5 auto-review output
+- `screenshots/` — L7 visual artifacts when present
+
+The generator **refuses** to produce a packet if any level in the mission's `verification.required_levels` lacks a passing entry. This is the validation moat: a mission cannot reach review without verifiable evidence that every required gate passed.
+
+### Verification log — the source of truth
+
+Each verification script (`check-coverage.sh`, `check-secrets.sh`, etc.) appends a JSONL record to `.planning/missions/<state>/M-NNNN/verification.jsonl` via `scripts/log-verification.js`. The helper resolves the active mission from `.planning/active-mission` (a single-line file, set when a mission moves to `doing`) and degrades gracefully — if no active mission, it warns to stderr and exits zero so the verification pipeline never blocks on logging.
+
+Schema:
+
+```json
+{
+  "timestamp": "2026-04-30T15:23:01Z",
+  "level": "L2",
+  "level_name": "Unit Tests",
+  "outcome": "pass",
+  "duration_ms": 12340,
+  "details": { "runner": "vitest", "count": 47 },
+  "summary": "All 47 unit tests passed"
+}
+```
+
+### State transition gates
+
+| Transition           | Gate                                                                               |
+|----------------------|------------------------------------------------------------------------------------|
+| todo → doing         | Every `depends_on` mission is in `done/`                                           |
+| doing → review       | Every level in `verification.required_levels` has a `pass` entry; evidence packet exists |
+| review → done        | Evidence packet exists; reviewer has approved                                      |
+| review → doing       | Allowed (rejected revision); workpad records the rejection reason                  |
+| any → canceled       | Allowed except from `done`; workpad records the cancellation reason                |
+
+Gates are enforced by the slash commands (`/apes-mission move`, `/apes-build`) and by the evidence-packet generator. A mission cannot skip `review`, and `done` is terminal.
+
+### Relationship to roadmap phases
+
+Phases (`.planning/ROADMAP.md`) are *strategic*; missions are *tactical*. A mission may claim a phase via the optional `phase` frontmatter field, but standalone missions are first-class — bug fixes and quick wins don't need a phase. The phase field is informational only; execution doesn't consult it.
+
+---
+
 ## Verification Pyramid (8 Levels)
 
 ```
@@ -243,17 +333,19 @@ Claude Code's Tasks API replaces v1's manual STATE.md and PLAN.md:
 
 ---
 
-## File Inventory (44 files)
+## File Inventory (53 files)
 
 ```
 framework/
 ├── settings.json                    # Hooks, permissions, MCP, env
-├── commands/                        # 15 slash commands
-│   ├── apes-build.md
+├── commands/                        # 17 slash commands
+│   ├── apes-build.md                # Mission-aware build
 │   ├── apes-feature.md
 │   ├── apes-fix.md
 │   ├── apes-refactor.md
 │   ├── apes-map.md
+│   ├── apes-mission.md              # Mission CRUD + state transitions
+│   ├── apes-evidence.md             # Generate evidence packets
 │   ├── apes-verify.md
 │   ├── apes-test-e2e.md
 │   ├── apes-test-visual.md
@@ -261,14 +353,14 @@ framework/
 │   ├── apes-security-scan.md
 │   ├── apes-board.md
 │   ├── apes-gc.md
-│   ├── apes-status.md
+│   ├── apes-status.md               # Mission-aware status dashboard
 │   ├── apes-metrics.md
 │   └── apes-help.md
-├── skills/                          # 11 domain skills + README
+├── skills/                          # 14 domain skills + README
 │   ├── architecture.md
 │   ├── backend.md
 │   ├── frontend.md
-│   ├── testing.md
+│   ├── testing.md                   # Verification log schema documented here
 │   ├── browser-verification.md
 │   ├── design-integration.md
 │   ├── review.md
@@ -276,27 +368,35 @@ framework/
 │   ├── orchestration.md
 │   ├── observability.md
 │   ├── devops.md
+│   ├── missions.md                  # Mission file format and lifecycle
+│   ├── worktrees.md                 # Worktree management for missions
+│   ├── evidence-packets.md          # Evidence packet format
 │   └── README.md
-├── scripts/                         # 12 hook scripts
+├── scripts/                         # 15 hook + helper scripts
 │   ├── guard-main-branch.sh
 │   ├── hook-format-and-stage.sh
 │   ├── hook-typecheck.sh
 │   ├── hook-test-related.sh
 │   ├── track-modified-files.sh
-│   ├── check-coverage.sh
-│   ├── check-secrets.sh
-│   ├── check-doc-drift.sh
+│   ├── check-coverage.sh            # Now logs to active mission's verification.jsonl
+│   ├── check-secrets.sh             # Now logs to active mission's verification.jsonl
+│   ├── check-doc-drift.sh           # Now logs to active mission's verification.jsonl
 │   ├── check-task-gates.sh
 │   ├── check-structure.sh
 │   ├── metrics-init.sh
-│   └── metrics-update.sh
+│   ├── metrics-update.sh
+│   ├── mission-worktree.js          # Worktree create/sync/remove/list (Node, zero-dep)
+│   ├── log-verification.js          # Append run to active mission's verification.jsonl
+│   └── evidence-packet.js           # Generate the proof-of-work bundle
 ├── ci/                              # 3 CI workflows
 │   ├── weekly-quality.yml
 │   ├── dependency-audit.yml
 │   └── post-merge-verify.yml
-└── templates/                       # 7 templates
+└── templates/                       # 9 templates
     ├── CLAUDE-TEMPLATE.md
     ├── PRD-TEMPLATE.md
+    ├── ROADMAP-TEMPLATE.md          # Phases + auto-tracked missions
+    ├── mission-template.md          # Canonical mission file format
     ├── adr-template.md
     ├── execplan-template.md
     ├── architecture-rules-template.md
@@ -327,6 +427,7 @@ Plus: `bin/cli.js`, `package.json`, `assets/banner.txt`, `README.md`, `LICENSE`
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 3.1.0 | 2026-05 | Mission layer: filesystem state machine, isolated worktrees per mission, structured verification log (JSONL), evidence packets, /apes-mission, /apes-evidence, mission-aware /apes-build and /apes-status |
 | 3.0.0 | 2026-02 | Product/orchestration roles, gate-enforced state machine, acceptance criteria verification, 4 new skills, /apes-board, /apes-gc, ExecPlans, architecture boundary enforcement, enhanced installer |
 | 2.0.0 | 2025-02 | Agent Teams rebuild, skills architecture, 8-level pyramid, hooks |
 | 1.0.0 | 2025-02 | Initial release with 12 agents, 5-level verification |
