@@ -8,7 +8,7 @@ allowed-tools: Read, Edit, Write, Bash, Grep
 
 ## Verification Pyramid
 
-The Dos Apes framework uses an 8-level verification pyramid:
+The Dos Apes framework uses a 9-level verification pyramid:
 
 ```
 L0:   Build                    ← npm run build
@@ -22,9 +22,23 @@ L4:   UI Integration           ← Component routed and navigable?
 L5:   Security Scan            ← npm audit + gitleaks
 L6:   E2E / Browser            ← agent-browser + Playwright
 L7:   Visual Regression        ← Playwright screenshot diff
+L8:   Adversarial Review       ← Cross-model review via Codex CLI (opt-in, fails open)
 ```
 
-Levels 0-5 are mandatory. Levels 6-7 activate when Playwright is configured.
+Levels 0-5 are mandatory. Levels 6-7 activate when Playwright is configured. L8 is opt-in — see [`cross-model-review.md`](./cross-model-review.md).
+
+### Enforcement tiers
+
+The pyramid groups into four tiers by *how* a level is enforced. The tier matters when deciding whether a failure should block, warn, or be silently skipped.
+
+| Tier            | Levels                       | Enforcement mechanism                                         | Failure behavior                                                                  |
+|-----------------|------------------------------|---------------------------------------------------------------|-----------------------------------------------------------------------------------|
+| Deterministic   | L0, L1, L1.5, L2, L2.5, L5    | Build/typecheck/test runners + scripted gates. Same input → same output. | Blocks. A failing deterministic level is a hard stop; fix it before continuing.  |
+| Automated       | L0.5                          | Claude-driven Stop hook. Heuristic but invoked automatically. | Blocks per the hook contract; can be overridden by the user mid-session.          |
+| Comprehensive   | L3, L4, L6, L7                | Broader scope: integration, UI, browser, visual.              | Blocks if configured for the project; warns + skips when prerequisites are absent.|
+| External        | L8                            | Requires an external CLI (Codex). Opt-in, capability-gated.   | **Fails open** — never blocks the pyramid. Findings surface to the user.          |
+
+L8 is the only level in its tier today. The "fails open" guarantee is part of the contract: any pyramid run that completes L0–L7 successfully must complete with a green overall verdict regardless of L8's state, including the case where Codex is offline, unauthenticated, or disabled in `.dos-apes/codex-review-config.json`.
 
 ## Verification Logs
 
@@ -57,7 +71,7 @@ One JSON object per line:
 | Field | Type | Notes |
 |---|---|---|
 | `timestamp` | string | ISO 8601 UTC, second precision |
-| `level` | string | Pyramid level ID: `L0`, `L0.5`, `L1`, `L1.5`, `L2`, `L2.5`, `L3`, `L4`, `L5`, `L6`, `L7` |
+| `level` | string | Pyramid level ID: `L0`, `L0.5`, `L1`, `L1.5`, `L2`, `L2.5`, `L3`, `L4`, `L5`, `L6`, `L7`, `L8` |
 | `level_name` | string | Human-readable name; canonical mapping in `log-verification.js` |
 | `outcome` | string | `pass` \| `fail` \| `skip` |
 | `duration_ms` | number \| null | Wall-clock duration; `null` if not measured |

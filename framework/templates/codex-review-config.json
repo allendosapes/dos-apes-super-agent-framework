@@ -1,0 +1,11 @@
+{
+  "enabled": false,
+  "model": "gpt-5.5",
+  "reasoning_effort": "high",
+  "sandbox": "read-only",
+  "max_iterations": 3,
+  "loop_on_severity": ["high", "critical"],
+  "diff_base": "main",
+  "timeout_seconds": 300,
+  "skip_paths": ["node_modules/**", "dist/**", "build/**", ".worktrees/**"]
+}

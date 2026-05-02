@@ -163,6 +163,98 @@ If any required level fails after the full retry protocol below (see
 "Task Retry & Recovery"), the mission does NOT advance to review — it
 stays in `doing/` so the next session can pick up where this one stopped.
 
+### Step 4.5 — Adversarial review (L8) loop
+
+After the L0–L7 verification pyramid passes for the active mission and
+before generating the evidence packet, run the L8 cross-model review loop
+when L8 is enabled. L8 sits above L7 deliberately: there is no point asking
+Codex to review a diff that doesn't compile or pass tests.
+
+**Conditional invocation.** Only run when both of these hold; otherwise
+skip silently:
+
+- `.dos-apes/codex-review-config.json` exists and `enabled === true`
+- `scripts/codex-review-loop.js` is installed
+
+```bash
+L8_ENABLED=0
+if [ -f ".dos-apes/codex-review-config.json" ] && [ -f "scripts/codex-review-loop.js" ]; then
+  if node -e "process.exit(JSON.parse(require('fs').readFileSync('.dos-apes/codex-review-config.json','utf8')).enabled === true ? 0 : 1)" 2>/dev/null; then
+    L8_ENABLED=1
+  fi
+fi
+
+if [ "$L8_ENABLED" -eq 1 ]; then
+  echo ""
+  echo "Level 8: Adversarial Review (loop, mission ${TARGET})"
+  echo "─────────────────────────────"
+  node scripts/codex-review-loop.js --mission "$TARGET" --base main
+  L8_LOOP_EXIT=$?
+fi
+```
+
+The loop writes its terminal state to
+`.dos-apes/codex-reviews/result.json` and appends a `## Workpad` entry to
+the active mission file (per `cross-model-review.md`).
+
+**Branching on the terminal state.** Read `result.json`, then:
+
+| Terminal state       | Action                                                                                                                                                       |
+|----------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `accepted`           | Continue to Step 5 (generate evidence packet). The L8 entry is already in the mission's `verification.jsonl`.                                                |
+| `partial-success`    | Continue to Step 5. Only low/medium findings remain — those are explicitly out of the loop's scope; the human reviewer addresses them.                       |
+| `findings-reported`  | Continue to Step 5. This state only fires when `--no-fix` was set, which `/apes-build` does NOT set. If you see it here, something passed `--no-fix` upstream — surface to the user. |
+| `exhausted`          | **Mark the mission unresolved**, then continue to Step 5. The packet must include the open findings; do not silently swallow them. (See "Mark unresolved" below.) |
+| `no-progress`        | **Mark the mission unresolved**, then continue to Step 5. Claude Code couldn't make a fix — surface explicitly so the human reviewer sees it.                |
+| `skipped`            | Continue to Step 5 silently. Codex unavailable/disabled is the same as L8 not being configured — never blocks the build.                                     |
+
+**Mark unresolved** (used by `exhausted` and `no-progress`):
+
+```bash
+node -e "
+const fs = require('fs');
+const path = require('path');
+const target = process.argv[1];
+const states = ['todo','doing','review','done','canceled'];
+let file = null;
+for (const s of states) {
+  const dir = '.planning/missions/' + s;
+  if (!fs.existsSync(dir)) continue;
+  for (const f of fs.readdirSync(dir)) {
+    if (f.endsWith('.md') && (f === target+'.md' || f.startsWith(target+'-'))) {
+      file = path.join(dir, f); break;
+    }
+  }
+  if (file) break;
+}
+if (!file) { process.stderr.write('mission file not found\n'); process.exit(0); }
+let body = fs.readFileSync(file, 'utf8');
+const m = body.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
+if (!m) { process.stderr.write('no frontmatter\n'); process.exit(0); }
+let fm = m[1];
+if (/^codex_findings_unresolved:/m.test(fm)) {
+  fm = fm.replace(/^codex_findings_unresolved:.*$/m, 'codex_findings_unresolved: true');
+} else {
+  fm = fm.trimEnd() + '\ncodex_findings_unresolved: true';
+}
+const newBody = body.replace(m[1], fm);
+fs.writeFileSync(file, newBody);
+console.log('marked codex_findings_unresolved: true on ' + file);
+" "$TARGET"
+```
+
+The mission still moves to `review/` in Step 5. The frontmatter flag is
+the signal to the human reviewer that L8 didn't reach a clean verdict —
+the evidence packet will include the open findings list, and the
+reviewer decides whether to address them, accept the residual risk, or
+push back to `doing/`.
+
+**Why continue to packet generation in every case.** The packet is the
+audit artifact — the goal is "what did this mission produce, what was
+verified, what wasn't." Refusing to generate it because L8 is unsatisfied
+hides information rather than surfacing it. L8's role is "another set of
+eyes," not "blocker." The human reviewer has the final say.
+
 ### Step 5 — Generate evidence and submit for review
 
 Once all `verification.required_levels` show `pass` in the latest log

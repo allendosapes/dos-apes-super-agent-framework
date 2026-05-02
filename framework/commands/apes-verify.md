@@ -24,6 +24,8 @@ allowed-tools: Bash, Read, Grep
 │                    VERIFICATION PYRAMID                      │
 ├─────────────────────────────────────────────────────────────┤
 │                                                              │
+│     Level 8: Adversarial Review    ← Codex CLI (opt-in)      │
+│     ─────────────────────────────                           │
 │     Level 7: Visual Regression     ← Screenshot diff         │
 │     ─────────────────────────────                           │
 │     Level 6: E2E / Browser         ← Playwright + agent     │
@@ -49,6 +51,11 @@ allowed-tools: Bash, Read, Grep
 Levels 0-5 must pass before work is considered complete.
 Levels 6-7 run when Playwright/agent-browser are configured.
 Level 0.5 runs automatically via Stop hook — not invoked here.
+Level 8 runs when Codex CLI is installed AND L8 is enabled in
+.dos-apes/codex-review-config.json. It fails open: a Codex
+problem (offline, unauthenticated, disabled) never fails the
+pyramid. Findings are reported as a single-shot review only —
+the fix loop lives in /apes-codex-review --loop and /apes-build.
 ```
 
 ---
@@ -218,6 +225,85 @@ fi
 
 ---
 
+## STEP 2.5: ADVERSARIAL REVIEW (Level 8 — opt-in, fails open)
+
+```bash
+# Level 8: Adversarial Review (Codex CLI cross-model review)
+#
+# Conditional on the user opting in. Skip cleanly when:
+#   - .dos-apes/codex-review-config.json is missing or disabled
+#   - scripts/codex-review.js is not installed
+#   - Codex CLI is not on PATH or not authenticated (the script will skip)
+#
+# This level is "fails open": a non-zero exit from codex-review.js does NOT
+# bump FAILED. Findings are surfaced to the user; the fix loop is opt-in via
+# /apes-codex-review --loop or /apes-build (when a mission is active).
+
+L8_ENABLED=0
+if [ -f ".dos-apes/codex-review-config.json" ] && [ -f "scripts/codex-review.js" ]; then
+  if node -e "process.exit(JSON.parse(require('fs').readFileSync('.dos-apes/codex-review-config.json','utf8')).enabled === true ? 0 : 1)" 2>/dev/null; then
+    L8_ENABLED=1
+  fi
+fi
+
+if [ "$L8_ENABLED" -eq 1 ]; then
+  echo ""
+  echo "Level 8: Adversarial Review"
+  echo "─────────────────────────────"
+
+  # Determine diff base: use config default (main) unless caller overrides.
+  L8_OUT=$(node scripts/codex-review.js --base main 2>&1)
+  L8_EXIT=$?
+
+  if [ $L8_EXIT -ne 0 ]; then
+    echo "⚠️ L8 review script error (non-blocking, fails open):"
+    echo "$L8_OUT" | tail -5
+  else
+    L8_STATE=$(echo "$L8_OUT" | node -e "
+      let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{
+        try {
+          const j=JSON.parse(s.trim().split(/\r?\n/).pop());
+          if (j.skipped) console.log('skipped:'+(j.reason||'unknown'));
+          else console.log('verdict:'+j.verdict+':'+(j.findings?j.findings.length:0));
+        } catch(_){console.log('parse-error');}
+      });" 2>/dev/null)
+
+    case "$L8_STATE" in
+      skipped:*)
+        echo "⏭  L8 skipped (${L8_STATE#skipped:})"
+        ;;
+      verdict:accept:*)
+        echo "✅ L8 reviewer accepted"
+        ;;
+      verdict:revise:*|verdict:reject:*)
+        FINDINGS_COUNT="${L8_STATE##*:}"
+        echo "⚠️ L8 reviewer reports ${FINDINGS_COUNT} finding(s) — see .dos-apes/codex-reviews/"
+        echo "   Run /apes-codex-review --loop to address automatically."
+        # Fails open: do NOT set FAILED=1
+        ;;
+      *)
+        echo "⚠️ L8 result not parsed cleanly (non-blocking)"
+        ;;
+    esac
+  fi
+
+  # Log to mission verification log if missions framework is present.
+  # log-verification.js itself is graceful: missing active-mission → warns
+  # to stderr and exits 0. The 2>/dev/null || true keeps this best-effort.
+  if [ -f "scripts/log-verification.js" ]; then
+    case "$L8_STATE" in
+      verdict:accept:*) L8_OUTCOME=pass ;;
+      skipped:*)        L8_OUTCOME=skip ;;
+      verdict:*)        L8_OUTCOME=fail ;;
+      *)                L8_OUTCOME=skip ;;
+    esac
+    node scripts/log-verification.js L8 "$L8_OUTCOME" "Adversarial review (single-shot) — $L8_STATE" 2>/dev/null || true
+  fi
+fi
+```
+
+---
+
 ## STEP 3: UPDATE STATUS
 
 If all checks pass, update the current gate task:
@@ -258,8 +344,14 @@ npm run build && npm run typecheck
 | Security Scan      | ✅/⚠️    |
 | E2E (if configured)| ✅/❌/⏳ |
 | Visual Regression  | ✅/⚠️/⏳ |
+| Adversarial Review | ✅/⚠️/⏭  |
 
 Overall: PASS / FAIL
+
+L8 (Adversarial Review) status legend:
+  ✅ accept       — reviewer signed off
+  ⚠️ findings     — non-blocking; address via /apes-codex-review --loop
+  ⏭  skipped      — disabled, Codex unavailable, or not configured
 ```
 
-If FAIL, do not proceed with commits or merges.
+If FAIL, do not proceed with commits or merges. **L8 never contributes to FAIL** — it fails open by design.

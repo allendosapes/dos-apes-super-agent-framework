@@ -1,0 +1,602 @@
+#!/usr/bin/env node
+
+// codex-review.js — single-shot Codex code review pass.
+//
+// Usage:
+//   node scripts/codex-review.js --base <ref> [--mission <id>] [--out <path>]
+//
+// Behavior (in order):
+//   1. Read .dos-apes/codex-review-config.json. If enabled:false, skip.
+//   2. Verify Codex readiness (cache-first, falls back to scripts/codex-check.js).
+//      Failures here skip rather than fail (fail-open).
+//   3. Compute diff vs --base (overrides config.diff_base, default 'main').
+//      Empty diff → skip "no changes".
+//   4. Load mission frontmatter/body (optional, tolerant of missing files).
+//   5. Substitute placeholders into the prompt template, invoke Codex with
+//      --output-schema and --output-last-message.
+//   6. Parse the JSON, validate top-level keys, filter findings against
+//      config.skip_paths.
+//   7. Write the review to --out (or .dos-apes/codex-reviews/<stamp>.json),
+//      append an L8 entry to the mission verification log if applicable,
+//      print the review JSON to stdout.
+//
+// Exit codes:
+//   0  review completed (any verdict) OR skipped (skipped:true in stdout)
+//   1  script error (config, invocation, schema parse failure)
+//
+// Cross-platform note: the prompt is passed positionally when it fits the
+// resolved binary's argv ceiling. When it doesn't (typically on Windows where
+// `codex` is a `.cmd` shim wrapped by cmd.exe), we pass `-` and pipe the
+// prompt via spawnSync's `input` option. That uses Node's OS-level stdin
+// write — not shell piping — so it's uniform across PowerShell/cmd/bash.
+
+"use strict";
+
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
+const { execFileSync, spawnSync } = require("child_process");
+
+// ─── Paths ──────────────────────────────────────────────────────────────────
+
+const PROJECT_ROOT = process.cwd();
+const DOS_APES_DIR = path.join(PROJECT_ROOT, ".dos-apes");
+const CONFIG_PATH = path.join(DOS_APES_DIR, "codex-review-config.json");
+const PROMPT_PATH = path.join(DOS_APES_DIR, "codex-review-prompt.md");
+const SCHEMA_PATH = path.join(DOS_APES_DIR, "codex-review-schema.json");
+const CAPABILITIES_PATH = path.join(DOS_APES_DIR, "codex-capabilities.json");
+const REVIEWS_DIR = path.join(DOS_APES_DIR, "codex-reviews");
+const CHECK_SCRIPT = path.join(PROJECT_ROOT, "scripts", "codex-check.js");
+const LOG_VERIFICATION = path.join(PROJECT_ROOT, "scripts", "log-verification.js");
+
+const IS_WINDOWS = process.platform === "win32";
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+const DEFAULT_CONFIG = {
+  enabled: true,
+  model: "gpt-5.5",
+  reasoning_effort: "high",
+  sandbox: "read-only",
+  diff_base: "main",
+  timeout_seconds: 300,
+  skip_paths: [],
+};
+
+// ─── CLI parsing ────────────────────────────────────────────────────────────
+
+function parseArgs(argv) {
+  const out = { base: null, mission: null, out: null, help: false };
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    switch (a) {
+      case "--base": out.base = argv[++i]; break;
+      case "--mission": out.mission = argv[++i]; break;
+      case "--out": out.out = argv[++i]; break;
+      case "--help":
+      case "-h": out.help = true; break;
+      default:
+        process.stderr.write(`codex-review: unknown argument '${a}'\n`);
+        process.exit(1);
+    }
+  }
+  return out;
+}
+
+function printHelp() {
+  process.stdout.write(
+    "Usage: node scripts/codex-review.js --base <ref> [--mission <id>] [--out <path>]\n" +
+    "\n" +
+    "Single-shot Codex review pass. Reads config from .dos-apes/.\n" +
+    "Skips silently when disabled, Codex unavailable, or diff is empty.\n"
+  );
+}
+
+// ─── Output helpers ─────────────────────────────────────────────────────────
+
+function emit(payload, exitCode) {
+  process.stdout.write(JSON.stringify(payload) + "\n");
+  process.exit(exitCode);
+}
+
+function warn(msg) {
+  process.stderr.write(`codex-review: ${msg}\n`);
+}
+
+// ─── Config ─────────────────────────────────────────────────────────────────
+
+function readConfig() {
+  if (!fs.existsSync(CONFIG_PATH)) {
+    return { ...DEFAULT_CONFIG };
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf8"));
+  } catch (err) {
+    warn(`config parse failed: ${err.message} — using defaults`);
+    return { ...DEFAULT_CONFIG };
+  }
+  if (parsed === null || typeof parsed !== "object") {
+    return { ...DEFAULT_CONFIG };
+  }
+  return { ...DEFAULT_CONFIG, ...parsed };
+}
+
+// ─── Codex readiness ────────────────────────────────────────────────────────
+
+function readCapabilityCache(model) {
+  try {
+    if (!fs.existsSync(CAPABILITIES_PATH)) return null;
+    const data = JSON.parse(fs.readFileSync(CAPABILITIES_PATH, "utf8"));
+    if (!data || data.model !== model) return null;
+    if (data.supports_output_schema !== true) return null;
+    const verified = Date.parse(data.verified_at);
+    if (!Number.isFinite(verified)) return null;
+    if (Date.now() - verified > CACHE_TTL_MS) return null;
+    return data;
+  } catch (_) {
+    return null;
+  }
+}
+
+function checkCodexReady(config) {
+  const model = config.model || DEFAULT_CONFIG.model;
+
+  // Fast path — capability already verified within TTL.
+  if (readCapabilityCache(model)) return { ok: true };
+
+  // Slow path — delegate to codex-check.js.
+  if (!fs.existsSync(CHECK_SCRIPT)) {
+    return { ok: false, message: "scripts/codex-check.js not found — reinstall framework" };
+  }
+
+  const result = spawnSync(process.execPath, [CHECK_SCRIPT], {
+    encoding: "utf8",
+    timeout: 120_000,
+  });
+
+  if (result.error) {
+    return { ok: false, message: `codex-check failed: ${result.error.message}` };
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse((result.stdout || "").trim());
+  } catch (_) {
+    return { ok: false, message: "codex-check returned non-JSON output" };
+  }
+
+  if (!parsed || parsed.ok !== true) {
+    return { ok: false, message: parsed && parsed.message ? parsed.message : "codex-check reported not-ready" };
+  }
+  return { ok: true };
+}
+
+// ─── Codex binary resolution ────────────────────────────────────────────────
+
+// Resolve a concrete Codex executable so we can avoid cmd.exe (8K argv limit)
+// when a real .exe is on PATH. Falls back to letting spawnSync resolve the
+// name through PATHEXT via shell:true.
+function resolveCodexBinary() {
+  const dirs = (process.env.PATH || "").split(path.delimiter).filter(Boolean);
+
+  if (!IS_WINDOWS) {
+    for (const dir of dirs) {
+      const candidate = path.join(dir, "codex");
+      if (fs.existsSync(candidate)) return { command: candidate, useShell: false };
+    }
+    return { command: "codex", useShell: false };
+  }
+
+  // Windows — prefer .exe over .cmd to maximize argv room.
+  const pathext = (process.env.PATHEXT || ".COM;.EXE;.BAT;.CMD").split(";");
+  const ranked = [...pathext].sort((a, b) => {
+    const score = (x) => (x.toUpperCase() === ".EXE" ? 0 : x.toUpperCase() === ".COM" ? 1 : 2);
+    return score(a) - score(b);
+  });
+
+  for (const dir of dirs) {
+    for (const ext of ranked) {
+      const candidate = path.join(dir, "codex" + ext.toLowerCase());
+      if (fs.existsSync(candidate)) {
+        const isShim = /\.(cmd|bat)$/i.test(candidate);
+        return { command: candidate, useShell: isShim };
+      }
+    }
+  }
+  return { command: "codex", useShell: true };
+}
+
+function quoteForCmd(arg) {
+  if (!IS_WINDOWS) return arg;
+  if (!/[\s"]/.test(arg)) return arg;
+  return `"${arg.replace(/"/g, '\\"')}"`;
+}
+
+function spawnCodex(args, opts) {
+  const { command, useShell } = resolveCodexBinary();
+
+  // When we route through cmd.exe (a .cmd shim), the Windows command-line
+  // length is capped near 8 KB — a 500-line diff easily exceeds that. Codex
+  // accepts `-` as the prompt to read from stdin. spawnSync's `input` option
+  // writes to the child's stdin via OS APIs with no shell involvement, so the
+  // PowerShell-vs-bash stdin-handling differences (which apply to shell-level
+  // piping) don't apply here. Stay positional when the prompt fits.
+  const promptArg = args[args.length - 1];
+  const argvBytes = args.reduce(
+    (sum, a) => sum + Buffer.byteLength(String(a), "utf8") + 1,
+    0
+  );
+  const ceiling = useShell ? 7000 : 30000;
+  const useStdin = argvBytes > ceiling && typeof promptArg === "string";
+
+  const argsToUse = useStdin ? [...args.slice(0, -1), "-"] : args;
+  const finalArgs = useShell ? argsToUse.map(quoteForCmd) : argsToUse;
+
+  return spawnSync(command, finalArgs, {
+    encoding: "utf8",
+    shell: useShell,
+    windowsHide: true,
+    input: useStdin ? promptArg : undefined,
+    ...opts,
+  });
+}
+
+// ─── Diff ───────────────────────────────────────────────────────────────────
+
+function computeDiff(base) {
+  const args = ["diff", "--unified=5", `${base}...HEAD`];
+  let text;
+  try {
+    text = execFileSync("git", args, {
+      encoding: "utf8",
+      maxBuffer: 64 * 1024 * 1024,
+    });
+  } catch (err) {
+    throw new Error(`git diff failed: ${err.stderr ? err.stderr.toString().trim() : err.message}`);
+  }
+
+  let stat;
+  try {
+    stat = execFileSync("git", ["diff", "--stat", `${base}...HEAD`], {
+      encoding: "utf8",
+      maxBuffer: 4 * 1024 * 1024,
+    });
+  } catch (err) {
+    stat = "";
+    warn(`git diff --stat failed: ${err.message}`);
+  }
+
+  return { text, stats: stat.trim() };
+}
+
+// ─── Mission loading ────────────────────────────────────────────────────────
+
+function loadMission(missionId) {
+  const states = ["todo", "doing", "review", "done", "canceled"];
+  const missionsRoot = path.join(PROJECT_ROOT, ".planning", "missions");
+
+  if (!fs.existsSync(missionsRoot)) return { context: "", acceptance: "" };
+
+  let missionFile = null;
+  for (const state of states) {
+    const stateDir = path.join(missionsRoot, state);
+    if (!fs.existsSync(stateDir)) continue;
+    let entries;
+    try {
+      entries = fs.readdirSync(stateDir);
+    } catch (_) {
+      continue;
+    }
+    const match = entries.find((f) =>
+      f.endsWith(".md") && (
+        f === `${missionId}.md` ||
+        f.startsWith(`${missionId}-`) ||
+        f.startsWith(`${missionId}_`)
+      )
+    );
+    if (match) {
+      missionFile = path.join(stateDir, match);
+      break;
+    }
+  }
+
+  if (!missionFile) return { context: "", acceptance: "" };
+
+  let text;
+  try {
+    text = fs.readFileSync(missionFile, "utf8");
+  } catch (err) {
+    warn(`could not read mission ${missionId}: ${err.message}`);
+    return { context: "", acceptance: "" };
+  }
+
+  // Strip a leading YAML frontmatter block if present.
+  const body = text.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, "");
+
+  // Extract an Acceptance Criteria section (## or ### heading).
+  const lines = body.split(/\r?\n/);
+  let inSection = false;
+  const accLines = [];
+  for (const line of lines) {
+    if (/^#{2,}\s+Acceptance\s+Criteria\b/i.test(line)) {
+      inSection = true;
+      continue;
+    }
+    if (inSection && /^#{1,}\s/.test(line)) break;
+    if (inSection) accLines.push(line);
+  }
+
+  return {
+    context: body.trim(),
+    acceptance: accLines.join("\n").trim(),
+  };
+}
+
+// ─── Prompt building ────────────────────────────────────────────────────────
+
+function buildPrompt(template, vars) {
+  return template
+    .replace(/\{\{MISSION_CONTEXT\}\}/g, vars.mission_context || "")
+    .replace(/\{\{ACCEPTANCE_CRITERIA\}\}/g, vars.acceptance_criteria || "")
+    .replace(/\{\{DIFF_STATS\}\}/g, vars.diff_stats || "")
+    .replace(/\{\{DIFF\}\}/g, vars.diff || "");
+}
+
+// ─── Glob filter ────────────────────────────────────────────────────────────
+
+// Convert a minimal glob (supports **, *, ?) into a RegExp anchored at full
+// match. Sufficient for the documented skip_paths patterns; not a full
+// minimatch implementation.
+function globToRegex(glob) {
+  let re = "^";
+  for (let i = 0; i < glob.length; i++) {
+    const c = glob[i];
+    if (c === "*") {
+      if (glob[i + 1] === "*") {
+        if (glob[i + 2] === "/") {
+          re += "(?:.*/)?";
+          i += 2;
+        } else {
+          re += ".*";
+          i += 1;
+        }
+      } else {
+        re += "[^/]*";
+      }
+    } else if (c === "?") {
+      re += "[^/]";
+    } else if (".+^$|(){}[]\\".includes(c)) {
+      re += "\\" + c;
+    } else {
+      re += c;
+    }
+  }
+  re += "$";
+  return new RegExp(re);
+}
+
+function filterFindings(findings, skipPaths) {
+  if (!Array.isArray(findings)) return [];
+  if (!skipPaths || skipPaths.length === 0) return findings;
+  const matchers = skipPaths.map(globToRegex);
+  return findings.filter((f) => {
+    const file = String(f.file || "").replace(/\\/g, "/");
+    return !matchers.some((m) => m.test(file));
+  });
+}
+
+// ─── Codex invocation ───────────────────────────────────────────────────────
+
+function isReasoningEffortRejection(result) {
+  const blob = ((result.stderr || "") + " " + (result.stdout || "")).toLowerCase();
+  return /model_reasoning_effort/.test(blob) ||
+    /unknown\s+(config|option|key|flag|argument)/.test(blob) ||
+    /invalid\s+(config|key|option|argument)/.test(blob) ||
+    /unrecognized/.test(blob);
+}
+
+function invokeCodex({ config, prompt }) {
+  const tmpFile = path.join(os.tmpdir(), `codex-review-${process.pid}.json`);
+  const timeoutMs = (Number(config.timeout_seconds) || 300) * 1000;
+
+  const baseArgs = [
+    "exec",
+    "--sandbox", config.sandbox || DEFAULT_CONFIG.sandbox,
+    "--model", config.model || DEFAULT_CONFIG.model,
+    "--output-schema", SCHEMA_PATH,
+    "--output-last-message", tmpFile,
+    "--skip-git-repo-check",
+  ];
+
+  const reasoningArgs = [
+    "-c", `model_reasoning_effort=${config.reasoning_effort || DEFAULT_CONFIG.reasoning_effort}`,
+  ];
+
+  try {
+    let result = spawnCodex([...baseArgs, ...reasoningArgs, prompt], { timeout: timeoutMs });
+
+    if (result.status !== 0 && isReasoningEffortRejection(result)) {
+      warn("model_reasoning_effort flag rejected by installed Codex CLI; retrying without it (default is medium)");
+      // Clean any stale tmpfile from the rejected attempt before retry.
+      try { fs.unlinkSync(tmpFile); } catch (_) {}
+      result = spawnCodex([...baseArgs, prompt], { timeout: timeoutMs });
+    }
+
+    if (result.error && (result.error.code === "ETIMEDOUT" || result.signal === "SIGTERM")) {
+      return { ok: false, message: `codex exec timed out after ${timeoutMs}ms` };
+    }
+    if (result.error) {
+      return { ok: false, message: `codex exec failed to launch: ${result.error.message}` };
+    }
+    if (result.status !== 0) {
+      const detail = (result.stderr || result.stdout || `exit ${result.status}`).trim();
+      return { ok: false, message: `codex exec failed: ${detail.slice(0, 500)}` };
+    }
+
+    if (!fs.existsSync(tmpFile)) {
+      return { ok: false, message: "codex did not write --output-last-message file" };
+    }
+    const raw = fs.readFileSync(tmpFile, "utf8").trim();
+
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (err) {
+      return {
+        ok: false,
+        message: `output is not valid JSON: ${err.message}. First 200 chars: ${raw.slice(0, 200)}`,
+      };
+    }
+
+    const required = ["verdict", "confidence", "summary", "findings"];
+    for (const key of required) {
+      if (!Object.prototype.hasOwnProperty.call(parsed, key)) {
+        return {
+          ok: false,
+          message: `output missing required key '${key}'. First 200 chars: ${raw.slice(0, 200)}`,
+        };
+      }
+    }
+    if (!Array.isArray(parsed.findings)) {
+      return {
+        ok: false,
+        message: `output.findings is not an array. First 200 chars: ${raw.slice(0, 200)}`,
+      };
+    }
+
+    return { ok: true, data: parsed };
+  } finally {
+    try { fs.unlinkSync(tmpFile); } catch (_) { /* may not exist */ }
+  }
+}
+
+// ─── Output paths ───────────────────────────────────────────────────────────
+
+function defaultOutPath() {
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  return path.join(REVIEWS_DIR, `${stamp}.json`);
+}
+
+// ─── Mission verification log ───────────────────────────────────────────────
+
+function logMissionVerification(missionId, review, outputPath) {
+  if (!fs.existsSync(LOG_VERIFICATION)) {
+    // Helper not installed — graceful no-op.
+    return;
+  }
+
+  const verdictToOutcome = { accept: "pass", revise: "fail", reject: "fail" };
+  const outcome = verdictToOutcome[review.verdict] || "fail";
+
+  const findingsCount = Array.isArray(review.findings) ? review.findings.length : 0;
+  const summary = `Codex L8: ${review.verdict} (confidence ${review.confidence}, ${findingsCount} finding${findingsCount === 1 ? "" : "s"})`;
+  const details = JSON.stringify({
+    mission_id: missionId,
+    verdict: review.verdict,
+    confidence: review.confidence,
+    findings_count: findingsCount,
+    output_path: outputPath,
+  });
+
+  const result = spawnSync(process.execPath, [
+    LOG_VERIFICATION,
+    "L8",
+    outcome,
+    summary,
+    details,
+  ], { encoding: "utf8", cwd: PROJECT_ROOT });
+
+  if (result.status !== 0) {
+    // Most common cause today: log-verification.js LEVEL_NAMES does not yet
+    // include L8. Surface clearly but never fail the review.
+    const detail = (result.stderr || "").trim();
+    warn(`mission verification log skipped (helper exited ${result.status}); detail: ${detail.slice(0, 200)}`);
+  }
+}
+
+// ─── Main ───────────────────────────────────────────────────────────────────
+
+function main() {
+  const args = parseArgs(process.argv.slice(2));
+  if (args.help) {
+    printHelp();
+    process.exit(0);
+  }
+
+  const config = readConfig();
+
+  if (config.enabled === false) {
+    return emit({ skipped: true, reason: "disabled" }, 0);
+  }
+
+  const ready = checkCodexReady(config);
+  if (!ready.ok) {
+    return emit({ skipped: true, reason: ready.message }, 0);
+  }
+
+  const base = args.base || config.diff_base || DEFAULT_CONFIG.diff_base;
+
+  let diff;
+  try {
+    diff = computeDiff(base);
+  } catch (err) {
+    warn(err.message);
+    process.exit(1);
+  }
+
+  if (!diff.text.trim()) {
+    return emit({ skipped: true, reason: "no changes" }, 0);
+  }
+
+  if (!fs.existsSync(PROMPT_PATH)) {
+    warn(`prompt template missing: ${PROMPT_PATH}`);
+    process.exit(1);
+  }
+  if (!fs.existsSync(SCHEMA_PATH)) {
+    warn(`schema missing: ${SCHEMA_PATH}`);
+    process.exit(1);
+  }
+
+  const mission = args.mission ? loadMission(args.mission) : { context: "", acceptance: "" };
+  const template = fs.readFileSync(PROMPT_PATH, "utf8");
+  const prompt = buildPrompt(template, {
+    mission_context: mission.context,
+    acceptance_criteria: mission.acceptance,
+    diff_stats: diff.stats,
+    diff: diff.text,
+  });
+
+  const review = invokeCodex({ config, prompt });
+  if (!review.ok) {
+    warn(review.message);
+    process.exit(1);
+  }
+
+  review.data.findings = filterFindings(review.data.findings, config.skip_paths || []);
+
+  const outPath = args.out ? path.resolve(PROJECT_ROOT, args.out) : defaultOutPath();
+  try {
+    fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    fs.writeFileSync(outPath, JSON.stringify(review.data, null, 2));
+  } catch (err) {
+    warn(`could not write review output to ${outPath}: ${err.message}`);
+    process.exit(1);
+  }
+
+  if (args.mission) {
+    try {
+      logMissionVerification(args.mission, review.data, outPath);
+    } catch (err) {
+      warn(`mission log helper threw: ${err.message}`);
+    }
+  }
+
+  emit({ ...review.data, output_path: outPath }, 0);
+}
+
+try {
+  main();
+} catch (err) {
+  warn(`fatal: ${err && err.message ? err.message : String(err)}`);
+  process.exit(1);
+}

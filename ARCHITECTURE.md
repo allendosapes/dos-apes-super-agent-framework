@@ -4,7 +4,7 @@
 
 **What it does:** Takes a PRD → ships complete, tested product autonomously using Claude Code Agent Teams.
 
-**Core mechanism:** 11 skills, role-based agent spawning, gate-enforced task state machine, 8-level verification pyramid, acceptance criteria verification loop, hook-enforced quality gates.
+**Core mechanism:** 12 skills, role-based agent spawning, gate-enforced task state machine, 9-level verification pyramid (L0–L8 with opt-in cross-model review), acceptance criteria verification loop, hook-enforced quality gates.
 
 **Key shift from v2:** Added product analysis and orchestration roles. Tasks now follow a gate-enforced state machine (BACKLOG → MERGED). Every acceptance criterion must have a passing test before a task can be verified. The installer captures richer project context (product description, deployment target, testing strategy).
 
@@ -47,7 +47,7 @@
                        │                                   │
             ┌──────────▼──────────┐               ┌────────▼─────────┐
             │  HOOKS (automatic)  │               │  VERIFICATION    │
-            │ • guard main branch │               │ 8-level pyramid  │
+            │ • guard main branch │               │ 9-level pyramid  │
             │ • TypeScript check  │               │ + acceptance     │
             │ • test on edit      │               │   criteria loop  │
             │ • structure check   │               │ + JSONL log per  │
@@ -117,7 +117,8 @@ Commands are the entry points. Each assembles the right team and workflow.
 | `/apes-fix` | debugger + tester | Reproduce → root cause → fix → verify |
 | `/apes-refactor` | builder + reviewer | Preserve behavior → refactor → verify |
 | `/apes-map` | analyst | Analyze codebase → generate context docs |
-| `/apes-verify` | tester | Run 8-level verification pyramid |
+| `/apes-verify` | tester | Run 9-level verification pyramid (L0–L8) |
+| `/apes-codex-review` | reviewer | L8 cross-model review (Codex CLI). `--loop` for review-fix-review feedback loop |
 | `/apes-test-e2e` | tester | Generate Playwright tests from stories |
 | `/apes-test-visual` | tester | Screenshot comparison against baselines |
 | `/apes-test-a11y` | tester | WCAG 2.1 AA compliance audit |
@@ -248,10 +249,11 @@ Phases (`.planning/ROADMAP.md`) are *strategic*; missions are *tactical*. A miss
 
 ---
 
-## Verification Pyramid (8 Levels)
+## Verification Pyramid (9 Levels)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
+│ L8: Adversarial Review │ Cross-model review via Codex CLI    │
 │ L7: Visual Regression  │ Screenshot diff vs baselines       │
 │ L6: E2E / Browser      │ Playwright + agent-browser          │
 │ L5: Security Scan      │ npm audit + gitleaks + semgrep      │
@@ -269,6 +271,34 @@ Phases (`.planning/ROADMAP.md`) are *strategic*; missions are *tactical*. A miss
 - L0–L2.5: **Deterministic** — hooks fire on every edit
 - L3–L5: **Automated** — scripts run on verify
 - L6–L7: **Comprehensive** — requires Playwright MCP configured
+- L8: **External** — requires Codex CLI; opt-in; **fails open** (never blocks)
+
+### External Reviewers (L8)
+
+L8 introduces a new pattern: a *second* model reviews the diff produced by the *first*. The current implementation uses OpenAI's Codex CLI as the reviewer; the surrounding contracts (config schema, prompt template, findings schema, consumer protocol) are model-agnostic, so the reviewer is replaceable without touching the framework.
+
+**Architectural properties:**
+
+| Property              | Why                                                                                              |
+|-----------------------|--------------------------------------------------------------------------------------------------|
+| Opt-in                | The framework must remain fully functional without an external CLI dependency. Default off.     |
+| Capability-gated      | `scripts/codex-check.js` runs an actual `--output-schema` round-trip and caches the result for 24h, keyed on model. The structured-findings parser depends on the contract holding. |
+| Fails open            | Any L0–L7 success must end in a green pyramid verdict regardless of L8 state (offline, disabled, rate-limited). L8 produces evidence, not gates. |
+| Severity-gated loop   | `scripts/codex-review-loop.js` only re-iterates on high/critical findings (configurable). Low/medium are reported but never auto-fixed. |
+| Six terminal states   | `accepted`, `partial-success`, `findings-reported`, `exhausted`, `no-progress`, `skipped` — each maps to a distinct downstream action in `/apes-verify` and `/apes-build`. |
+| Cross-platform stdin  | The loop passes prompts via positional args under ~7KB and switches to spawnSync stdin (`-`) above that threshold to clear the Windows cmd.exe argv ceiling — uniform across PowerShell/cmd/bash. |
+
+**Files involved:**
+
+- `scripts/codex-check.js` — prerequisite verifier
+- `scripts/codex-review.js` — single-shot review primitive
+- `scripts/codex-review-loop.js` — review-fix-review loop driver
+- `framework/skills/cross-model-review.md` — consumer protocol (triage / fix / terminal states)
+- `framework/commands/apes-codex-review.md` — slash command (single-shot, `--loop`, `--enable`/`--disable`/`--status`)
+- `.dos-apes/codex-review-{config.json,prompt.md,schema.json}` — runtime artifacts (per-project, BOM-free)
+- `.dos-apes/codex-capabilities.json` — capability cache (24h TTL, keyed on model)
+
+The mission verification log (`log-verification.js`) recognizes `L8` as `Adversarial Review` so L8 results land in `verification.jsonl` alongside the other levels — the evidence-packet generator's required-levels check sees it like any other.
 
 ---
 
@@ -338,29 +368,30 @@ Claude Code's Tasks API replaces v1's manual STATE.md and PLAN.md:
 ```
 framework/
 ├── settings.json                    # Hooks, permissions, MCP, env
-├── commands/                        # 17 slash commands
-│   ├── apes-build.md                # Mission-aware build
+├── commands/                        # 18 slash commands
+│   ├── apes-build.md                # Mission-aware build (now invokes L8 loop pre-packet)
 │   ├── apes-feature.md
 │   ├── apes-fix.md
 │   ├── apes-refactor.md
 │   ├── apes-map.md
 │   ├── apes-mission.md              # Mission CRUD + state transitions
 │   ├── apes-evidence.md             # Generate evidence packets
-│   ├── apes-verify.md
+│   ├── apes-verify.md               # 9-level pyramid (L8 single-shot, fails open)
 │   ├── apes-test-e2e.md
 │   ├── apes-test-visual.md
 │   ├── apes-test-a11y.md
 │   ├── apes-security-scan.md
+│   ├── apes-codex-review.md         # L8 — single-shot / --loop / --enable / --disable / --status
 │   ├── apes-board.md
 │   ├── apes-gc.md
 │   ├── apes-status.md               # Mission-aware status dashboard
 │   ├── apes-metrics.md
 │   └── apes-help.md
-├── skills/                          # 14 domain skills + README
+├── skills/                          # 15 domain skills + README
 │   ├── architecture.md
 │   ├── backend.md
 │   ├── frontend.md
-│   ├── testing.md                   # Verification log schema documented here
+│   ├── testing.md                   # Verification log schema + 4 enforcement tiers
 │   ├── browser-verification.md
 │   ├── design-integration.md
 │   ├── review.md
@@ -371,28 +402,32 @@ framework/
 │   ├── missions.md                  # Mission file format and lifecycle
 │   ├── worktrees.md                 # Worktree management for missions
 │   ├── evidence-packets.md          # Evidence packet format
+│   ├── cross-model-review.md        # L8 consumer protocol
 │   └── README.md
-├── scripts/                         # 15 hook + helper scripts
+├── scripts/                         # 18 hook + helper scripts
 │   ├── guard-main-branch.sh
 │   ├── hook-format-and-stage.sh
 │   ├── hook-typecheck.sh
 │   ├── hook-test-related.sh
 │   ├── track-modified-files.sh
-│   ├── check-coverage.sh            # Now logs to active mission's verification.jsonl
-│   ├── check-secrets.sh             # Now logs to active mission's verification.jsonl
-│   ├── check-doc-drift.sh           # Now logs to active mission's verification.jsonl
+│   ├── check-coverage.sh            # Logs to active mission's verification.jsonl
+│   ├── check-secrets.sh             # Logs to active mission's verification.jsonl
+│   ├── check-doc-drift.sh           # Logs to active mission's verification.jsonl
 │   ├── check-task-gates.sh
 │   ├── check-structure.sh
 │   ├── metrics-init.sh
 │   ├── metrics-update.sh
 │   ├── mission-worktree.js          # Worktree create/sync/remove/list (Node, zero-dep)
-│   ├── log-verification.js          # Append run to active mission's verification.jsonl
-│   └── evidence-packet.js           # Generate the proof-of-work bundle
+│   ├── log-verification.js          # Recognizes L0–L8; graceful when no active mission
+│   ├── evidence-packet.js           # Generate the proof-of-work bundle
+│   ├── codex-check.js               # L8 — prerequisite check + capability cache
+│   ├── codex-review.js              # L8 — single-shot review primitive
+│   └── codex-review-loop.js         # L8 — review-fix-review loop driver
 ├── ci/                              # 3 CI workflows
 │   ├── weekly-quality.yml
 │   ├── dependency-audit.yml
 │   └── post-merge-verify.yml
-└── templates/                       # 9 templates
+└── templates/                       # 13 templates
     ├── CLAUDE-TEMPLATE.md
     ├── PRD-TEMPLATE.md
     ├── ROADMAP-TEMPLATE.md          # Phases + auto-tracked missions
@@ -401,7 +436,11 @@ framework/
     ├── execplan-template.md
     ├── architecture-rules-template.md
     ├── pipeline-test-scenario.md
-    └── multi-repo-config.json
+    ├── multi-repo-config.json
+    ├── codex-review-config.json     # L8 config template (copied to .dos-apes/ on init)
+    ├── codex-review-config.README.md
+    ├── codex-review-prompt.md       # Reviewer prompt template (placeholders)
+    └── codex-review-schema.json     # JSON schema for Codex structured output
 ```
 
 Plus: `bin/cli.js`, `package.json`, `assets/banner.txt`, `README.md`, `LICENSE`
@@ -427,6 +466,7 @@ Plus: `bin/cli.js`, `package.json`, `assets/banner.txt`, `README.md`, `LICENSE`
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 3.2.0 | 2026-05 | Added L8 Adversarial Review via Codex CLI (gpt-5.5) with feedback loop. Opt-in, fails open. New skill (cross-model-review), new command (/apes-codex-review), three new scripts (codex-check / codex-review / codex-review-loop), four new templates. log-verification.js recognizes L8. /apes-verify and /apes-build invoke L8 when enabled. |
 | 3.1.0 | 2026-05 | Mission layer: filesystem state machine, isolated worktrees per mission, structured verification log (JSONL), evidence packets, /apes-mission, /apes-evidence, mission-aware /apes-build and /apes-status |
 | 3.0.0 | 2026-02 | Product/orchestration roles, gate-enforced state machine, acceptance criteria verification, 4 new skills, /apes-board, /apes-gc, ExecPlans, architecture boundary enforcement, enhanced installer |
 | 2.0.0 | 2025-02 | Agent Teams rebuild, skills architecture, 8-level pyramid, hooks |

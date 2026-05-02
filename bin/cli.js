@@ -955,6 +955,34 @@ _Add requirements here or run /apes-build with a PRD._
     totalFiles += templateCount;
   }
 
+  // ── 8b. Codex review config (.dos-apes/) ──
+  // L8 (Codex external review) opt-in config + capability cache home.
+  // Copy template config and README; never overwrite existing user config.
+  const dosApesDir = path.join(installBase, ".dos-apes");
+  ensureDir(dosApesDir);
+
+  const codexFiles = [
+    "codex-review-config.json",
+    "codex-review-config.README.md",
+    "codex-review-prompt.md",
+    "codex-review-schema.json",
+  ];
+  let codexCount = 0;
+
+  for (const file of codexFiles) {
+    const src = path.join(FRAMEWORK_DIR, "templates", file);
+    const dest = path.join(dosApesDir, file);
+    if (fs.existsSync(src) && !fs.existsSync(dest)) {
+      fs.copyFileSync(src, dest);
+      codexCount++;
+    }
+  }
+
+  if (codexCount > 0) {
+    printStep("Codex L8", `${codexCount} files → .dos-apes/ (disabled by default)`);
+    totalFiles += codexCount;
+  }
+
   // ── 9. CI Workflows (optional) ──
   if (!flags.noCi) {
     const ciSrc = path.join(FRAMEWORK_DIR, "ci");

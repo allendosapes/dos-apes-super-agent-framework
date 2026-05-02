@@ -25,6 +25,9 @@ npm-debug.log*
 .env.local
 .env.*.local
 
+# npm auth (never commit; written transiently for publish)
+.npmrc
+
 # Test coverage
 coverage/
 

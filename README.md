@@ -36,7 +36,7 @@
 
 **Feed it a PRD. Walk away. Come back to a shipped product.**
 
-Dos Apes is a software engineering framework for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) that turns ideas into production-ready applications. It uses Agent Teams for multi-agent orchestration, an 8-level verification pyramid for quality enforcement, and automated hooks for deterministic code review — so you can focus on product decisions while Claude handles the engineering.
+Dos Apes is a software engineering framework for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) that turns ideas into production-ready applications. It uses Agent Teams for multi-agent orchestration, a 9-level verification pyramid for quality enforcement (now including opt-in cross-model review via the Codex CLI), and automated hooks for deterministic code review — so you can focus on product decisions while Claude handles the engineering.
 
 ```bash
 npx dos-apes-super-agent
@@ -51,6 +51,17 @@ npx dos-apes-super-agent
 - [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code/getting-started) installed and authenticated
 - Node.js 18+
 - Git
+
+#### Optional: Codex CLI (for L8 Adversarial Review)
+
+L8 — cross-model review of your diff via OpenAI's Codex CLI — is **opt-in and disabled by default**. The framework runs end-to-end without it. If you want to enable it:
+
+```bash
+npm install -g @openai/codex
+codex login
+```
+
+No API key required — auth is via your ChatGPT account. The default reviewer model is **`gpt-5.5`** with `reasoning_effort: high`. Don't configure `gpt-5-codex` — that slug silently drops `--output-schema`, which breaks the structured-findings parser; the prerequisite check (`scripts/codex-check.js`) verifies the configured model actually honors structured outputs before letting the review run.
 
 ### Install
 
@@ -134,7 +145,7 @@ The platform (Claude Code Agent Teams + Tasks API) handles orchestration. Dos Ap
        │              • File tracking for auto-review
        │
        ▼
-   VERIFY ─── 8-level pyramid (build → types → lint → tests →
+   VERIFY ─── 9-level pyramid (build → types → lint → tests →
        │       coverage → security → E2E → visual regression)
        │
        ▼
@@ -232,11 +243,12 @@ Every transition has preconditions: dependencies must be `done` to leave `todo`;
 
 | Command | Purpose |
 |---------|---------|
-| `/apes-verify` | Run 8-level verification pyramid |
+| `/apes-verify` | Run 9-level verification pyramid |
 | `/apes-test-e2e` | Generate and run E2E tests from user stories |
 | `/apes-test-visual` | Visual regression screenshot testing |
 | `/apes-test-a11y` | WCAG 2.1 AA accessibility audit |
 | `/apes-security-scan` | Full security pipeline (npm audit, secrets, OWASP) |
+| `/apes-codex-review` | L8 — cross-model review via Codex CLI (opt-in). `--loop` for the review-fix-review feedback loop; `--enable` / `--disable` / `--status` for config management |
 
 ### Maintenance
 
@@ -271,6 +283,7 @@ Every transition has preconditions: dependencies must be `done` to leave `todo`;
 Every task must pass before commit. Hooks enforce L0–L2.5 automatically.
 
 ```
+L8  Adversarial Review   ← Cross-model review via Codex CLI (opt-in, fails open)
 L7  Visual Regression    ← Screenshot diff against baselines
 L6  E2E / Browser        ← Playwright + agent-browser
 L5  Security Scan        ← npm audit + gitleaks + semgrep
@@ -283,7 +296,7 @@ L0.5 Auto Code Review    ← Fires on every Stop (automatic)
 L0  Build                ← Does it compile?
 ```
 
-**L0–L2.5** are deterministic — hooks fire on every file edit regardless of agent behavior. **L3–L5** are automated via scripts. **L6–L7** run automatically when `playwright.config.ts/js` exists in your project. When Playwright isn't configured, the tester uses Playwright MCP tools as a fallback — opening the app, navigating routes, and taking screenshots for evidence. Either way, browser verification is part of every build and feature flow.
+**L0–L2.5** are deterministic — hooks fire on every file edit regardless of agent behavior. **L3–L5** are automated via scripts. **L6–L7** run automatically when `playwright.config.ts/js` exists in your project. When Playwright isn't configured, the tester uses Playwright MCP tools as a fallback — opening the app, navigating routes, and taking screenshots for evidence. Either way, browser verification is part of every build and feature flow. **L8** is in its own "External" tier — it requires the Codex CLI, runs only when explicitly enabled in `.dos-apes/codex-review-config.json`, and **fails open**: a Codex problem (offline, unauthenticated, disabled) never fails the pyramid. Findings surface to the user as input to a separate fix loop.
 
 ---
 
@@ -306,8 +319,25 @@ Each `/apes-build` run assembles a role-based team. 11 skill files provide domai
 | `review.md` | Confidence-based code review, security audit |
 | `observability.md` | Structured logging, performance verification, health checks |
 | `devops.md` | Deployment pipelines, environments, platform config |
+| `cross-model-review.md` | L8 consumer protocol: triage Codex findings, address by severity gate, terminal states for the review-fix-review loop |
 
 Commands assemble the right team. `/apes-build` spawns lead + architect + builder + tester + reviewer. `/apes-fix` spawns a focused debugger + tester pair. Each role has defined handoff gates — work doesn't proceed until the gate passes.
+
+### Cross-Model Review (L8)
+
+L8 is opt-in cross-model review. A second model (Codex CLI, default `gpt-5.5`) reads the diff produced by the first model (Claude) and emits structured findings against a JSON schema. Two different models catching each other's blind spots is more robust than one model reviewing its own work.
+
+**The contract:**
+
+- **Opt-in.** Disabled by default. Flip via `/apes-codex-review --enable` or by editing `.dos-apes/codex-review-config.json`.
+- **Capability-gated.** `scripts/codex-check.js` runs an actual `--output-schema` round-trip against the configured model and caches the result for 24 hours. The configured model must honor structured outputs or the review refuses to run. (The notorious `gpt-5-codex` slug silently drops the flag and is rejected at this stage.)
+- **Fails open.** Codex offline, unauthenticated, or rate-limited never fails the pyramid. The check returns a `skipped` JSON envelope and the surrounding command continues.
+- **Severity-gated loop.** The `--loop` form addresses only `high`/`critical` findings (configurable). `low`/`medium` findings are reported but never auto-fixed — left for human review by design.
+- **ChatGPT account auth.** No API key. `codex login` once per machine.
+
+The prompt template, schema, and config all live in `.dos-apes/` so users can customize per project. The consumer protocol — how to read findings, prioritize fixes, and decide when to stop the loop — lives in `cross-model-review.md`.
+
+> **⚠️ Windows users:** the JSON files at `.dos-apes/codex-review-config.json`, `.dos-apes/codex-review-schema.json`, and the Markdown at `.dos-apes/codex-review-prompt.md` must be written **without a UTF-8 byte-order mark**. PowerShell's default `Out-File -Encoding utf8` writes a BOM that breaks the Codex CLI's JSON parsing. Edit these files in your IDE (VS Code's default UTF-8 is BOM-free), or if you must script changes use `[System.IO.File]::WriteAllText($path, $content, [System.Text.UTF8Encoding]::new($false))`. The framework's installer and the `node` scripts always write BOM-free.
 
 ### Hook Scripts (Deterministic Quality)
 
@@ -333,7 +363,7 @@ TypeScript checking, test running, and auto-formatting also fire as PostToolUse 
 project-root/
 ├── CLAUDE.md                    # Project brain (generated for your stack)
 ├── .claude/
-│   ├── commands/                # 17 slash commands
+│   ├── commands/                # 18 slash commands
 │   │   ├── apes-build.md
 │   │   ├── apes-feature.md
 │   │   ├── apes-fix.md
@@ -346,12 +376,13 @@ project-root/
 │   │   ├── apes-test-visual.md
 │   │   ├── apes-test-a11y.md
 │   │   ├── apes-security-scan.md
+│   │   ├── apes-codex-review.md # L8 single-shot review + --loop driver
 │   │   ├── apes-board.md
 │   │   ├── apes-gc.md
 │   │   ├── apes-status.md
 │   │   ├── apes-metrics.md
 │   │   └── apes-help.md
-│   ├── skills/                  # 14 domain skills + README
+│   ├── skills/                  # 15 domain skills + README
 │   │   ├── product.md
 │   │   ├── orchestration.md
 │   │   ├── architecture.md
@@ -365,9 +396,10 @@ project-root/
 │   │   ├── devops.md
 │   │   ├── missions.md          # Mission file format and lifecycle
 │   │   ├── worktrees.md         # Mission worktree management
-│   │   └── evidence-packets.md  # Evidence packet format and review
+│   │   ├── evidence-packets.md  # Evidence packet format and review
+│   │   └── cross-model-review.md # L8 consumer protocol (triage / fix / terminal states)
 │   └── settings.json            # Hooks, permissions, MCP servers
-├── scripts/                     # 15 hook + helper scripts
+├── scripts/                     # 18 hook + helper scripts
 │   ├── guard-main-branch.sh
 │   ├── hook-format-and-stage.sh
 │   ├── hook-typecheck.sh
@@ -382,7 +414,10 @@ project-root/
 │   ├── metrics-update.sh
 │   ├── mission-worktree.js      # Worktree create/sync/remove/list
 │   ├── log-verification.js      # Append run to active mission's verification.jsonl
-│   └── evidence-packet.js       # Generate the proof-of-work bundle
+│   ├── evidence-packet.js       # Generate the proof-of-work bundle
+│   ├── codex-check.js           # L8 prerequisite check (CLI + auth + structured-output capability)
+│   ├── codex-review.js          # L8 single-shot review primitive
+│   └── codex-review-loop.js     # L8 review-fix-review loop driver
 ├── .planning/                   # Project state
 │   ├── PROJECT.md               # Vision, users, success criteria
 │   ├── ROADMAP.md               # Strategic phases + auto-tracked missions
@@ -394,6 +429,13 @@ project-root/
 │       ├── review/
 │       ├── done/
 │       └── canceled/
+├── .dos-apes/                   # L8 config + capability cache + review history (created on init)
+│   ├── codex-review-config.json      # enabled flag, model, severity gate, skip globs
+│   ├── codex-review-config.README.md # field-by-field documentation
+│   ├── codex-review-prompt.md        # reviewer prompt template (placeholders for diff/mission)
+│   ├── codex-review-schema.json      # JSON schema Codex must conform to
+│   ├── codex-capabilities.json       # 24h-TTL cache: which model honors --output-schema
+│   └── codex-reviews/                # per-iteration packets + result.json (audit trail)
 ├── docs/templates/              # PRD, ADR, ExecPlan, mission, architecture rules
 └── .github/workflows/           # CI workflow templates (optional)
     ├── weekly-quality.yml

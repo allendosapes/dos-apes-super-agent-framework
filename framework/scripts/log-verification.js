@@ -39,6 +39,7 @@ const LEVEL_NAMES = {
   "L5":   "Security Scan",
   "L6":   "E2E / Browser",
   "L7":   "Visual Regression",
+  "L8":   "Adversarial Review",
 };
 
 const OUTCOMES = new Set(["pass", "fail", "skip"]);
