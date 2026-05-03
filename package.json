@@ -7,7 +7,8 @@
     "dos-apes-super-agent": "bin/cli.js"
   },
   "scripts": {
-    "test": "node test/test.js"
+    "test": "node test/test.js",
+    "test:lib": "node framework/lib/mission-parser.test.js && node framework/lib/mission-tracker.test.js"
   },
   "keywords": [
     "claude",
@@ -36,6 +37,9 @@
     "framework/commands/",
     "framework/skills/",
     "framework/scripts/",
+    "framework/lib/mission-parser.js",
+    "framework/lib/mission-schema.js",
+    "framework/lib/mission-tracker.js",
     "framework/ci/",
     "framework/templates/CLAUDE-TEMPLATE.md",
     "framework/templates/PRD-TEMPLATE.md",

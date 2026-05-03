@@ -37,6 +37,9 @@ const os = require("os");
 const path = require("path");
 const { execFileSync, spawnSync } = require("child_process");
 
+const { MissionTracker } = require("../lib/mission-tracker.js");
+const parser = require("../lib/mission-parser.js");
+
 // ─── Paths ──────────────────────────────────────────────────────────────────
 
 const PROJECT_ROOT = process.cwd();
@@ -270,50 +273,52 @@ function computeDiff(base) {
 }
 
 // ─── Mission loading ────────────────────────────────────────────────────────
+//
+// Loads the active mission's body and Acceptance Criteria section to feed
+// into the Codex prompt. Best-effort: any failure (no missions tree, mission
+// not found, unreadable file) returns empty context — the review continues
+// without mission framing, since L8 is fail-open.
+//
+// Note: this lookup is more permissive than tracker.findMissionById, which
+// requires the "M-NNNN-<slug>.md" form. Codex was sometimes called with
+// missions whose filename was just "<id>.md" or "<id>_<slug>.md", so we keep
+// a small probe here that covers those legacy shapes.
 
 function loadMission(missionId) {
-  const states = ["todo", "doing", "review", "done", "canceled"];
   const missionsRoot = path.join(PROJECT_ROOT, ".planning", "missions");
-
   if (!fs.existsSync(missionsRoot)) return { context: "", acceptance: "" };
 
-  let missionFile = null;
-  for (const state of states) {
-    const stateDir = path.join(missionsRoot, state);
-    if (!fs.existsSync(stateDir)) continue;
-    let entries;
-    try {
-      entries = fs.readdirSync(stateDir);
-    } catch (_) {
-      continue;
-    }
-    const match = entries.find((f) =>
-      f.endsWith(".md") && (
-        f === `${missionId}.md` ||
-        f.startsWith(`${missionId}-`) ||
-        f.startsWith(`${missionId}_`)
-      )
-    );
-    if (match) {
-      missionFile = path.join(stateDir, match);
-      break;
-    }
-  }
+  const tracker = new MissionTracker({ root: missionsRoot });
 
-  if (!missionFile) return { context: "", acceptance: "" };
-
-  let text;
+  let mission = null;
   try {
-    text = fs.readFileSync(missionFile, "utf8");
+    mission = tracker.findMissionById(missionId);
   } catch (err) {
-    warn(`could not read mission ${missionId}: ${err.message}`);
+    // Duplicate-mission corruption — surface and continue with empty context.
+    warn(`mission lookup failed for ${missionId}: ${err.message}`);
     return { context: "", acceptance: "" };
   }
 
-  // Strip a leading YAML frontmatter block if present.
-  const body = text.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, "");
+  let body;
+  if (mission) {
+    body = mission.body;
+  } else {
+    // Legacy filename probes: <id>.md, <id>_<slug>.md (the canonical form
+    // is <id>-<slug>.md and is what tracker.findMissionById returns).
+    const legacyFile = findLegacyMissionFile(missionsRoot, missionId);
+    if (!legacyFile) return { context: "", acceptance: "" };
+    let text;
+    try { text = fs.readFileSync(legacyFile, "utf8"); }
+    catch (err) {
+      warn(`could not read mission ${missionId}: ${err.message}`);
+      return { context: "", acceptance: "" };
+    }
+    body = parser.parseFrontmatter(text).body;
+  }
 
-  // Extract an Acceptance Criteria section (## or ### heading).
+  // Extract an Acceptance Criteria section (## or ### heading). The lib's
+  // extractBodySection only handles `## ` headings, so we stay with the
+  // permissive inline scan here to also catch `### Acceptance Criteria`.
   const lines = body.split(/\r?\n/);
   let inSection = false;
   const accLines = [];
@@ -330,6 +335,24 @@ function loadMission(missionId) {
     context: body.trim(),
     acceptance: accLines.join("\n").trim(),
   };
+}
+
+function findLegacyMissionFile(missionsRoot, missionId) {
+  const states = ["todo", "doing", "review", "done", "canceled"];
+  for (const state of states) {
+    const stateDir = path.join(missionsRoot, state);
+    if (!fs.existsSync(stateDir)) continue;
+    let entries;
+    try { entries = fs.readdirSync(stateDir); } catch (_) { continue; }
+    const match = entries.find((f) =>
+      f.endsWith(".md") && (
+        f === `${missionId}.md` ||
+        f.startsWith(`${missionId}_`)
+      )
+    );
+    if (match) return path.join(stateDir, match);
+  }
+  return null;
 }
 
 // ─── Prompt building ────────────────────────────────────────────────────────

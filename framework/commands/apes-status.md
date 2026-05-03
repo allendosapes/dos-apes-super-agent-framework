@@ -140,8 +140,13 @@ function loadAll() {
       const branch = nestedScalar(fm, "workspace", "branch") || ("feat/" + id.toLowerCase());
       const depends = listOf(fm, "depends_on");
       const labels = listOf(fm, "labels");
-      // Last workpad timestamp: scan for ### YYYY-MM-DD HH:MM lines.
-      const tsMatches = [...body.matchAll(/^###\s+(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})/gm)];
+      // Last workpad timestamp. Accepts both shapes the framework writes:
+      //   canonical (P3+):  "### YYYY-MM-DD HH:MM"
+      //   legacy:           "### YYYY-MM-DD HH:MM — <role>"
+      // Pre-P4 missions still carry the role suffix; everything written by
+      // tracker.appendWorkpadEntry from P3 onward omits it. Anchored at
+      // end-of-line so a stray "###" mid-line cannot match.
+      const tsMatches = [...body.matchAll(/^###\s+(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})(?:\s+—\s+\S.*)?\s*$/gm)];
       const lastWorkpad = tsMatches.length ? tsMatches[tsMatches.length - 1][1] + " " + tsMatches[tsMatches.length - 1][2] : null;
       // Mtime of state file as a fallback "moved at" signal.
       const mtime = fs.statSync(file).mtime;

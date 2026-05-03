@@ -661,8 +661,21 @@ ${c.bold}Optional:${c.reset}
     );
     printStep("Scripts", `${scriptCount} hook scripts → scripts/`);
     totalFiles += scriptCount;
+
+    // ── 4b. Mission-tracker library ──
+    // Scripts in scripts/ require("../lib/mission-tracker.js"), so the lib
+    // must land at <installBase>/lib/. Bound to the same flag as scripts —
+    // when scripts aren't installed the lib has no consumer.
+    const libCount = copyDir(
+      path.join(FRAMEWORK_DIR, "lib"),
+      path.join(installBase, "lib"),
+      "lib"
+    );
+    printStep("Library", `${libCount} mission-tracker library file(s) → lib/`);
+    totalFiles += libCount;
   } else {
     printSkip("Scripts", "skipped (--no-hooks)");
+    printSkip("Library", "skipped (--no-hooks; no script consumers to install for)");
   }
 
   // ── 5. Settings.json ──

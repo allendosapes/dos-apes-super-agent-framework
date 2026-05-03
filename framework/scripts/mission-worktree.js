@@ -18,9 +18,11 @@ const { execFileSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 
+const { MissionTracker, STATES } = require("../lib/mission-tracker.js");
+const parser = require("../lib/mission-parser.js");
+
 const PREFIX = "mission-worktree:";
 const MIN_GIT = [2, 20, 0];
-const STATES = ["todo", "doing", "review", "done", "canceled"];
 
 // ─── Output helpers ─────────────────────────────────────────────────────────
 
@@ -67,8 +69,13 @@ function assertGitVersion() {
   }
 }
 
+// Validator-only tracker — instantiated with a placeholder root since
+// isValidId touches no filesystem. Keeps the regex source-of-truth in the
+// library.
+const _idValidator = new MissionTracker({ root: "." });
+
 function parseMissionId(id) {
-  if (!/^M-\d{4}$/.test(id || "")) {
+  if (!_idValidator.isValidId(id)) {
     fail(`invalid mission ID "${id}" — must match M-NNNN (four digits)`);
   }
   return id;
@@ -78,6 +85,12 @@ function repoRoot() {
   const r = gitTry(["rev-parse", "--show-toplevel"]);
   if (!r.ok) fail("not inside a git repository");
   return r.stdout.trim();
+}
+
+function trackerFor(root) {
+  return new MissionTracker({
+    root: path.join(root, ".planning", "missions"),
+  });
 }
 
 function validateWorktreeRel(rel) {
@@ -114,43 +127,47 @@ function validateBranchName(name) {
 }
 
 // ─── Mission file lookup ────────────────────────────────────────────────────
+//
+// Wrapper around tracker.findMissionById that preserves this script's
+// exit-with-message contract: callers pass `{ quiet: true }` to opt into the
+// null-on-missing behavior used by cmdList; everything else fails loudly.
 
 function findMissionFile(id, { quiet = false } = {}) {
   const root = repoRoot();
-  for (const state of STATES) {
-    const dir = path.join(root, ".planning", "missions", state);
-    if (!fs.existsSync(dir)) continue;
-    const matches = fs
-      .readdirSync(dir)
-      .filter((f) => f.startsWith(`${id}-`) && f.endsWith(".md"));
-    if (matches.length > 1) {
-      fail(`multiple mission files for ${id} in ${state}/: ${matches.join(", ")}`);
-    }
-    if (matches.length === 1) {
-      return { path: path.join(dir, matches[0]), state, root };
-    }
+  const tracker = trackerFor(root);
+  let mission;
+  try {
+    mission = tracker.findMissionById(id);
+  } catch (err) {
+    fail(err.message);
   }
-  if (quiet) return null;
-  fail(`mission ${id} not found in .planning/missions/{${STATES.join(",")}}/`);
+  if (!mission) {
+    if (quiet) return null;
+    fail(`mission ${id} not found in .planning/missions/{${STATES.join(",")}}/`);
+  }
+  return {
+    path: mission.path,
+    state: mission.state,
+    root,
+    frontmatter: mission.frontmatter,
+  };
 }
 
 function readMissionMeta(filePath) {
+  // Thin shim for callers that already have a file path. Inside this script
+  // every callsite has the parsed frontmatter from findMissionFile already,
+  // but the helper is preserved for backward compat with anything that may
+  // have imported it.
   const text = fs.readFileSync(filePath, "utf8");
-  const parts = text.split(/^---\s*$/m);
-  if (parts.length < 3) fail(`mission file ${filePath} has no frontmatter`);
-  const fm = parts[1];
-
-  const get = (re) => {
-    const m = fm.match(re);
-    if (!m) return null;
-    return m[1].trim().replace(/^["']|["']$/g, "");
-  };
-
+  const { frontmatter } = parser.parseFrontmatter(text);
+  if (!frontmatter || Object.keys(frontmatter).length === 0) {
+    fail(`mission file ${filePath} has no frontmatter`);
+  }
   return {
-    id: get(/^id:\s*(.+)$/m),
-    title: get(/^title:\s*(.+)$/m),
-    branch: get(/^\s{2}branch:\s*(.+)$/m),
-    worktree: get(/^\s{2}worktree:\s*(.+)$/m),
+    id: frontmatter.id || null,
+    title: frontmatter.title || null,
+    branch: (frontmatter.workspace && frontmatter.workspace.branch) || null,
+    worktree: (frontmatter.workspace && frontmatter.workspace.worktree) || null,
   };
 }
 

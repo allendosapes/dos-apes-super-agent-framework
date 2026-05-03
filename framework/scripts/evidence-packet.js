@@ -30,8 +30,9 @@ const { execFileSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 
+const { MissionTracker } = require("../lib/mission-tracker.js");
+
 const PREFIX = "evidence-packet:";
-const STATES = ["todo", "doing", "review", "done", "canceled"];
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -67,144 +68,16 @@ function repoRoot() {
   return r.stdout.trim();
 }
 
-function parseMissionId(id) {
-  if (!/^M-\d{4}$/.test(id || "")) {
-    fail(`invalid mission ID "${id}" — must match M-NNNN`);
-  }
-  return id;
-}
-
-function findMissionFile(root, id) {
-  for (const state of STATES) {
-    const dir = path.join(root, ".planning", "missions", state);
-    if (!fs.existsSync(dir)) continue;
-    const matches = fs
-      .readdirSync(dir)
-      .filter((f) => f.startsWith(`${id}-`) && f.endsWith(".md"));
-    if (matches.length > 1) {
-      fail(`multiple mission files for ${id} in ${state}/: ${matches.join(", ")}`);
-    }
-    if (matches.length === 1) {
-      return { path: path.join(dir, matches[0]), state };
-    }
-  }
-  fail(`mission ${id} not found in any .planning/missions/<state>/`);
-}
-
-// ─── Frontmatter parsing ────────────────────────────────────────────────────
-
-function splitFrontmatter(filePath) {
-  const text = fs.readFileSync(filePath, "utf8");
-  const parts = text.split(/^---\s*$/m);
-  if (parts.length < 3) fail(`mission file ${filePath} has no frontmatter`);
-  return { frontmatter: parts[1], body: parts.slice(2).join("---") };
-}
-
-function getScalar(fm, key) {
-  const re = new RegExp(`^${key}:\\s*(.+)$`, "m");
-  const m = fm.match(re);
-  if (!m) return null;
-  return m[1].trim().replace(/^["']|["']$/g, "");
-}
-
-function getNestedScalar(fm, parent, key) {
-  // Captures "<parent>:" then any continuous indented block, then `  <key>: value`
-  const lines = fm.split(/\r?\n/);
-  let inParent = false;
-  for (const line of lines) {
-    if (/^[A-Za-z_]/.test(line)) {
-      inParent = line.startsWith(parent + ":");
-      continue;
-    }
-    if (!inParent) continue;
-    const m = line.match(new RegExp(`^\\s{2}${key}:\\s*(.+)$`));
-    if (m) return m[1].trim().replace(/^["']|["']$/g, "");
-  }
-  return null;
-}
-
-function getList(fm, key, indent = 0) {
-  // Extract a YAML-style list under `<indent>key:` where each item is `<indent+2>- value`.
-  const lines = fm.split(/\r?\n/);
-  const pad = " ".repeat(indent);
-  const itemPad = " ".repeat(indent + 2);
-  const items = [];
-  let inList = false;
-  for (const line of lines) {
-    if (line.match(new RegExp(`^${pad}${key}:\\s*$`))) {
-      inList = true;
-      continue;
-    }
-    if (!inList) continue;
-    const itemMatch = line.match(new RegExp(`^${itemPad}-\\s+(.+)$`));
-    if (itemMatch) {
-      items.push(itemMatch[1].trim().replace(/^["']|["']$/g, ""));
-      continue;
-    }
-    // Stop at next sibling key (same indent, ends with ':') or any line at lower indent
-    if (line.trim() === "") continue;
-    const leading = line.match(/^(\s*)/)[1].length;
-    if (leading <= indent) break;
-  }
-  return items;
-}
-
-function getNestedList(fm, parent, key) {
-  // Same as getList but the key lives one level under `parent:`.
-  const lines = fm.split(/\r?\n/);
-  let phase = "before"; // before | inParent | inList
-  const items = [];
-  for (const line of lines) {
-    if (phase === "before") {
-      if (line.startsWith(parent + ":")) phase = "inParent";
-      continue;
-    }
-    if (phase === "inParent") {
-      if (/^[A-Za-z_]/.test(line)) {
-        // Left the parent block before finding the key
-        return [];
-      }
-      if (line.match(new RegExp(`^\\s{2}${key}:\\s*$`))) {
-        phase = "inList";
-      }
-      continue;
-    }
-    if (phase === "inList") {
-      const itemMatch = line.match(/^\s{4}-\s+(.+)$/);
-      if (itemMatch) {
-        items.push(itemMatch[1].trim().replace(/^["']|["']$/g, ""));
-        continue;
-      }
-      if (line.trim() === "") continue;
-      const leading = line.match(/^(\s*)/)[1].length;
-      if (leading <= 2) break;
-    }
-  }
-  return items;
-}
-
-function readMissionMeta(filePath) {
-  const { frontmatter, body } = splitFrontmatter(filePath);
-  return {
-    id: getScalar(frontmatter, "id"),
-    title: getScalar(frontmatter, "title"),
-    state: getScalar(frontmatter, "state"),
-    branch: getNestedScalar(frontmatter, "workspace", "branch"),
-    acceptance: getList(frontmatter, "acceptance", 0),
-    requiredLevels: getNestedList(frontmatter, "verification", "required_levels"),
-    optionalLevels: getNestedList(frontmatter, "verification", "optional_levels"),
-    body,
-  };
-}
-
-function defaultBranch(id) {
-  return `feat/${id.toLowerCase()}`;
+function trackerFor(root) {
+  return new MissionTracker({
+    root: path.join(root, ".planning", "missions"),
+  });
 }
 
 // ─── Verification log ───────────────────────────────────────────────────────
 
-function readVerificationLog(root, state, id) {
-  const file = path.join(root, ".planning", "missions", state, id, "verification.jsonl");
+function readVerificationLog(tracker, id) {
+  const file = tracker.getVerificationLogPath(id);
   if (!fs.existsSync(file)) return { file, entries: [] };
   const text = fs.readFileSync(file, "utf8");
   const entries = [];
@@ -214,7 +87,6 @@ function readVerificationLog(root, state, id) {
     try {
       entries.push(JSON.parse(trimmed));
     } catch {
-      // skip malformed lines but warn
       process.stderr.write(`${PREFIX} skipped malformed log line: ${trimmed.slice(0, 80)}\n`);
     }
   }
@@ -231,14 +103,24 @@ function latestByLevel(entries) {
 }
 
 // ─── Acceptance status from workpad ─────────────────────────────────────────
+//
+// Local helper rather than parser.parseAcceptanceCriteria because evidence
+// packets do *substring* matching: a `- [x]` line marks a criterion as met if
+// the line contains the criterion text. This is the "verified by" pattern
+// where the workpad line includes both the criterion and the citation.
 
 function acceptanceStatus(body, criteria) {
-  // A criterion is "met" if any `- [x]` line in the body contains its quoted text.
   const checked = body.match(/- \[x\][^\n]*/g) || [];
   return criteria.map((c) => ({
     text: c,
     met: checked.some((line) => line.includes(c)),
   }));
+}
+
+// ─── Default branch (fallback when frontmatter lacks workspace.branch) ──────
+
+function defaultBranch(id) {
+  return `feat/${id.toLowerCase()}`;
 }
 
 // ─── Diff computation ───────────────────────────────────────────────────────
@@ -414,12 +296,38 @@ function renderSummary({ meta, levels, accStatus, diff, autoReviewPath, screensh
 // ─── Verb: generate ─────────────────────────────────────────────────────────
 
 function cmdGenerate(id) {
-  parseMissionId(id);
   const root = repoRoot();
-  const { path: missionPath, state } = findMissionFile(root, id);
-  const meta = readMissionMeta(missionPath);
+  const tracker = trackerFor(root);
 
-  const log = readVerificationLog(root, state, id);
+  if (!tracker.isValidId(id)) {
+    fail(`invalid mission ID "${id}" — must match M-NNNN`);
+  }
+
+  let mission;
+  try {
+    mission = tracker.findMissionById(id);
+  } catch (err) {
+    fail(err.message);
+  }
+  if (!mission) {
+    fail(`mission ${id} not found in any .planning/missions/<state>/`);
+  }
+
+  const fm = mission.frontmatter || {};
+  const meta = {
+    id: fm.id || id,
+    title: fm.title || null,
+    state: fm.state || mission.state,
+    branch: (fm.workspace && fm.workspace.branch) || null,
+    acceptance: Array.isArray(fm.acceptance) ? fm.acceptance : [],
+    requiredLevels: (fm.verification && Array.isArray(fm.verification.required_levels))
+      ? fm.verification.required_levels : [],
+    optionalLevels: (fm.verification && Array.isArray(fm.verification.optional_levels))
+      ? fm.verification.optional_levels : [],
+    body: mission.body,
+  };
+
+  const log = readVerificationLog(tracker, id);
   const levels = latestByLevel(log.entries);
 
   // Gate: every required level must have a passing entry.
@@ -446,7 +354,7 @@ function cmdGenerate(id) {
   const autoReviewPath = findAutoReview(root, id);
 
   // Locate per-mission directory (may live under any state).
-  const perMissionDir = path.join(root, ".planning", "missions", state, id);
+  const perMissionDir = path.join(root, ".planning", "missions", mission.state, id);
   const screenshotsSrc = path.join(perMissionDir, "screenshots");
 
   // Output destination — always under review/, regardless of current state.

@@ -32,6 +32,8 @@ const os = require("os");
 const path = require("path");
 const { execFileSync, spawnSync } = require("child_process");
 
+const { MissionTracker } = require("../lib/mission-tracker.js");
+
 // ─── Paths ──────────────────────────────────────────────────────────────────
 
 const PROJECT_ROOT = process.cwd();
@@ -269,70 +271,55 @@ function spawnClaudeFix({ packetPath, missionId, iteration, timeoutMs }) {
 }
 
 // ─── Mission workpad ────────────────────────────────────────────────────────
-
-function findMissionFile(missionId) {
-  const states = ["todo", "doing", "review", "done", "canceled"];
-  const root = path.join(PROJECT_ROOT, ".planning", "missions");
-  if (!fs.existsSync(root)) return null;
-
-  for (const state of states) {
-    const stateDir = path.join(root, state);
-    if (!fs.existsSync(stateDir)) continue;
-    let entries;
-    try { entries = fs.readdirSync(stateDir); } catch (_) { continue; }
-    const match = entries.find((f) =>
-      f.endsWith(".md") && (
-        f === `${missionId}.md` ||
-        f.startsWith(`${missionId}-`) ||
-        f.startsWith(`${missionId}_`)
-      )
-    );
-    if (match) return path.join(stateDir, match);
-  }
-  return null;
-}
+//
+// Appends a workpad block summarizing the loop's terminal state to the
+// active mission. Best-effort: any failure (no missions tree, mission not
+// found, write error) is logged to stderr and the loop continues.
+//
+// Format note: pre-migration, this script wrote
+//   `### YYYY-MM-DD HH:MM UTC — codex-loop`
+// as the heading. Post-migration it uses tracker.appendWorkpadEntry, whose
+// canonical format is
+//   `### YYYY-MM-DD HH:MM`  (no UTC marker, no role suffix).
+// The "codex-loop" attribution moves into the note body so readers still
+// see at a glance which subsystem wrote the entry.
 
 function appendMissionWorkpad(payload) {
   if (!payload.mission) return;
-  const file = findMissionFile(payload.mission);
-  if (!file) return;
 
-  let body;
-  try { body = fs.readFileSync(file, "utf8"); }
-  catch (err) { warn(`could not read mission ${payload.mission}: ${err.message}`); return; }
+  const missionsRoot = path.join(PROJECT_ROOT, ".planning", "missions");
+  if (!fs.existsSync(missionsRoot)) return;
 
-  if (!/^##\s+Workpad\b/m.test(body)) {
-    // No workpad section — append one for backward compatibility, but warn.
-    warn(`mission ${payload.mission} has no '## Workpad' section; appending one`);
-    body = body.replace(/\s*$/, "") + "\n\n## Workpad\n";
+  const tracker = new MissionTracker({ root: missionsRoot });
+
+  let mission;
+  try { mission = tracker.findMissionById(payload.mission); }
+  catch (err) {
+    warn(`mission lookup failed for ${payload.mission}: ${err.message}`);
+    return;
   }
+  if (!mission) return;
 
-  const stamp = new Date().toISOString().replace(/:\d{2}\.\d{3}Z$/, "Z").replace("T", " ").replace("Z", " UTC");
-  // Normalize to "YYYY-MM-DD HH:MM UTC" approximated; the missions skill
-  // conventionally uses 24-hour UTC.
-  const heading = `### ${stamp} — codex-loop`;
-
-  const lines = [
-    heading,
-    `- L8 cross-model review terminal state: **${payload.state}** after ${payload.iteration || 0} iteration(s).`,
+  const noteLines = [
+    `**codex-loop** — L8 cross-model review terminal state: **${payload.state}** after ${payload.iteration || 0} iteration(s).`,
   ];
-  if (payload.verdict) lines.push(`- Last verdict: ${payload.verdict} (confidence ${payload.confidence ?? "n/a"}).`);
-  if (payload.summary) lines.push(`- Summary: ${payload.summary}`);
+  if (payload.verdict) noteLines.push(`Last verdict: ${payload.verdict} (confidence ${payload.confidence ?? "n/a"}).`);
+  if (payload.summary) noteLines.push(`Summary: ${payload.summary}`);
   if (Array.isArray(payload.open_findings) && payload.open_findings.length) {
-    lines.push(`- Open findings (${payload.open_findings.length}):`);
+    noteLines.push(`Open findings (${payload.open_findings.length}):`);
     for (const f of payload.open_findings.slice(0, 10)) {
-      lines.push(`  - ${f.severity} · ${f.file}:${f.line_range && f.line_range.start}: ${f.explanation}`);
+      noteLines.push(`- ${f.severity} · ${f.file}:${f.line_range && f.line_range.start}: ${f.explanation}`);
     }
-    if (payload.open_findings.length > 10) lines.push(`  - … (${payload.open_findings.length - 10} more)`);
+    if (payload.open_findings.length > 10) {
+      noteLines.push(`- … (${payload.open_findings.length - 10} more)`);
+    }
   }
-  if (payload.message) lines.push(`- ${payload.message}`);
-
-  const entry = "\n" + lines.join("\n") + "\n";
+  if (payload.message) noteLines.push(payload.message);
 
   try {
-    fs.appendFileSync(file, entry);
+    tracker.appendWorkpadEntry(payload.mission, noteLines.join("\n"));
   } catch (err) {
-    warn(`could not append workpad entry to ${file}: ${err.message}`);
+    warn(`could not append workpad entry to ${mission.path}: ${err.message}`);
   }
 }
 

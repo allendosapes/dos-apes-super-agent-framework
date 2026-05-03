@@ -25,6 +25,8 @@
 const fs = require("fs");
 const path = require("path");
 
+const { MissionTracker } = require("../lib/mission-tracker.js");
+
 const PREFIX = "log-verification:";
 
 const LEVEL_NAMES = {
@@ -43,7 +45,6 @@ const LEVEL_NAMES = {
 };
 
 const OUTCOMES = new Set(["pass", "fail", "skip"]);
-const STATES = ["todo", "doing", "review", "done", "canceled"];
 
 function warn(msg) {
   process.stderr.write(`${PREFIX} ${msg}\n`);
@@ -66,50 +67,13 @@ function findRepoRoot(start) {
   }
 }
 
-function readActiveMission(root) {
-  const p = path.join(root, ".planning", "active-mission");
-  if (!fs.existsSync(p)) return null;
-  let text;
+function appendRecord(file, record) {
   try {
-    text = fs.readFileSync(p, "utf8");
+    fs.mkdirSync(path.dirname(file), { recursive: true });
   } catch (err) {
-    warn(`could not read ${p}: ${err.message}`);
-    return null;
-  }
-  const id = text.trim().split(/\s+/)[0] || "";
-  if (!/^M-\d{4}$/.test(id)) {
-    warn(`.planning/active-mission contains invalid mission ID "${id}"`);
-    return null;
-  }
-  return id;
-}
-
-function findMissionState(root, id) {
-  for (const state of STATES) {
-    const dir = path.join(root, ".planning", "missions", state);
-    if (!fs.existsSync(dir)) continue;
-    let entries;
-    try {
-      entries = fs.readdirSync(dir);
-    } catch {
-      continue;
-    }
-    if (entries.some((f) => f.startsWith(`${id}-`) && f.endsWith(".md"))) {
-      return state;
-    }
-  }
-  return null;
-}
-
-function appendRecord(root, state, id, record) {
-  const dir = path.join(root, ".planning", "missions", state, id);
-  try {
-    fs.mkdirSync(dir, { recursive: true });
-  } catch (err) {
-    warn(`could not create ${dir}: ${err.message}`);
+    warn(`could not create ${path.dirname(file)}: ${err.message}`);
     return false;
   }
-  const file = path.join(dir, "verification.jsonl");
   try {
     fs.appendFileSync(file, JSON.stringify(record) + "\n");
     return true;
@@ -159,17 +123,23 @@ function main() {
     return;
   }
 
-  const id = readActiveMission(root);
+  const tracker = new MissionTracker({
+    root: path.join(root, ".planning", "missions"),
+  });
+
+  const id = tracker.getActiveMission();
   if (!id) {
     warn("no active mission — skipping log");
     return;
   }
 
-  const state = findMissionState(root, id);
-  if (!state) {
+  const mission = tracker.findMissionById(id);
+  if (!mission) {
     warn(`active mission ${id} not found in .planning/missions/ — skipping log`);
     return;
   }
+
+  const logFile = tracker.getVerificationLogPath(id);
 
   const durationEnv = process.env.VERIFICATION_DURATION_MS;
   const duration_ms = durationEnv && /^\d+$/.test(durationEnv) ? Number(durationEnv) : null;
@@ -184,7 +154,7 @@ function main() {
     summary,
   };
 
-  appendRecord(root, state, id, record);
+  appendRecord(logFile, record);
 }
 
 try {
