@@ -356,6 +356,8 @@ L8 introduces a new pattern: a *second* model reviews the diff produced by the *
 
 The mission verification log (`log-verification.js`) recognizes `L8` as `Adversarial Review` so L8 results land in `verification.jsonl` alongside the other levels — the evidence-packet generator's required-levels check sees it like any other.
 
+**Mission-native review state (3.4.0).** L8 review state is now surfaced in mission frontmatter via the `codex` block (schema v2). The single-shot script and the loop driver both write `last_verdict`, `last_review_path`, `unresolved_findings`, and `last_run_at` through `MissionTracker.setCodexState` — no direct frontmatter writes anywhere in the L8 stack. `/apes-build` reads `codex.last_verdict` from the mission file (rather than parsing loop stdout) to decide its post-L8 branch; `/apes-status` renders the verdict and unresolved-finding count for missions in `doing/` and `review/`. Setting `codex.required: true` on a mission makes `skipped` a hard error: the loop exits non-zero and `/apes-build` refuses to advance the mission to review when Codex was unavailable. See `framework/skills/missions.md` "Codex review state" and `framework/skills/cross-model-review.md` "Mission state surface".
+
 ---
 
 ## Git Workflow
@@ -527,6 +529,7 @@ Plus: `bin/cli.js`, `package.json`, `assets/banner.txt`, `README.md`, `LICENSE`
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 3.4.0 | 2026-05 | L8 Codex review state is now mission-native via the `codex` frontmatter block (schema v2). Visible on `/apes-status`. Single-shot and loop both write through `MissionTracker.setCodexState`; `/apes-build` reads verdict from frontmatter rather than parsing loop stdout. `codex.required: true` blocks `skipped` termination. v1 missions auto-migrate to v2 on first read. |
 | 3.3.0 | 2026-05 | Refactor: extracted MissionTracker to `framework/lib/`. No behavior changes. Schema versioning introduced (`schema_version: 1`, migration framework in place but no migrations needed yet). All five mission-touching scripts and four mission-touching commands now route through the library. New `mission-cli.js` thin wrapper for JSON-shaped programmatic access. |
 | 3.2.0 | 2026-05 | Added L8 Adversarial Review via Codex CLI (gpt-5.5) with feedback loop. Opt-in, fails open. New skill (cross-model-review), new command (/apes-codex-review), three new scripts (codex-check / codex-review / codex-review-loop), four new templates. log-verification.js recognizes L8. /apes-verify and /apes-build invoke L8 when enabled. |
 | 3.1.0 | 2026-05 | Mission layer: filesystem state machine, isolated worktrees per mission, structured verification log (JSONL), evidence packets, /apes-mission, /apes-evidence, mission-aware /apes-build and /apes-status |

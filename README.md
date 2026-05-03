@@ -337,6 +337,8 @@ L8 is opt-in cross-model review. A second model (Codex CLI, default `gpt-5.5`) r
 
 The prompt template, schema, and config all live in `.dos-apes/` so users can customize per project. The consumer protocol — how to read findings, prioritize fixes, and decide when to stop the loop — lives in `cross-model-review.md`.
 
+**Codex review state is now visible on the mission board (3.4.0).** `/apes-status` shows the latest verdict and unresolved-finding count for each active mission, sourced from the `codex` block in mission frontmatter (schema v2). Both `codex-review.js` (single-shot) and `codex-review-loop.js` write their terminal state into the mission file via `MissionTracker.setCodexState`, so the same surface drives `/apes-build`'s post-L8 branching, `/apes-status`'s dashboard, and any custom command that wants to reason about review history. Set `codex.required: true` on a mission to make the loop refuse to terminate with `skipped` when Codex is unavailable — useful for missions that genuinely depend on adversarial review before merge. See `framework/skills/missions.md` "Codex review state" for the field reference.
+
 > **⚠️ Windows users:** the JSON files at `.dos-apes/codex-review-config.json`, `.dos-apes/codex-review-schema.json`, and the Markdown at `.dos-apes/codex-review-prompt.md` must be written **without a UTF-8 byte-order mark**. PowerShell's default `Out-File -Encoding utf8` writes a BOM that breaks the Codex CLI's JSON parsing. Edit these files in your IDE (VS Code's default UTF-8 is BOM-free), or if you must script changes use `[System.IO.File]::WriteAllText($path, $content, [System.Text.UTF8Encoding]::new($false))`. The framework's installer and the `node` scripts always write BOM-free.
 
 ### Hook Scripts (Deterministic Quality)

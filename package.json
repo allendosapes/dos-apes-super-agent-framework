@@ -1,6 +1,6 @@
 {
   "name": "dos-apes-super-agent",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "description": "Dos Apes Super Agent Framework — PRD-to-product pipeline with role-based agent teams, gate-enforced task state machine, and 9-level verification pyramid (incl. opt-in Codex cross-model review) for Claude Code",
   "main": "bin/cli.js",
   "bin": {
@@ -8,7 +8,7 @@
   },
   "scripts": {
     "test": "npm run test:lib",
-    "test:lib": "node framework/lib/mission-parser.test.js && node framework/lib/mission-tracker.test.js"
+    "test:lib": "node framework/lib/mission-parser.test.js && node framework/lib/mission-tracker.test.js && node framework/scripts/codex-review.test.js && node framework/scripts/codex-review-loop.test.js"
   },
   "keywords": [
     "claude",
@@ -36,7 +36,26 @@
     "bin/",
     "framework/commands/",
     "framework/skills/",
-    "framework/scripts/",
+    "framework/scripts/check-coverage.sh",
+    "framework/scripts/check-doc-drift.sh",
+    "framework/scripts/check-secrets.sh",
+    "framework/scripts/check-structure.sh",
+    "framework/scripts/check-task-gates.sh",
+    "framework/scripts/codex-check.js",
+    "framework/scripts/codex-review.js",
+    "framework/scripts/codex-review-loop.js",
+    "framework/scripts/evidence-packet.js",
+    "framework/scripts/guard-main-branch.sh",
+    "framework/scripts/hook-format-and-stage.sh",
+    "framework/scripts/hook-test-related.sh",
+    "framework/scripts/hook-typecheck.sh",
+    "framework/scripts/log-verification.js",
+    "framework/scripts/metrics-init.sh",
+    "framework/scripts/metrics-update.sh",
+    "framework/scripts/mission-cli.js",
+    "framework/scripts/mission-worktree.js",
+    "framework/scripts/run-hook.cmd",
+    "framework/scripts/track-modified-files.sh",
     "framework/lib/mission-parser.js",
     "framework/lib/mission-schema.js",
     "framework/lib/mission-tracker.js",

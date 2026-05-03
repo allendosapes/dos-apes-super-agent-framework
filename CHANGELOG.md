@@ -4,6 +4,126 @@ All notable changes to the Dos Apes Super Agent Framework are documented in
 this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.4.0] — 2026-05-03
+
+The **mission-native L8 release**. Codex adversarial-review state now
+lives where every other mission attribute lives — in mission frontmatter
+— rather than being parsed out of loop stdout each time a caller wants
+to know what the reviewer concluded. `/apes-status` surfaces the
+verdict and unresolved-finding count for every active mission;
+`/apes-build` reads the verdict from the mission file rather than
+re-parsing the loop's pipe output; `codex.required: true` makes a
+`skipped` terminal a hard error so a required L8 review can't be
+silently bypassed when Codex happens to be unavailable.
+
+### Added
+
+- **`codex` block in mission frontmatter** (schema v2). Optional one-
+  level-nested object with six fields: `required`, `max_rounds`,
+  `last_verdict`, `last_review_path`, `unresolved_findings`,
+  `last_run_at`. Validated by `mission-schema.js`; the
+  `CODEX_VERDICTS` enum (`none`, `accepted`, `partial-success`,
+  `findings-reported`, `exhausted`, `no-progress`, `skipped`) is the
+  single source of truth for valid verdicts. The block is added
+  automatically the first time L8 runs against a mission — clean
+  missions without Codex stay clean.
+- **Schema migration v1 → v2.** `migrateFrontmatter` now stamps
+  `schema_version: 2` and bumps `updated` on read; idempotent on v2
+  inputs. Forward-only. No codex block is added by the migration
+  itself — only by L8 actually running.
+- **Three new MissionTracker helpers**: `getCodexState(id) → object |
+  null`, `setCodexState(id, partial)` (shallow merge through the
+  validation gate), `clearCodexState(id)` (removes the block). All
+  route through the existing schema-validate-then-write path.
+- **Codex state surfaced on `/apes-status`.** Missions in `doing/` and
+  `review/` show `codex: <verdict>, <N> unresolved` when a codex block
+  is present; missions without one render exactly as before. The
+  Review section also displays the legacy
+  `codex_findings_unresolved: true` flag alongside, so reviewers see
+  both the new and backward-compat signals together.
+- **`codex.required: true` gate.** Setting this on a mission makes the
+  loop refuse to terminate with `skipped` — it raises
+  `RequiredSkipError`, prints to stderr, and exits non-zero.
+  `/apes-build` catches the non-zero exit and refuses to advance the
+  mission to `review/`. Missions that genuinely depend on adversarial
+  review can now express that dependency mechanically.
+- **New skill sections.** `framework/skills/missions.md` "Codex review
+  state" with field reference and last-verdict enum table;
+  `framework/skills/cross-model-review.md` "Mission state surface"
+  covering writers, fields, consumers, and the required gate.
+- **44 new tests** across `mission-tracker.test.js` (12),
+  `codex-review.test.js` (14, new file), and
+  `codex-review-loop.test.js` (30, new file). `npm run test:lib` now
+  runs all four suites: 126 tests in 4.6 s.
+
+### Changed
+
+- **`framework/scripts/codex-review.js`** (single-shot) writes Codex
+  state to mission frontmatter via
+  `MissionTracker.setCodexState(id, ...)` after every successful
+  review — `last_verdict` (`accept` → `accepted`, `revise`/`reject`
+  → `findings-reported`), `last_review_path` (relative, forward
+  slashes), `unresolved_findings` (count of high/critical),
+  `last_run_at` (ISO 8601). The two post-review side effects
+  (verification log + codex block) are consolidated into one
+  best-effort `recordCodexReview` helper; either failing reduces to a
+  one-line stderr warning.
+- **`framework/scripts/codex-review-loop.js`** maintains the codex
+  block across iterations: each iteration bumps `last_run_at` at
+  start, and the terminal state is mapped onto the block per the
+  M-0005 P3 table. Workpad entries are now selective — written for
+  `partial-success`, `exhausted`, `no-progress`; suppressed for
+  `accepted`, `findings-reported`, `skipped`. Mission state
+  (todo/doing/review/done/canceled) is **never** changed from inside
+  the loop — that remains the caller's responsibility.
+- **`/apes-build`** reads `codex.last_verdict` from the mission
+  frontmatter (via `mission-cli show`) rather than parsing the loop's
+  stdout. Hard-stops on any non-zero loop exit so the required-skip
+  gate firing actually halts the build. Per-state actions are
+  unchanged from M-0004; only the input source moved.
+- **`/apes-status`** renders the codex line for missions in `doing/`
+  and `review/`. The renderer reads `m.frontmatter.codex` directly
+  from the existing `mission-cli list` output — `list`'s contract is
+  unchanged, no extra CLI calls.
+- **`createMission`** now stamps `schema_version: 2` on freshly
+  authored missions so new files don't need the migration on first
+  read.
+- **`framework/templates/mission-template.md`** updated to
+  `schema_version: 2` with a commented codex block example
+  documenting that the block is auto-added by L8; explicit
+  declaration is only needed for `required: true` or non-default
+  `max_rounds`.
+- **`package.json`** `files` field now lists framework scripts
+  individually instead of including the whole `framework/scripts/`
+  directory. This mirrors the existing `framework/lib/` pattern and
+  keeps `*.test.js` files out of the npm tarball. Production
+  inventory is unchanged (20 scripts ship; 0 test files).
+
+### Migration
+
+- **Existing v1 missions auto-upgrade to v2 on first read.** The
+  migration runs in memory inside `MissionTracker.readMission`; the
+  disk file stays untouched until the caller performs an actual
+  mutation (`updateFrontmatter`, `appendWorkpadEntry`,
+  `setCodexState`). This preserves the no-surprise-mutation
+  principle from M-0002 — a pure read leaves mtime and bytes
+  untouched.
+- **No codex block is added by the migration itself.** Missions that
+  never engage L8 stay clean — `schema_version: 2` is the only field
+  the migration introduces. The codex block appears only when L8
+  actually runs against the mission, or when the mission opts in
+  explicitly via `required: true` or a custom `max_rounds`.
+- **Backward-compatible**: the legacy top-level
+  `codex_findings_unresolved: true` flag is still set by `/apes-build`
+  for `exhausted`/`no-progress` terminals, so M-0004-era reviewers,
+  dashboards, and CI checks that look for it keep working unchanged.
+  New tooling should prefer reading `codex.last_verdict` and
+  `codex.unresolved_findings` directly from the codex block.
+- **No action required for callers**: `MissionTracker.readMission`
+  migrates transparently; `mission-cli show` returns the migrated
+  frontmatter; `validateFrontmatter` accepts both v1 and v2 shapes
+  during the transition.
+
 ## [3.3.0] — 2026-05-03
 
 The **library-layer release**. A behavior-preserving refactor that
