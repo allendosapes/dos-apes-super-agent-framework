@@ -44,6 +44,9 @@
 //   // Verification log
 //   t.getVerificationLogPath(id)                → path to <state>/<id>/verification.jsonl
 //
+//   // Authoring
+//   t.createMission(options)                    → { id, file }
+//
 // =============================================================================
 // PRINCIPLES
 // =============================================================================
@@ -484,6 +487,100 @@ class MissionTracker {
     const m = this.findMissionById(id);
     if (!m) throw new Error(`getVerificationLogPath: mission ${id} not found`);
     return path.join(this.root, m.state, id, "verification.jsonl");
+  }
+
+  // ── Authoring ──────────────────────────────────────────────────────────
+
+  // Create a new mission file with valid frontmatter and the four canonical
+  // body sections. Writes to <root>/todo/M-NNNN-<slug>.md. Slug is derived
+  // from `title`. Returns { id, file }. Does NOT stage the file or commit.
+  //
+  // options:
+  //   title      (required) one-line imperative summary
+  //   priority   (optional) integer 1–5; omitted from frontmatter when absent
+  //   phase      (optional) phase ID string from ROADMAP.md
+  //   dependsOn  (optional) array of mission IDs (validated)
+  //   labels     (optional) array of free-form strings
+  createMission(options) {
+    const opts = options || {};
+    const title = typeof opts.title === "string" ? opts.title.trim() : "";
+    if (!title) throw new Error("createMission: title is required");
+
+    if (opts.priority !== undefined) {
+      if (!Number.isInteger(opts.priority) || opts.priority < 1 || opts.priority > 5) {
+        throw new Error("createMission: priority must be an integer 1–5");
+      }
+    }
+    if (opts.dependsOn !== undefined) {
+      if (!Array.isArray(opts.dependsOn)) {
+        throw new Error("createMission: dependsOn must be an array");
+      }
+      for (const dep of opts.dependsOn) {
+        if (!this.isValidId(dep)) {
+          throw new Error(`createMission: invalid dependency id "${dep}"`);
+        }
+      }
+    }
+    if (opts.labels !== undefined && !Array.isArray(opts.labels)) {
+      throw new Error("createMission: labels must be an array");
+    }
+
+    const id = this.generateNextId();
+    const slug = title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 60);
+    const filename = `${id}-${slug}.md`;
+    const file = path.join(this.root, "todo", filename);
+
+    if (fs.existsSync(file)) {
+      throw new Error(`createMission: file already exists at ${file}`);
+    }
+
+    const today = todayIso();
+    const branch = `feat/${id.toLowerCase()}${slug ? "-" + slug : ""}`;
+    const worktree = `.worktrees/${id}`;
+
+    const frontmatter = {
+      id,
+      title,
+      state: "todo",
+      created: today,
+      updated: today,
+    };
+    if (opts.priority !== undefined) frontmatter.priority = opts.priority;
+    if (opts.phase) frontmatter.phase = String(opts.phase);
+    if (Array.isArray(opts.dependsOn) && opts.dependsOn.length > 0) {
+      frontmatter.depends_on = opts.dependsOn.slice();
+    }
+    if (Array.isArray(opts.labels) && opts.labels.length > 0) {
+      frontmatter.labels = opts.labels.map((l) => String(l));
+    }
+    frontmatter.workspace = { branch, worktree };
+
+    const body = [
+      "## Context",
+      "",
+      "[Describe the problem this mission solves and the surrounding context.]",
+      "",
+      "## Implementation notes",
+      "",
+      "[Tech choices, libraries, patterns to follow.]",
+      "",
+      "## Out of scope",
+      "",
+      "[Explicit non-goals.]",
+      "",
+      "## Workpad",
+      "",
+      "<!-- Append timestamped entries; do not delete prior entries. -->",
+      "",
+    ].join("\n");
+
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    this._writeFile(file, { frontmatter, body });
+    return { id, file };
   }
 
   // ── Internal write path ────────────────────────────────────────────────

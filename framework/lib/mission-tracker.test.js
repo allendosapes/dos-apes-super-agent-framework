@@ -481,6 +481,76 @@ group("Verification log", () => {
   });
 });
 
+// ─── Authoring (createMission) ──────────────────────────────────────────────
+
+group("Authoring", () => {
+  test("createMission writes to todo/ with valid frontmatter", () => {
+    const { root } = makeTempTree();
+    const t = new MissionTracker({ root });
+    const r = t.createMission({ title: "Add POST /todos endpoint" });
+    assert.strictEqual(r.id, "M-0001");
+    assert(r.file.includes(path.join("todo", "M-0001-add-post-todos-endpoint.md")));
+    assert(fs.existsSync(r.file));
+    const m = t.readMission("M-0001");
+    assert.strictEqual(m.frontmatter.id, "M-0001");
+    assert.strictEqual(m.frontmatter.state, "todo");
+    assert.strictEqual(m.frontmatter.title, "Add POST /todos endpoint");
+    assert.deepStrictEqual(m.frontmatter.workspace, {
+      branch: "feat/m-0001-add-post-todos-endpoint",
+      worktree: ".worktrees/M-0001",
+    });
+    assert(m.body.includes("## Context"));
+    assert(m.body.includes("## Workpad"));
+  });
+
+  test("createMission accepts priority/phase/dependsOn/labels", () => {
+    const { root } = makeTempTree();
+    seedMission(root, "done", "M-0001"); // for dep validation
+    const t = new MissionTracker({ root });
+    const r = t.createMission({
+      title: "Build feature X",
+      priority: 1,
+      phase: "phase-2-core",
+      dependsOn: ["M-0001"],
+      labels: ["backend", "urgent"],
+    });
+    const m = t.readMission(r.id);
+    assert.strictEqual(m.frontmatter.priority, 1);
+    assert.strictEqual(m.frontmatter.phase, "phase-2-core");
+    assert.deepStrictEqual(m.frontmatter.depends_on, ["M-0001"]);
+    assert.deepStrictEqual(m.frontmatter.labels, ["backend", "urgent"]);
+  });
+
+  test("createMission allocates next ID across all states", () => {
+    const { root } = makeTempTree();
+    seedMission(root, "todo", "M-0003");
+    seedMission(root, "done", "M-0007");
+    const t = new MissionTracker({ root });
+    const r = t.createMission({ title: "Next" });
+    assert.strictEqual(r.id, "M-0008");
+  });
+
+  test("createMission rejects empty title", () => {
+    const { root } = makeTempTree();
+    const t = new MissionTracker({ root });
+    assert.throws(() => t.createMission({ title: "" }), /title is required/);
+    assert.throws(() => t.createMission({}), /title is required/);
+  });
+
+  test("createMission rejects invalid priority and dependency IDs", () => {
+    const { root } = makeTempTree();
+    const t = new MissionTracker({ root });
+    assert.throws(
+      () => t.createMission({ title: "x", priority: 6 }),
+      /priority must be an integer 1–5/
+    );
+    assert.throws(
+      () => t.createMission({ title: "x", dependsOn: ["not-an-id"] }),
+      /invalid dependency id/
+    );
+  });
+});
+
 // ─── Cleanup + summary ────────────────────────────────────────────────────
 
 for (const c of cleanups) {

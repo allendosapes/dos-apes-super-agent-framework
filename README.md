@@ -399,7 +399,11 @@ project-root/
 │   │   ├── evidence-packets.md  # Evidence packet format and review
 │   │   └── cross-model-review.md # L8 consumer protocol (triage / fix / terminal states)
 │   └── settings.json            # Hooks, permissions, MCP servers
-├── scripts/                     # 18 hook + helper scripts
+├── lib/                         # Library layer — canonical mission API
+│   ├── mission-schema.js        # Frozen constants + validation + migration framework
+│   ├── mission-parser.js        # Frontmatter / body / acceptance / workpad parsing
+│   └── mission-tracker.js       # MissionTracker — identity, state, deps, workpad, authoring
+├── scripts/                     # 19 hook + helper scripts
 │   ├── guard-main-branch.sh
 │   ├── hook-format-and-stage.sh
 │   ├── hook-typecheck.sh
@@ -412,6 +416,7 @@ project-root/
 │   ├── check-structure.sh
 │   ├── metrics-init.sh
 │   ├── metrics-update.sh
+│   ├── mission-cli.js           # Thin CLI wrapper around MissionTracker (JSON I/O)
 │   ├── mission-worktree.js      # Worktree create/sync/remove/list
 │   ├── log-verification.js      # Append run to active mission's verification.jsonl
 │   ├── evidence-packet.js       # Generate the proof-of-work bundle

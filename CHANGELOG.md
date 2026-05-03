@@ -4,6 +4,221 @@ All notable changes to the Dos Apes Super Agent Framework are documented in
 this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.0] — 2026-05-03
+
+The **library-layer release**. A behavior-preserving refactor that
+extracts every piece of mission-touching logic — frontmatter parsing,
+state-machine transitions, ID generation, dependency resolution, workpad
+appends, active-mission management — into a single tested library at
+`framework/lib/`. The five mission-touching scripts and four
+mission-touching slash commands now route through the library; inline
+`node -e` blocks and ad-hoc regex parsers are gone. No observable
+behavior changes ship with this release; the value is consolidation,
+schema versioning, and an extension point for future storage backends.
+
+### Added
+
+- **`framework/lib/mission-schema.js`** — Frozen constants and pure
+  validation/migration helpers. Exports `CURRENT_SCHEMA_VERSION` (= 1),
+  `STATES`, `LEVEL_IDS`, `validateFrontmatter(fm) → { valid, errors }`,
+  and `migrateFrontmatter(fm)`. Zero I/O, zero dependencies. Every
+  problem is surfaced at once instead of throwing on the first error.
+- **`framework/lib/mission-parser.js`** — Frontmatter ↔ body splitting,
+  scalar / list / nested-field accessors (`getScalar`, `getList`,
+  `getNestedScalar`, `getNestedList`), full `parseMission` composer, plus
+  `parseAcceptanceCriteria(body)` (returns `[{ text, checked }]`) and
+  `parseWorkpadEntries(body)`.
+- **`framework/lib/mission-tracker.js`** — The `MissionTracker` class.
+  Identity (`generateNextId`, `isValidId`, `findMissionById`,
+  `findMissionByIdInState`), listing (`listMissionsByState`,
+  `listAllMissions`), state machine (`canTransition`, `moveMissionState`,
+  `validateStateTransition`), mutations (`readMission`, `writeMission`,
+  `updateFrontmatter`, `appendWorkpadEntry`), dependencies
+  (`getDependencies`, `resolveUnmetDependencies`, `detectCycles`), active
+  mission (`getActiveMission`, `setActiveMission`, `clearActiveMission`),
+  verification log (`getVerificationLogPath`), and authoring
+  (`createMission`). Synchronous throughout. Validates every write before
+  touching disk.
+- **`framework/lib/mission-parser.test.js`** + **`mission-tracker.test.js`** — 31 + 32 = 63 tests covering every method on the public surface plus
+  the parsing edge cases that previously varied script-by-script.
+- **`framework/scripts/mission-cli.js`** — Thin shell-friendly wrapper
+  around `MissionTracker`. Twelve verbs (`list`, `show`, `next-id`,
+  `move`, `workpad`, `update`, `deps`, `active`, `set-active`,
+  `clear-active`, `create`, `can-transition`); every verb prints exactly
+  one JSON object on stdout. Exit codes: `0` ok, `1` invalid input,
+  `2` not found, `3` precondition failed. Slash commands and external
+  tooling call this instead of hand-rolling Node snippets.
+- **Schema versioning** — Every mission carries an implicit
+  `schema_version`. The framework ships at version 1; the migration
+  framework (`MIGRATIONS` array, `migrateFrontmatter` walker) is in
+  place but has nothing to migrate from yet. Adding a future schema
+  version is a matter of bumping `CURRENT_SCHEMA_VERSION` and appending
+  a `{ from, to, migrate(fm) }` record — `migrateFrontmatter` walks the
+  chain automatically.
+- **`npm run test:lib`** — runs the parser and tracker test suites.
+- **Library-layer prose** — `ARCHITECTURE.md` "Library Layer" section
+  (between Mission Layer and Verification Pyramid) and
+  `framework/skills/missions.md` "Programmatic API" section, both
+  pointing at the library as the canonical interface.
+
+### Changed
+
+- **All mission-touching scripts now route through `MissionTracker`.**
+  No observable behavior change is intended in any of these — same
+  inputs, same outputs, same exit codes — but the implementation no
+  longer duplicates mission logic five different ways:
+  - `framework/scripts/mission-worktree.js` — `parseMissionId`,
+    `findMissionFile`, `readMissionMeta` delegate to the library.
+    Worktree-specific path validation (`validateWorktreeRel`,
+    `resolveInsideRepo`, `validateBranchName`) stays local — it is
+    security-critical and not a mission concern.
+  - `framework/scripts/evidence-packet.js` — Removed local `STATES`,
+    `parseMissionId`, `findMissionFile`, `splitFrontmatter`,
+    `getScalar`, `getNestedScalar`, `getList`, `getNestedList`,
+    `readMissionMeta`. Replaced with `tracker.findMissionById(id)` and
+    `tracker.getVerificationLogPath(id)`. `acceptanceStatus` stays local
+    — its substring-match behavior is richer than the library's
+    `parseAcceptanceCriteria` and is evidence-packet-specific.
+  - `framework/scripts/log-verification.js` — Removed local `STATES`,
+    `readActiveMission`, `findMissionState`. Now uses
+    `tracker.getActiveMission()` and `tracker.getVerificationLogPath(id)`.
+    The graceful-degradation contract is preserved: missing
+    active-mission, missing mission file, or write errors all warn to
+    stderr and exit 0; argument-validation errors still exit 2. The
+    `LEVEL_NAMES` dictionary stays local.
+  - `framework/scripts/codex-review.js` — `loadMission` uses
+    `tracker.findMissionById(id)` and `parser.parseFrontmatter`. A small
+    `findLegacyMissionFile` helper retains the pre-slug filename lookup
+    so older mission shapes still resolve.
+  - `framework/scripts/codex-review-loop.js` — Removed local
+    `findMissionFile` and the inline `appendMissionWorkpad` body. Now
+    uses `tracker.findMissionById(id)` and
+    `tracker.appendWorkpadEntry(id, note)`.
+- **All mission-touching slash commands now invoke `mission-cli.js`
+  and the library** instead of inline `node -e` blocks:
+  - `framework/commands/apes-mission.md` — `new`, `list`, `show`,
+    `move`, `workpad` subcommands all shell out to `mission-cli.js`.
+    The FSM table is now a documentation echo of the library's frozen
+    `TRANSITIONS` constant.
+  - `framework/commands/apes-build.md` — Mission resolution, target
+    selection, dependency-unmet checks, state transitions, workpad
+    appends, and `codex_findings_unresolved` flag setting all go
+    through `mission-cli.js update`.
+  - `framework/commands/apes-status.md` — The ~75-line inline node
+    script that re-implemented frontmatter parsing has been retired.
+    The Missions section now reads `mission-cli.js list` JSON output
+    and groups by state in pure shell.
+  - `framework/commands/apes-evidence.md` — Active-mission fallback
+    reads via `mission-cli.js active`.
+- **`framework/settings.json`** permissions list grants
+  `Bash(node scripts/mission-cli.js:*)` so the slash commands can
+  invoke the wrapper without per-call approval prompts.
+- **`bin/cli.js`** — Now copies `framework/lib/` to `<project>/lib/`
+  alongside `scripts/`, gated by the same `--no-hooks` flag (the lib
+  has no consumers when scripts aren't installed). The install summary
+  prints a "Library" line.
+- **`package.json` `files` array** lists the three production lib
+  modules by name (`framework/lib/mission-parser.js`,
+  `mission-schema.js`, `mission-tracker.js`). Listing files
+  individually keeps `*.test.js` out of the npm tarball without
+  needing `.npmignore`.
+- **`package.json` `test` script** now runs `npm run test:lib`
+  (the library suite) rather than the never-created
+  `node test/test.js`. The previous script was broken from before
+  3.3.0; pre-3.3.0 there were no Node tests to run, so the missing
+  file was invisible. The library tests are the test suite now.
+
+### Notes — issues encountered during the playbook execution
+
+The refactor surfaced four pieces of context worth recording. None block
+the release; each is an honest call-out for the next maintainer.
+
+#### 1. Workpad timestamp format normalized + reader compatibility shim
+
+Pre-3.3.0, `codex-review-loop.js` wrote workpad headings in the format
+`### YYYY-MM-DD HH:MM UTC — codex-loop`. The library's canonical format
+(matching `apes-mission.md` and `missions.md` prose) is
+`### YYYY-MM-DD HH:MM` — no `UTC` literal, no role suffix. The
+`codex-loop` attribution moved into the first line of the note body
+(`**codex-loop** — L8 cross-model review terminal state: ...`) so
+readers still see at a glance which subsystem wrote each entry.
+
+That format change broke an implicit contract with the workpad-timestamp
+regex inline in `apes-status.md` line 144. To avoid shipping `main` with
+a writer/reader mismatch during P4 (when the library landed but
+`apes-status.md` had not yet been migrated), the inline regex was
+tightened to accept both shapes:
+
+```js
+/^###\s+(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})(?:\s+—\s+\S.*)?\s*$/gm
+```
+
+Anchored at end-of-line, with an optional non-capturing group for the
+legacy role suffix. P5 then rewrote `apes-status.md` to call the
+library directly, but the tightened regex stays — it cleanly handles
+any legacy missions written before the format change.
+
+**Forward note:** if a new workpad-format change is needed, update
+`mission-tracker.appendWorkpadEntry`, `mission-parser.parseWorkpadEntries`,
+and the prose in `framework/skills/missions.md` in the same commit. The
+library is the single writer now, so format drift is no longer possible
+at write time.
+
+#### 2. `defaultBranch` divergence — flagged, deferred
+
+P1's inventory found that `mission-worktree.js` produces
+`feat/m-nnnn-<slug-of-title>` for the default branch name, while
+`evidence-packet.js` produces `feat/m-nnnn` with no slug. Mission
+frontmatter pins the canonical value via `workspace.branch`, so in
+practice the difference only matters when frontmatter is missing — but
+the helpers should not disagree.
+
+P3 did not promote `defaultBranch` into `MissionTracker` (the API
+discussion settled on the slug version, but no callsite needed the
+helper at the time). Each script keeps its own variant for now. A future
+release can centralize this in `mission-tracker.js` as a one-line
+refactor — both call sites are clearly marked with a comment.
+
+#### 3. `mission-schema.js` is a narrower P3 subset of the inventory plan
+
+The inventory (`_planning/M-0002-inventory.md` § 9) called for thirteen
+constants and helpers in `mission-schema.js`. The library that actually
+shipped exports five: `CURRENT_SCHEMA_VERSION`, `STATES`, `LEVEL_IDS`,
+`validateFrontmatter`, `migrateFrontmatter`. The other constants
+(`LEVEL_NAMES`, `TRANSITIONS`, `DEFAULT_BRANCH`, `EVIDENCE_DIR_NAME`,
+`WORKPAD_TIMESTAMP_FORMAT`, `WORKPAD_HEADING_REGEX`, `MISSION_ID_REGEX`,
+`formatWorkpadTimestamp`, `isValidMissionId`, `isValidState`,
+`isValidTransition`) live inside `mission-tracker.js` — sometimes as
+private constants, sometimes as instance methods like `tracker.isValidId`.
+Functionally equivalent. The choice was driven by call-site needs: every
+caller is going through the tracker anyway, so re-exposing the same
+constants from `mission-schema.js` would have been duplication for its
+own sake.
+
+If a future consumer wants the constants without instantiating a tracker
+(say, a static analyzer that reads mission files but does not mutate
+them), the right move is to hoist them from `mission-tracker.js` into
+`mission-schema.js` rather than re-derive them. They are already frozen
+and validated in one place; moving them is a copy-paste, not a redesign.
+
+#### 4. Version-bump correction (2.3.0 → 3.3.0)
+
+The P6 spec called for "Bump package.json to 2.3.0." The codebase had
+already shipped 3.0.0 (commit `36fb25b`), 3.1.0 (`010ff3a`), and 3.2.0
+(`e3f3777`); bumping to 2.3.0 would have been a downgrade — semver-
+confusing (`npm install` would still resolve to 3.2.0 as `latest`,
+leaving the library release effectively invisible) and a regression of
+the `version` field. Direct precedent in this changelog: the 3.1.0
+notes record the same situation when the missions-release playbook was
+authored against a v2 baseline, and the 3.2.0 notes (Deviation 2)
+record it again for the L8 release.
+
+**Resolution:** Bumped to **3.3.0** — the next minor from the actual
+current version. Documented here so a future spec author updating the
+playbook from a stale baseline gets a clean diff.
+
+---
+
 ## [3.2.0] — 2026-05-02
 
 The **adversarial review release**. Adds L8 to the verification pyramid: a

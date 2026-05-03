@@ -255,3 +255,43 @@ These are forbidden. CI hooks, reviewers, and skills should refuse to participat
 - **`framework/skills/testing.md`** — The verification pyramid (L0–L7) referenced by `verification.required_levels` and `verification.optional_levels`.
 - **`framework/templates/mission-template.md`** — Canonical mission file template; copy when creating a new mission.
 - **`ROADMAP.md`** (in the consuming project) — Source of phase IDs used in the optional `phase` field.
+
+## Programmatic API
+
+Every rule in this skill — ID format, FSM transitions, dependency resolution, workpad append format, frontmatter validation — is **enforced by a library**. Scripts and slash commands MUST go through that library; do not hand-roll parsing or `git mv` against mission files.
+
+| Layer | File | Purpose |
+|-------|------|---------|
+| Library | `framework/lib/mission-tracker.js` | `MissionTracker` class — identity, state, deps, workpad, active-mission, authoring. The canonical Node API. |
+| Library | `framework/lib/mission-parser.js` | Frontmatter ↔ body splitting, scalar / list / nested-field accessors, acceptance-checkbox parsing, workpad-entry parsing. |
+| Library | `framework/lib/mission-schema.js` | Frozen `STATES`, `LEVEL_IDS`, `CURRENT_SCHEMA_VERSION`; `validateFrontmatter`, `migrateFrontmatter`. |
+| CLI | `framework/scripts/mission-cli.js` | Thin shell-friendly wrapper. Every verb (`list`, `show`, `move`, `workpad`, `update`, `deps`, `active`, `set-active`, `clear-active`, `create`, `next-id`, `can-transition`) prints exactly one JSON object to stdout. Errors prefix `mission-cli:` to stderr. Exit codes: `0` ok, `1` invalid input, `2` not found, `3` precondition failed. |
+
+**Use the library, not direct file manipulation.** Reading frontmatter with a one-off regex, computing the next mission ID by listing a directory, hand-writing a workpad block — every shape that previously appeared inline in scripts and slash commands now has a tested method on `MissionTracker`. Reaching past the library to `fs.readFileSync` a mission file is an anti-pattern: it bypasses validation, schema migration, and the FSM.
+
+**Schema versioning.** Every mission carries an implicit `schema_version` (defaults to `1` for missions written before versioning). The library exports `CURRENT_SCHEMA_VERSION` and a `migrateFrontmatter` function that walks any older version forward to the current one. There are no migrations to apply today — the framework ships at v1 — but adding a new field shape later is a matter of bumping the constant and appending a `{ from, to, migrate(fm) }` record. Callers never need to special-case version numbers; `MissionTracker` migrates on read.
+
+**Library boundary.** The library mutates the working tree (file writes, `git mv`) but never creates commits, branches, tags, or worktrees. Commit boundaries belong to the caller. This is documented at the top of `mission-tracker.js`.
+
+Example (Node, in-process):
+
+```js
+const { MissionTracker } = require("./framework/lib/mission-tracker.js");
+const t = new MissionTracker({ root: ".planning/missions" });
+
+const id = t.generateNextId();              // → "M-0042"
+t.createMission({ id, title: "Add POST /todos endpoint" });
+t.appendWorkpadEntry(id, "scaffolded route");
+const blockers = t.resolveUnmetDependencies(id);  // → []
+```
+
+Example (shell, JSON-shaped):
+
+```bash
+node scripts/mission-cli.js list --state doing
+node scripts/mission-cli.js show M-0042
+node scripts/mission-cli.js move M-0042 review
+node scripts/mission-cli.js workpad M-0042 "evidence packet generated"
+```
+
+If a future operation isn't expressible through the library, that is a library gap to fix — not a license to bypass.
