@@ -146,44 +146,103 @@ When a mission **is** active (`.planning/active-mission` is set and the mission 
    - Findings rejected with reasons.
    - Verdict on the next-iteration review.
 
-   This is the mission's record of what the cross-model loop did to its diff. Format follows the project's mission-workpad convention (see `missions.md`).
+   The loop driver (`scripts/codex-review-loop.js`) writes a terminal-state workpad entry on its own for `partial-success`, `exhausted`, and `no-progress` (per M-0005 P3). Skip duplicate per-iteration entries when the loop is in charge — write them yourself only for the standalone (non-loop) flow.
 
 2. **Critical-finding escalation.** If a `critical` finding cannot be addressed inside the loop (e.g. it requires an architectural change, a schema migration, or a decision outside the mission's scope):
 
-   - Mark the mission frontmatter with `codex_findings_unresolved: true`.
-   - Stop the loop with the **blocked** terminal state (see below).
+   - The loop terminates with `exhausted` or `no-progress` (see [Terminal states](#when-to-stop-the-loop)).
+   - `/apes-build` sets `codex_findings_unresolved: true` on the mission frontmatter as a backward-compat signal (M-0004 era field; new tooling should read `codex.last_verdict` and `codex.unresolved_findings` from the codex block).
    - Leave the finding in place for human triage — do not delete the findings file.
 
-3. **Verification log.** A separate L8 entry is appended to `verification.jsonl` by `scripts/codex-review.js` itself (when the missions framework is wired). This skill does **not** write that log directly.
+3. **Verification log.** A separate L8 entry is appended to `verification.jsonl` by `scripts/codex-review.js` itself. This skill does **not** write that log directly.
 
-> **Note:** This skill does not modify the missions framework. The wiring that lets `log-verification.js` accept `L8` lands separately. Until that wires up, the verification log entry may be skipped — that's expected and is not a failure of this skill.
+## Mission state surface
+
+Since M-0005, every L8 run that targets a mission persists its outcome
+into the mission's `codex` frontmatter block — the same surface
+`/apes-status` reads, the same surface `/apes-build` branches on, the
+same surface `/apes-codex-review` reports against. This replaces the
+older "parse loop stdout" pattern with a durable, human-readable record
+on the mission file itself.
+
+### Where the state lives
+
+The codex block is a one-level-nested object under the mission's
+frontmatter, validated by `framework/lib/mission-schema.js` (schema
+version 2). Read it via the mission CLI:
+
+```bash
+node scripts/mission-cli.js show M-0042 \
+  | node -e 'let s=""; process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).frontmatter.codex || null))'
+```
+
+Or in-process via `MissionTracker.getCodexState(id)` — see
+`missions.md` "Codex review state" for the field reference.
+
+### Who writes which field
+
+| Field                  | Writer                                          | When                                                                       |
+|------------------------|-------------------------------------------------|----------------------------------------------------------------------------|
+| `required`             | Author / setCodexState                          | Set explicitly when a mission must run L8 before review → done.            |
+| `max_rounds`           | Author / setCodexState                          | Per-mission override of the global `max_iterations` config.                |
+| `last_verdict`         | `codex-review.js`, `codex-review-loop.js`       | Single-shot writes accept/revise/reject (mapped); loop writes its terminal state. |
+| `last_review_path`     | `codex-review.js`, `codex-review-loop.js`       | Relative path to the most recent `review.json` (single-shot or final loop iteration). |
+| `unresolved_findings`  | `codex-review.js`, `codex-review-loop.js`       | Count of high/critical findings still open. `accepted` resets to 0.        |
+| `last_run_at`          | `codex-review.js`, `codex-review-loop.js`       | ISO 8601 timestamp; loop bumps it at each iteration start AND on terminal. |
+
+All writes go through `MissionTracker.setCodexState` — never edit the
+codex block by hand or via `mission-cli update --field codex.X=Y`.
+
+### How callers consume it
+
+- **`/apes-build`** reads `codex.last_verdict` after the loop returns
+  and branches on it (Step 4.5 in `apes-build.md`). It still sets the
+  legacy top-level `codex_findings_unresolved: true` flag for
+  `exhausted` / `no-progress` so M-0004-era dashboards keep working.
+- **`/apes-status`** surfaces `codex.last_verdict` and
+  `codex.unresolved_findings` on missions in `doing/` and `review/`.
+  Missions without a codex block render exactly as before.
+- **`/apes-codex-review`** (and any future custom command) should
+  prefer the codex block over re-running the review when state
+  freshness allows.
+
+### required: true gate
+
+Setting `codex.required: true` makes a `skipped` terminal an error: the
+loop exits non-zero rather than allow a required L8 review to be
+silently bypassed when Codex happens to be unavailable. The build flow
+catches the non-zero exit and refuses to advance the mission to
+`review/`. See `apes-build.md` Step 4.5 for the hard-stop behavior.
 
 ## When to stop the loop
 
-The loop terminates on **exactly one** of these three conditions. Each maps to a distinct terminal state.
+The loop terminates in **exactly one** of six states. Each maps to a
+specific `codex.last_verdict` value, a specific workpad treatment, and
+a specific build-flow action.
 
-| #   | Condition                                          | Terminal state | What it means                                                                          |
-|-----|----------------------------------------------------|----------------|----------------------------------------------------------------------------------------|
-| 1   | Latest verdict is `accept`                         | **clean**      | Reviewer signed off. Findings file is the final record. Proceed to merge.              |
-| 2   | `max_iterations` reached (default 3)               | **capped**     | Loop budget exhausted with at least one open high/critical. Surface to user; do not auto-merge. |
-| 3   | `critical` finding cannot be addressed             | **blocked**    | An open critical finding requires action outside the loop's scope. Escalate.           |
+| Terminal state      | `codex.last_verdict` | Trigger                                                              | Workpad entry?                          |
+|---------------------|----------------------|----------------------------------------------------------------------|-----------------------------------------|
+| **accepted**        | `accepted`           | Reviewer signed off (verdict `accept` or empty findings).            | No — clean accept doesn't merit a note. |
+| **partial-success** | `partial-success`    | Only low/medium findings remain (none loop-eligible).                | Yes — summary of low/medium findings.   |
+| **findings-reported** | `findings-reported` | `--no-fix` was set; loop reports without attempting a fix.           | No — user explicitly opted into report-only. |
+| **exhausted**       | `exhausted`          | Hit `max_iterations` cap with open high/critical findings.           | Yes — list unresolved + final review path. |
+| **no-progress**     | `no-progress`        | Fix step ran but HEAD did not advance.                               | Yes — note + final review path.         |
+| **skipped**         | `skipped`            | Codex unavailable / disabled / no diff to review.                    | No — skip is uninteresting (unless `required: true`, in which case the loop errors instead). |
 
-### Terminal-state actions
-
-| State    | Commit          | Mission                                              | User-visible signal                                                  |
-|----------|-----------------|------------------------------------------------------|----------------------------------------------------------------------|
-| clean    | Final fix commit | Workpad: "L8 clean after N iteration(s)"             | Quiet success. Branch is mergeable from L8's perspective.            |
-| capped   | Last fix commit | Workpad: lists open findings; no `unresolved` flag  | Warn: "L8 capped at N iterations; M findings still open." Human decides. |
-| blocked  | Last fix commit | `codex_findings_unresolved: true` in frontmatter     | Block merge. Surface the unaddressable critical finding by file:line.|
-
-In all three cases, the original Codex findings file (`.dos-apes/codex-reviews/*.json`) is preserved — it's the audit trail.
+In every case, the original Codex review files
+(`.dos-apes/codex-reviews/*.json`) are preserved as the audit trail.
+The mission state (todo/doing/review/done/canceled) is **never**
+changed by the loop — that's the caller's responsibility.
 
 ## Cross-references
 
 - `testing.md` — L8's place in the verification pyramid, evidence packets.
-- `missions.md` — mission lifecycle, workpad protocol, frontmatter fields.
+- `missions.md` — mission lifecycle, workpad protocol, frontmatter fields, "Codex review state" section.
+- `framework/lib/mission-schema.js` — `CODEX_VERDICTS` enum + validation for the codex block.
+- `framework/lib/mission-tracker.js` — `getCodexState` / `setCodexState` / `clearCodexState` API.
 - `.dos-apes/codex-review-config.README.md` — config field reference and capability cache.
 - `.dos-apes/codex-review-schema.json` — authoritative findings schema.
 - `.dos-apes/codex-review-prompt.md` — reviewer prompt + placeholder contract.
 - `scripts/codex-review.js` — the single-shot review primitive this skill consumes.
+- `scripts/codex-review-loop.js` — the loop driver that maps terminal states onto the codex block.
 - `scripts/codex-check.js` — prerequisite check (CLI, auth, capability cache).

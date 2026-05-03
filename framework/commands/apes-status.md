@@ -94,6 +94,19 @@ let buf = ""; process.stdin.on("data", d => buf += d).on("end", () => {
     const d = new Date(iso);
     return isNaN(d.getTime()) ? null : Math.floor((Date.now() - d.getTime()) / 86400000);
   }
+  // M-0005: surface the L8 codex block when present. mission-cli list
+  // already returns full frontmatter, so no extra CLI call is needed.
+  // Missions without a codex block render exactly as before.
+  function codexLine(fm) {
+    const c = fm && fm.codex;
+    if (!c || typeof c !== "object") return null;
+    const verdict = c.last_verdict || "none";
+    const unresolved = (typeof c.unresolved_findings === "number") ? c.unresolved_findings : null;
+    const required = c.required === true ? " · required" : "";
+    return unresolved === null
+      ? `codex: ${verdict}${required}`
+      : `codex: ${verdict}, ${unresolved} unresolved${required}`;
+  }
 
   console.log("=== Missions ===");
 
@@ -110,8 +123,10 @@ let buf = ""; process.stdin.on("data", d => buf += d).on("end", () => {
       const wp = lastWorkpadTimestamp(fileText) || "(no workpad entry yet)";
       const age = ageDays(fm.updated);
       const ageStr = age === null ? "" : ` · ${age}d in doing`;
+      const cx = codexLine(fm);
       console.log(`  ${m.id} p${fm.priority || 3} — ${m.title}`);
       console.log(`    branch: ${branch} · last workpad: ${wp}${ageStr}`);
+      if (cx) console.log(`    ${cx}`);
     }
   }
 
@@ -125,8 +140,16 @@ let buf = ""; process.stdin.on("data", d => buf += d).on("end", () => {
       const packet = `.planning/missions/review/${m.id}/evidence/summary.md`;
       const has = fs.existsSync(packet) ? "evidence packet ✓" : "evidence packet MISSING";
       const moved = fs.statSync(m.path).mtime.toISOString().slice(0, 10);
+      const cx = codexLine(m.frontmatter);
+      // Backward-compat flag from M-0004 — still set by /apes-build for
+      // exhausted/no-progress terminals. Render it alongside the codex
+      // verdict so reviewers see both signals.
+      const unresolvedFlag = m.frontmatter.codex_findings_unresolved === true
+        ? " · ⚠ codex_findings_unresolved"
+        : "";
       console.log(`  ${m.id} p${m.frontmatter.priority || 3} — ${m.title}`);
-      console.log(`    ${has} · moved to review: ${moved}`);
+      console.log(`    ${has} · moved to review: ${moved}${unresolvedFlag}`);
+      if (cx) console.log(`    ${cx}`);
     }
   }
 
@@ -162,10 +185,21 @@ let buf = ""; process.stdin.on("data", d => buf += d).on("end", () => {
 ```
 
 The CLI's `list` returns `{ id, title, frontmatter, path }` per mission —
-no body. For the last-workpad-timestamp scan in the Doing block, the
-renderer reads each mission's file directly via `fs.readFileSync(m.path)`
-since the body is the only place workpad headings live. This keeps the
-lib's list contract narrow.
+no body. The L8 codex block lives in `frontmatter.codex` (M-0005) and is
+already in scope for free; the renderer just reads it. For the
+last-workpad-timestamp scan in the Doing block, the renderer reads each
+mission's file directly via `fs.readFileSync(m.path)` since the body is
+the only place workpad headings live. This keeps the lib's list contract
+narrow — listing remains metadata-only, deep operations (body scans,
+verification logs) read on demand. If the renderer ever becomes slow with
+many missions, the right fix is batched reads, not contract expansion.
+
+The codex line renders as `codex: <last_verdict>, <unresolved> unresolved`
+when a mission has a codex block. Missions without one render exactly as
+before — no extra line. The Review section also surfaces the legacy
+`codex_findings_unresolved: true` flag (set by `/apes-build` for
+`exhausted` / `no-progress` terminals) so reviewers see both the new and
+backward-compat signals together.
 
 ## Next Actions
 

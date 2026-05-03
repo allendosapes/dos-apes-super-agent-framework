@@ -227,20 +227,59 @@ if [ "$L8_ENABLED" -eq 1 ]; then
 fi
 ```
 
-The loop writes its terminal state to
-`.dos-apes/codex-reviews/result.json` and appends a `## Workpad` entry to
-the active mission file (per `cross-model-review.md`).
+The loop persists its terminal state into the mission's `codex`
+frontmatter block (see `missions.md` "Codex review state" and
+`cross-model-review.md` "Mission state surface"). It also writes
+`.dos-apes/codex-reviews/result.json` for the audit trail and appends
+a workpad entry for terminal states where a human reader benefits
+(`partial-success`, `exhausted`, `no-progress`).
 
-**Branching on the terminal state.** Read `result.json`, then:
+**Hard-stop on non-zero loop exit.** Exit `1` from the loop means
+either a script-level failure (config parse, fs error, codex-review.js
+crash) or the required-skip gate firing (mission has `codex.required:
+true` but Codex was unavailable). Either way the mission is not ready
+for review:
 
-| Terminal state       | Action                                                                                                                                                       |
-|----------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `accepted`           | Continue to Step 5 (generate evidence packet). The L8 entry is already in the mission's `verification.jsonl`.                                                |
-| `partial-success`    | Continue to Step 5. Only low/medium findings remain — those are explicitly out of the loop's scope; the human reviewer addresses them.                       |
-| `findings-reported`  | Continue to Step 5. This state only fires when `--no-fix` was set, which `/apes-build` does NOT set. If you see it here, something passed `--no-fix` upstream — surface to the user. |
-| `exhausted`          | **Mark the mission unresolved**, then continue to Step 5. The packet must include the open findings; do not silently swallow them. (See "Mark unresolved" below.) |
-| `no-progress`        | **Mark the mission unresolved**, then continue to Step 5. Claude Code couldn't make a fix — surface explicitly so the human reviewer sees it.                |
-| `skipped`            | Continue to Step 5 silently. Codex unavailable/disabled is the same as L8 not being configured — never blocks the build.                                     |
+```bash
+if [ "$L8_ENABLED" -eq 1 ] && [ "$L8_LOOP_EXIT" -ne 0 ]; then
+  echo "apes-build: L8 loop exited ${L8_LOOP_EXIT}; mission ${TARGET} stays in doing/" >&2
+  echo "apes-build: inspect the codex block (mission-cli show ${TARGET}) and .dos-apes/codex-reviews/result.json" >&2
+  exit 1
+fi
+```
+
+**Read the verdict from the mission file, not from loop stdout.** The
+codex block on the mission's frontmatter is the single source of truth
+for what L8 concluded. Reading it via `mission-cli show` keeps
+`/apes-build`, `/apes-status`, `/apes-codex-review`, and any future
+caller pointed at the same surface — no fragile pipe-parsing of loop
+output.
+
+```bash
+if [ "$L8_ENABLED" -eq 1 ]; then
+  CODEX_VERDICT=$(node scripts/mission-cli.js show "$TARGET" | node -e '
+    let s = ""; process.stdin.on("data", d => s += d).on("end", () => {
+      const fm = JSON.parse(s).frontmatter || {};
+      console.log((fm.codex && fm.codex.last_verdict) || "none");
+    });
+  ')
+fi
+```
+
+**Branching on `codex.last_verdict`.** The actions per terminal are
+unchanged from M-0004 — only the input source moved (mission file
+instead of loop stdout). The states themselves are M-0005's
+six-terminal set; see `cross-model-review.md` for definitions.
+
+| `codex.last_verdict`    | Action                                                                                                                                                                  |
+|-------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `accepted`              | Continue to Step 5 (generate evidence packet). The L8 entry is already in the mission's `verification.jsonl`.                                                           |
+| `partial-success`       | Continue to Step 5. Only low/medium findings remain — those are explicitly out of the loop's scope; the human reviewer addresses them.                                  |
+| `findings-reported`     | Continue to Step 5. This state only fires when `--no-fix` was set, which `/apes-build` does NOT pass. If you see it here, something else passed `--no-fix` upstream — surface to the user. |
+| `exhausted`             | **Mark the mission unresolved**, then continue to Step 5. The packet must include the open findings; do not silently swallow them.                                      |
+| `no-progress`           | **Mark the mission unresolved**, then continue to Step 5. Claude Code couldn't make a fix — surface explicitly so the human reviewer sees it.                           |
+| `skipped`               | Soft warning, continue to Step 5. (`codex.required: true` would have made the loop exit non-zero already, caught by the hard-stop above — so reaching `skipped` here means the mission did not require L8.) |
+| `none` (no codex block) | The loop didn't write a verdict — typically because L8 is disabled, was skipped before any review ran, or the loop never executed. Continue to Step 5 silently.         |
 
 **Mark unresolved** (used by `exhausted` and `no-progress`):
 
@@ -248,15 +287,17 @@ the active mission file (per `cross-model-review.md`).
 node scripts/mission-cli.js update "$TARGET" --field codex_findings_unresolved=true
 ```
 
-The CLI shallow-merges the field, schema-validates the result, and
-re-writes the mission file. Any failure surfaces on stderr with a
-non-zero exit; surface to the user but do not abort the build.
+This top-level boolean flag is preserved for backward compatibility
+with reviewers, dashboards, and queries that look for it. New tooling
+should prefer reading `codex.last_verdict` and `codex.unresolved_findings`
+directly from the codex block — they carry the same signal at higher
+fidelity.
 
-The mission still moves to `review/` in Step 5. The frontmatter flag is
-the signal to the human reviewer that L8 didn't reach a clean verdict —
-the evidence packet will include the open findings list, and the
-reviewer decides whether to address them, accept the residual risk, or
-push back to `doing/`.
+The mission still moves to `review/` in Step 5. The flag plus the codex
+block together signal to the human reviewer that L8 didn't reach a
+clean verdict — the evidence packet will pick up the open findings list
+via `codex.last_review_path`, and the reviewer decides whether to
+address them, accept the residual risk, or push back to `doing/`.
 
 **Why continue to packet generation in every case.** The packet is the
 audit artifact — the goal is "what did this mission produce, what was

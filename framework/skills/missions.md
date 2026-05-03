@@ -29,6 +29,7 @@ Frontmatter summary (full spec lives in the template):
 | Field | Required | Notes |
 |---|---|---|
 | `id` | yes | `M-NNNN`, zero-padded, never reused |
+| `schema_version` | no | Frontmatter shape version. Defaults to `1` for missions written before versioning; the library auto-migrates on read. New missions ship at the current version (see `mission-schema.js`). |
 | `title` | yes | One-line imperative summary |
 | `state` | yes | `todo` \| `doing` \| `review` \| `done` \| `canceled` |
 | `priority` | no | 1–5, default 3 |
@@ -43,6 +44,7 @@ Frontmatter summary (full spec lives in the template):
 | `workspace.branch` | no | Defaults to `feat/m-nnnn-<slug>` |
 | `workspace.worktree` | no | Defaults to `.worktrees/M-NNNN` |
 | `max_iterations` | no | Default 50 |
+| `codex` | no | L8 cross-model review state (added by L8 on first run, or up-front for opt-in). See [Codex review state](#codex-review-state). |
 
 Body sections (in order, all four required):
 
@@ -233,6 +235,85 @@ Conventions:
 - If a criterion turns out to be wrong (typo, ambiguity, no longer applicable), do **not** silently delete it. Append a workpad note proposing the change, then update the frontmatter `acceptance` array, then bump `updated`.
 
 A reviewer reading the workpad alongside the evidence packet should be able to verify every claim without re-running the tests themselves.
+
+## Codex review state
+
+Missions optionally carry a `codex` block in frontmatter that records
+the state of the L8 cross-model adversarial review. The block is added
+**automatically** the first time L8 runs against a mission — you do
+not need to declare it by hand. Add it explicitly only when you want
+to opt the mission into adversarial review up front (`required: true`)
+or override the global per-mission iteration cap (`max_rounds`).
+
+### Block fields
+
+| Field                  | Type     | Default      | Meaning |
+|------------------------|----------|--------------|---------|
+| `required`             | boolean  | `false`      | When `true`, the mission cannot transition to `done` without `last_verdict: accepted`, and the loop refuses to terminate with `skipped` (it exits non-zero instead). |
+| `max_rounds`           | integer  | `3`          | Per-mission override of the global `max_iterations` config. |
+| `last_verdict`         | enum     | `none`       | Most recent loop terminal state — see table below. |
+| `last_review_path`     | string   | (unset)      | Repo-relative path to the most recent `review.json` for quick lookup. |
+| `unresolved_findings`  | integer  | `0`          | Count of high/critical findings still open (for `partial-success`, the count of low/medium findings). |
+| `last_run_at`          | string   | (unset)      | ISO 8601 datetime of the most recent L8 run. Bumped at each iteration start AND on terminal. |
+
+### `last_verdict` values
+
+The verdict reflects the loop's terminal state from the most recent
+run. Single-shot reviews (`codex-review.js`) only produce three;
+loop runs (`codex-review-loop.js`) can produce all six.
+
+| Value                | Meaning                                                                                       |
+|----------------------|-----------------------------------------------------------------------------------------------|
+| `none`               | No L8 run has occurred yet.                                                                   |
+| `accepted`           | Reviewer signed off (single-shot `accept` or loop converged on `accept`).                     |
+| `partial-success`    | Loop terminated with only low/medium findings (none loop-eligible).                           |
+| `findings-reported`  | Findings reported without a fix attempt — single-shot `revise`/`reject`, or loop with `--no-fix`. |
+| `exhausted`          | Loop hit `max_rounds` with high/critical findings still open.                                 |
+| `no-progress`        | Loop fix step ran but HEAD did not advance — Claude couldn't make a fix.                      |
+| `skipped`            | Codex was unavailable, disabled, or the diff was empty.                                       |
+
+The full enum is exported as `CODEX_VERDICTS` from
+`framework/lib/mission-schema.js`. Any value not on that list will be
+rejected by frontmatter validation.
+
+### Reading and writing the block
+
+Always go through `MissionTracker` — never edit the codex block by
+hand or via `mission-cli update --field codex.X=Y`. The block has
+schema-validated invariants (`unresolved_findings ≥ 0`, valid
+verdict enum, ISO datetime format) that the tracker enforces on
+every write.
+
+```js
+const t = new MissionTracker({ root: ".planning/missions" });
+
+t.getCodexState("M-0042");           // → { required, max_rounds, ... } | null
+t.setCodexState("M-0042", { ... });  // shallow merge into existing block; creates if absent
+t.clearCodexState("M-0042");         // removes the block entirely
+```
+
+Or via the CLI:
+
+```bash
+node scripts/mission-cli.js show M-0042 \
+  | node -e 'let s=""; process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).frontmatter.codex || null))'
+```
+
+### Where the block surfaces
+
+- **`/apes-status`** renders `codex.last_verdict` and
+  `codex.unresolved_findings` for missions in `doing/` and `review/`.
+- **`/apes-build`** reads `codex.last_verdict` after the L8 loop and
+  branches its post-loop flow on it (Step 4.5 in `apes-build.md`).
+- **`framework/scripts/codex-review.js`** writes `last_verdict`,
+  `last_review_path`, `unresolved_findings`, `last_run_at` after every
+  successful single-shot review.
+- **`framework/scripts/codex-review-loop.js`** maintains the block
+  across iterations and persists the terminal state when the loop
+  ends.
+
+See `cross-model-review.md` "Mission state surface" for the
+end-to-end flow and which writer is responsible for which field.
 
 ## Anti-patterns
 
