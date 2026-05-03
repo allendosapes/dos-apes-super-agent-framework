@@ -7,8 +7,9 @@
 //   CURRENT_SCHEMA_VERSION   — integer; bump when adding a migration
 //   STATES                   — frozen array of valid state names
 //   LEVEL_IDS                — frozen array of valid verification level IDs
+//   CODEX_VERDICTS           — frozen array of valid codex.last_verdict values
 //   validateFrontmatter(fm)  → { valid, errors }
-//   migrateFrontmatter(fm)   → migrated frontmatter (stub today; M-0005 / M-0006 add migrations)
+//   migrateFrontmatter(fm)   → migrated frontmatter (idempotent; v1 → v2)
 //
 // Zero dependencies. No I/O.
 //
@@ -19,7 +20,7 @@
 // Missions written before versioning are treated as version 1. Bump this
 // constant in lockstep with adding a migration step in migrateFrontmatter.
 
-const CURRENT_SCHEMA_VERSION = 1;
+const CURRENT_SCHEMA_VERSION = 2;
 
 // ─── Enumerations ───────────────────────────────────────────────────────────
 
@@ -30,9 +31,24 @@ const LEVEL_IDS = Object.freeze([
   "L3", "L4", "L5", "L6", "L7", "L8",
 ]);
 
+// Terminal verdicts emitted by the L8 (Codex adversarial review) loop. Stored
+// on the mission's `codex.last_verdict` so the gate can reason about whether
+// a review→done transition is allowed.
+const CODEX_VERDICTS = Object.freeze([
+  "none",                 // no L8 run yet
+  "accepted",             // reviewer signed off
+  "partial-success",      // accepted with caveats; non-blocking findings
+  "findings-reported",    // findings exist; resolution pending
+  "exhausted",            // hit max_rounds without convergence
+  "no-progress",          // loop terminated due to lack of forward progress
+  "skipped",              // explicitly skipped (e.g., not required for this mission)
+]);
+
 const REQUIRED_FIELDS = Object.freeze(["id", "title", "state", "created", "updated"]);
 const MISSION_ID_REGEX = /^M-\d{4}$/;
 const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+// Accepts the JS toISOString() form plus shorter variants without ms / TZ.
+const ISO_DATETIME_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/;
 
 // ─── Validation ─────────────────────────────────────────────────────────────
 
@@ -98,6 +114,16 @@ function validateFrontmatter(fm) {
     }
   }
 
+  if (fm.schema_version !== undefined && fm.schema_version !== null) {
+    if (!Number.isInteger(fm.schema_version) || fm.schema_version < 1) {
+      errors.push(`schema_version must be a positive integer, got ${JSON.stringify(fm.schema_version)}`);
+    }
+  }
+
+  if (fm.codex !== undefined && fm.codex !== null) {
+    validateCodexBlock(fm.codex, errors);
+  }
+
   return { valid: errors.length === 0, errors };
 }
 
@@ -110,6 +136,57 @@ function validateLevelArray(value, fieldName, errors) {
   for (const lvl of value) {
     if (!LEVEL_IDS.includes(lvl)) {
       errors.push(`invalid level in ${fieldName}: "${lvl}" (valid: ${LEVEL_IDS.join(", ")})`);
+    }
+  }
+}
+
+// Codex (L8) state block — added by L8 the first time it runs, or written
+// up-front when a mission opts in via `required: true` / a custom max_rounds.
+// All fields are optional; absence is normal for missions that haven't yet
+// engaged the adversarial loop.
+function validateCodexBlock(codex, errors) {
+  if (typeof codex !== "object" || Array.isArray(codex)) {
+    errors.push("codex must be an object");
+    return;
+  }
+
+  if (codex.required !== undefined && typeof codex.required !== "boolean") {
+    errors.push(`codex.required must be a boolean, got ${JSON.stringify(codex.required)}`);
+  }
+
+  if (codex.max_rounds !== undefined) {
+    if (!Number.isInteger(codex.max_rounds) || codex.max_rounds < 1) {
+      errors.push(`codex.max_rounds must be a positive integer, got ${JSON.stringify(codex.max_rounds)}`);
+    }
+  }
+
+  if (codex.last_verdict !== undefined) {
+    if (!CODEX_VERDICTS.includes(codex.last_verdict)) {
+      errors.push(
+        `invalid codex.last_verdict "${codex.last_verdict}" — must be one of: ${CODEX_VERDICTS.join(", ")}`
+      );
+    }
+  }
+
+  if (codex.last_review_path !== undefined && codex.last_review_path !== null) {
+    if (typeof codex.last_review_path !== "string" || codex.last_review_path === "") {
+      errors.push("codex.last_review_path must be a non-empty string when set");
+    }
+  }
+
+  if (codex.unresolved_findings !== undefined) {
+    if (!Number.isInteger(codex.unresolved_findings) || codex.unresolved_findings < 0) {
+      errors.push(
+        `codex.unresolved_findings must be a non-negative integer, got ${JSON.stringify(codex.unresolved_findings)}`
+      );
+    }
+  }
+
+  if (codex.last_run_at !== undefined && codex.last_run_at !== null) {
+    if (typeof codex.last_run_at !== "string" || !ISO_DATETIME_REGEX.test(codex.last_run_at)) {
+      errors.push(
+        `codex.last_run_at must be an ISO 8601 datetime string, got ${JSON.stringify(codex.last_run_at)}`
+      );
     }
   }
 }
@@ -133,15 +210,19 @@ function validateLevelArray(value, fieldName, errors) {
 // here picks them up automatically.
 
 const MIGRATIONS = Object.freeze([
-  // Example shape (do not uncomment — kept here as documentation):
-  // {
-  //   from: 1,
-  //   to: 2,
-  //   migrate(fm) {
-  //     // shallow-clone, then transform
-  //     return { ...fm, schema_version: 2, /* ...new fields... */ };
-  //   },
-  // },
+  // v1 → v2: introduce the Codex (L8) state block. We do NOT add the block
+  // itself — missions without Codex stay clean. The block appears only when
+  // L8 first runs, or when the mission explicitly opts in. Bumping `updated`
+  // marks the file shape as having changed; the deferred-write principle in
+  // mission-tracker means the disk file only catches up on the next mutation.
+  {
+    from: 1,
+    to: 2,
+    migrate(fm) {
+      const today = new Date().toISOString().slice(0, 10);
+      return { ...fm, schema_version: 2, updated: today };
+    },
+  },
 ]);
 
 function migrateFrontmatter(fm) {
@@ -187,6 +268,7 @@ module.exports = {
   CURRENT_SCHEMA_VERSION,
   STATES,
   LEVEL_IDS,
+  CODEX_VERDICTS,
   validateFrontmatter,
   migrateFrontmatter,
 };

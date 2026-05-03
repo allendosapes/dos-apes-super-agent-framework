@@ -31,6 +31,11 @@
 //   t.updateFrontmatter(id, partial)            → newPath  (shallow merge; bumps `updated`)
 //   t.appendWorkpadEntry(id, note)              → newPath  (timestamped append; bumps `updated`)
 //
+//   // Codex (L8) state block — see mission-schema.js for field semantics.
+//   t.getCodexState(id)                         → object | null
+//   t.setCodexState(id, partial)                → newPath  (shallow merge into block; creates if absent)
+//   t.clearCodexState(id)                       → newPath  (removes the block entirely)
+//
 //   // Dependencies
 //   t.getDependencies(id)                       → [mission IDs]
 //   t.resolveUnmetDependencies(id)              → [mission IDs not in done/]
@@ -340,7 +345,13 @@ class MissionTracker {
   readMission(id) {
     const m = this.findMissionById(id);
     if (!m) throw new Error(`readMission: mission ${id} not found`);
-    return m;
+    // Migrate in memory only. The disk file stays untouched until the caller
+    // performs an actual mutation (updateFrontmatter / writeMission /
+    // appendWorkpadEntry), which is when the migrated form gets persisted.
+    // This preserves the no-surprise-mutation principle from M-0002 while
+    // ensuring every consumer of readMission sees a current-version object.
+    const migrated = schema.migrateFrontmatter(m.frontmatter);
+    return { ...m, frontmatter: migrated };
   }
 
   writeMission(id, { frontmatter, body }) {
@@ -399,6 +410,42 @@ class MissionTracker {
 
     const newFm = { ...m.frontmatter, updated: todayIso() };
     this._writeFile(m.path, { frontmatter: newFm, body: newBody });
+    return m.path;
+  }
+
+  // ── Codex (L8) state block ────────────────────────────────────────────
+  //
+  // The block is optional and is added the first time L8 runs against a
+  // mission (or up-front for missions that opt in via `required: true`).
+  // All three helpers route through the existing validation gate so an
+  // invalid update can never reach disk.
+
+  getCodexState(id) {
+    const m = this.readMission(id);
+    const codex = m.frontmatter.codex;
+    if (codex === undefined || codex === null) return null;
+    return { ...codex };
+  }
+
+  setCodexState(id, partialUpdate) {
+    if (partialUpdate == null || typeof partialUpdate !== "object" || Array.isArray(partialUpdate)) {
+      throw new Error("setCodexState: partialUpdate must be a plain object");
+    }
+    const m = this.readMission(id);
+    const existing = (m.frontmatter.codex && typeof m.frontmatter.codex === "object" && !Array.isArray(m.frontmatter.codex))
+      ? m.frontmatter.codex
+      : {};
+    const merged = { ...existing, ...partialUpdate };
+    // Routes through updateFrontmatter so validation runs and `updated` bumps.
+    return this.updateFrontmatter(id, { codex: merged });
+  }
+
+  clearCodexState(id) {
+    const m = this.readMission(id);
+    if (m.frontmatter.codex === undefined) return m.path;
+    const newFm = { ...m.frontmatter, updated: todayIso() };
+    delete newFm.codex;
+    this._writeFile(m.path, { frontmatter: newFm, body: m.body });
     return m.path;
   }
 
@@ -544,6 +591,7 @@ class MissionTracker {
 
     const frontmatter = {
       id,
+      schema_version: schema.CURRENT_SCHEMA_VERSION,
       title,
       state: "todo",
       created: today,
