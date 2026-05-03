@@ -537,6 +537,80 @@ function logMissionVerification(missionId, review, outputPath) {
   }
 }
 
+// ─── Post-review side effects ──────────────────────────────────────────────
+//
+// After a successful review, two things are recorded against the mission.
+// Both are best-effort: by the time we get here the review JSON is already
+// on disk and the user is waiting on stdout, so a downstream hiccup must
+// never take down the review.
+//
+// 1. log-verification.js appends an L8 entry to the mission's
+//    verification.jsonl. In 3.2.0 the helper didn't recognize L8 and exited
+//    non-zero — logMissionVerification handles that internally via warn().
+//    The outer try/catch here is a belt-and-suspenders safety net in case
+//    a future change starts throwing instead of returning an error code.
+//
+// 2. MissionTracker.setCodexState writes the codex block onto the mission
+//    frontmatter (M-0005). This routes through the schema validation gate
+//    and can throw on a missing mission, schema version mismatch, or
+//    invalid field values. Same defense applies.
+//
+// Both wrappers live here so the defensive pattern is discoverable in one
+// place rather than scattered across main(). New post-review side effects
+// should follow the same shape: small dedicated try/catch, one stderr line
+// on failure, no rethrow.
+
+const VERDICT_TO_LAST_VERDICT = Object.freeze({
+  accept: "accepted",
+  revise: "findings-reported",
+  reject: "findings-reported",
+});
+
+function countUnresolvedFindings(findings) {
+  if (!Array.isArray(findings)) return 0;
+  let count = 0;
+  for (const f of findings) {
+    if (!f || typeof f !== "object") continue;
+    const sev = String(f.severity || "").toLowerCase();
+    if (sev === "high" || sev === "critical") count++;
+  }
+  return count;
+}
+
+function recordCodexReview({ missionId, review, outputPath, projectRoot, tracker } = {}) {
+  // No mission target — nothing to record against.
+  if (!missionId) return;
+
+  // Side effect 1: append L8 verification log entry.
+  try {
+    logMissionVerification(missionId, review, outputPath);
+  } catch (err) {
+    warn(`mission verification log threw: ${err && err.message ? err.message : err}`);
+  }
+
+  // Side effect 2: update the codex block on the mission's frontmatter.
+  try {
+    const last_verdict = VERDICT_TO_LAST_VERDICT[review.verdict];
+    if (!last_verdict) {
+      warn(`codex block update skipped: unrecognized verdict "${review.verdict}"`);
+      return;
+    }
+    const root = projectRoot || PROJECT_ROOT;
+    const t = tracker || new MissionTracker({
+      root: path.join(root, ".planning", "missions"),
+    });
+    const relativePath = path.relative(root, outputPath).split(path.sep).join("/");
+    t.setCodexState(missionId, {
+      last_verdict,
+      last_review_path: relativePath,
+      unresolved_findings: countUnresolvedFindings(review.findings),
+      last_run_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    warn(`codex block update skipped: ${err && err.message ? err.message : err}`);
+  }
+}
+
 // ─── Main ───────────────────────────────────────────────────────────────────
 
 function main() {
@@ -606,20 +680,30 @@ function main() {
     process.exit(1);
   }
 
-  if (args.mission) {
-    try {
-      logMissionVerification(args.mission, review.data, outPath);
-    } catch (err) {
-      warn(`mission log helper threw: ${err.message}`);
-    }
-  }
+  // Best-effort post-review side effects (verification log + codex block).
+  // The audit trail at outPath is already on disk; a failure here MUST NOT
+  // change that or the exit code.
+  recordCodexReview({
+    missionId: args.mission,
+    review: review.data,
+    outputPath: outPath,
+  });
 
   emit({ ...review.data, output_path: outPath }, 0);
 }
 
-try {
-  main();
-} catch (err) {
-  warn(`fatal: ${err && err.message ? err.message : String(err)}`);
-  process.exit(1);
+// Exposed for tests. Production CLI invocation lives behind require.main.
+module.exports = {
+  recordCodexReview,
+  countUnresolvedFindings,
+  VERDICT_TO_LAST_VERDICT,
+};
+
+if (require.main === module) {
+  try {
+    main();
+  } catch (err) {
+    warn(`fatal: ${err && err.message ? err.message : String(err)}`);
+    process.exit(1);
+  }
 }
