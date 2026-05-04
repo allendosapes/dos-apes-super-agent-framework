@@ -108,6 +108,8 @@ These rules are learned from real incidents in this codebase. Each is short, beh
 
 3. **Protections that live only in agent judgment must be encoded in tool config or in CLAUDE.md — judgment alone is not a protection.** When you find yourself thinking "I should remember to X," that thought has a half-life of one context window. If the rule matters across sessions or across agents, it belongs in `settings.json` permissions, in a hook script, or in this file. The first incident postmortem in this repo (#1 above) was caused by an unwritten rule; the second won't be.
 
+4. **Local main ahead of origin is a branching trap.** Before creating any branch that will eventually merge back via PR + squash, run `git fetch origin && git status -uno` and resolve any divergence first. Unpushed local commits get folded into the next squash-merge against origin, conflating their scope with the new branch's: the resulting commit on origin gets labelled with the new branch's title but contains a diff that mixes both missions. Decision matrix — ahead → push first, behind → pull first, diverged → stop and resolve manually. The check costs ~1 second; the cost of skipping it is a permanent git-history artifact (npm tarballs and CHANGELOG entries can still be correct, but the audit trail conflates two missions into one commit). See `_planning/incidents/2026-05-03-local-main-ahead-of-origin.md`.
+
 ## Verification Pyramid (8 levels)
 
 The framework teaches projects this verification stack:

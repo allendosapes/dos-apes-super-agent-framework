@@ -14,3 +14,6 @@ impact: none. Audit trail impact: minor.
 
 Recurrence prevention: see `_planning/incidents/2026-05-03-local-main-ahead-of-origin.md`
 for the P0 sync-check that future mission playbooks should adopt.
+
+3.4.0 publish deferred to a fresh session per CPO call. Tag will point at
+HEAD-of-main at publish time, not at the M-0005 squash commit.
