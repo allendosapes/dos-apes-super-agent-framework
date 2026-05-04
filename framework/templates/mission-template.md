@@ -14,6 +14,11 @@
 # Must be unique across the repo. Allocate the next free number.
 id: M-0001
 
+# OPTIONAL but RECOMMENDED. Mission frontmatter schema version. Tooling
+# auto-migrates older missions on read; setting it explicitly avoids that
+# round-trip. Bump in lockstep with framework/lib/mission-schema.js.
+schema_version: 2
+
 # REQUIRED. One-line human-readable summary. Imperative voice preferred.
 # Example: "Add POST /todos endpoint with validation"
 title: Short imperative summary of the mission
@@ -81,6 +86,23 @@ workspace:
 # OPTIONAL. Hard cap on agent iteration loops. Prevents runaway loops.
 # Default: 50
 max_iterations: 50
+
+# OPTIONAL. Codex (L8) adversarial review state.
+#
+# This block is added automatically the first time L8 runs against the
+# mission — you do NOT need to declare it by hand. Add it explicitly only
+# when you want to opt the mission into adversarial review up-front
+# (`required: true`) or override the global `max_rounds` default.
+#
+# Field reference (defaults shown as comments):
+# codex:
+#   required: false                # when true, review → done is gated on `last_verdict: accepted`
+#   max_rounds: 3                  # per-mission override of the global config
+#   last_verdict: none             # one of: none, accepted, partial-success, findings-reported,
+#                                  #         exhausted, no-progress, skipped
+#   last_review_path: null         # path to most recent review.json (set by L8)
+#   unresolved_findings: 0         # high/critical findings still open
+#   last_run_at: null              # ISO 8601 datetime of the most recent L8 run
 ---
 
 ## Context

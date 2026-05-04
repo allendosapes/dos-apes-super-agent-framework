@@ -671,3 +671,145 @@ directly; this fix preserves parity in the meantime.
   runtime (not Node scripts), so the migration shape is different. P5 will
   rewrite the inline `node -e` blocks to call the now-installed scripts and
   the tracker library directly.
+
+---
+
+## 11. M-0002 final accounting
+
+This section closes the M-0002 mission. It captures what shipped, what it
+cost, and the honest ROI assessment so future refactor decisions in this
+codebase have a real baseline to compare against.
+
+### 11.1 Diff totals
+
+#### P5+P6 working tree (since the M-0002 commit `3788f05`)
+
+```
+ ARCHITECTURE.md                       |  66 ++++++-
+ CHANGELOG.md                          | 215 ++++++++++++++++++++++
+ CLAUDE.md                             |  10 +
+ README.md                             |   7 +-
+ _planning/M-0002-inventory.md         | 138 ++++++++++++++
+ framework/commands/apes-build.md      | 147 ++++++++-------
+ framework/commands/apes-evidence.md   |  22 ++-
+ framework/commands/apes-mission.md    | 336 +++++++++++++++++-----------------
+ framework/commands/apes-status.md     | 233 +++++++++--------------
+ framework/lib/mission-tracker.js      |  97 ++++++++++
+ framework/lib/mission-tracker.test.js |  70 +++++++
+ framework/settings.json               |   1 +
+ framework/skills/missions.md          |  40 ++++
+ package.json                          |   4 +-
+ 14 files changed, 988 insertions(+), 398 deletions(-)
+```
+
+(The 138-line bump on this inventory file is *this* "Final accounting"
+section — the document records its own footprint.)
+
+Plus untracked artifacts produced in P6:
+
+| Path | Lines | Purpose |
+|---|---:|---|
+| `framework/scripts/mission-cli.js` | 537 | Reconstruction of the lost P5 deliverable; shell-friendly JSON wrapper |
+| `_planning/incidents/2026-05-03-framework-destruction.md` | 271 | Postmortem from the P6 smoke-test incident |
+
+**Net P5+P6:** 13 files modified (+850 / −398), 2 files added (808 lines).
+
+#### Whole M-0002 mission (P1–P6 cumulative, vs `e3f3777` v3.2.0 baseline)
+
+```
+ _planning/M-0002-inventory.md         | ~810 +++++++++++ (P1 + this section)
+ _planning/incidents/...               |  271 ++++       (P6 postmortem)
+ ARCHITECTURE.md                       |   66 ++++       (P6)
+ CHANGELOG.md                          |  215 ++++       (P6)
+ CLAUDE.md                             |   10 ++         (P6)
+ README.md                             |    7 ++         (P6)
+ bin/cli.js                            |   13 ++         (P3 install lib)
+ framework/commands/apes-build.md      |  147 ↔          (P5 migrate)
+ framework/commands/apes-evidence.md   |   22 ↔          (P5 migrate)
+ framework/commands/apes-mission.md    |  336 ↔          (P5 migrate)
+ framework/commands/apes-status.md     |  233 ↔          (P5 migrate)
+ framework/lib/mission-parser.js       |  456 +++++      (P3 new)
+ framework/lib/mission-parser.test.js  |  442 +++++      (P3 new)
+ framework/lib/mission-schema.js       |  192 +++++      (P3 new)
+ framework/lib/mission-tracker.js      |  617 +++++      (P3+P5 new)
+ framework/lib/mission-tracker.test.js |  569 +++++      (P3+P5 new)
+ framework/scripts/codex-review-loop.js|   85 ↔          (P4 migrate)
+ framework/scripts/codex-review.js     |   87 ↔          (P4 migrate)
+ framework/scripts/evidence-packet.js  |  192 ↔ (−)      (P4 migrate; net deletion)
+ framework/scripts/log-verification.js |   60 ↔          (P4 migrate)
+ framework/scripts/mission-cli.js      |  537 +++++      (P5 new, P6 reconstructed)
+ framework/scripts/mission-worktree.js |   77 ↔          (P4 migrate)
+ framework/settings.json               |    1 ++         (P5 permission)
+ framework/skills/missions.md          |   40 ++         (P6 Programmatic API)
+ package.json                          |    8 ++         (P3 lib + P6 version + test)
+```
+
+### 11.2 Test count delta
+
+| Stage | Lib parser tests | Lib tracker tests | Total |
+|---|---:|---:|---:|
+| Pre-M-0002 (`e3f3777`, v3.2.0 baseline) | 0 | 0 | **0** |
+| Post-M-0002 commit (`3788f05`) | 31 | 32 | 63 |
+| Post-P5+P6 (working tree) | 31 | 37 | **68** |
+
+Net: **+68 lib tests** under all mission operations where there were
+zero before. Five additional tracker tests were added during P5
+migration as edge cases surfaced from real call sites.
+
+`npm test` (which previously executed a nonexistent `test/test.js` and
+errored) now runs the lib suite. From "broken script" to "68 green
+tests" is part of the delta.
+
+### 11.3 Cost vs delivered — honest accounting
+
+**What it cost.** Six phases of work spread across multiple sessions.
+Roughly 3,500 lines of new code across the lib (~1,265), tests
+(~1,011), CLI (~537), inventory (~810), and postmortem (~270). Five
+scripts and four slash commands rewritten. One mid-mission incident
+(framework-directory destruction during P6 smoke testing) that cost
+~30 minutes of recovery work and lost one untracked file
+(`mission-cli.js`), reconstructed from a header docstring read into
+context shortly before the loss. The reconstruction passed a 45/45
+verb-by-verb sweep but cannot be byte-verified against the original.
+
+**What was delivered.** Seven duplicate `STATES` constants collapsed
+to one frozen export. Five duplicate `findMissionFile` implementations
+collapsed to `tracker.findMissionById`. Five duplicate frontmatter
+parsers collapsed to `mission-parser.js` with full edge-case test
+coverage. Inline `node -e` blocks in four slash commands replaced with
+`mission-cli.js` invocations. Schema-versioning infrastructure
+(`CURRENT_SCHEMA_VERSION`, `migrateFrontmatter`, `MIGRATIONS` array) in
+place, even though no migrations are needed today — adding one is now
+a one-record append rather than a callsite sweep. Pluggable storage
+backend shape established (the `MissionTracker` API surface admits a
+Linear or GitHub-Issues backend without changing call sites). 68 tests
+under all mission operations.
+
+**ROI assessment.** The consolidation pays back the moment a future
+mission-touching change lands — instead of editing five files with
+hand-rolled regex (and missing one), the change is in `mission-tracker.js`
+with tests. The schema-versioning and pluggable-backend infrastructure
+are *unrealized* value today: neither has a consumer. If neither lands
+a real use case in the next 2–3 releases, they should be reconsidered
+as YAGNI carry-cost rather than treated as accomplishments — the lib
+will keep working without them. The CLI (`mission-cli.js`) has clear
+near-term value: external tooling and shell automation can now call
+mission ops without ever loading Node modules.
+
+**One thing to do differently next refactor.** Track new files in git
+on creation, even as `wip/`. Untracked deliverables have no recovery
+path. `mission-cli.js` going untracked from P5 close to P6 destruction
+is the only reason this section talks about a "reconstruction" instead
+of "the original P5 file." Cost: hours. Mitigation cost: `git add`. See
+`_planning/incidents/2026-05-03-framework-destruction.md` § "What
+changes prevent recurrence."
+
+### 11.4 Verification at close
+
+- `npm test` → 68 lib tests pass.
+- `npm pack --dry-run` → tarball includes `framework/lib/{mission-parser,mission-schema,mission-tracker}.js` and `framework/scripts/mission-cli.js`; no `*.test.js` files leak.
+- 45-case CLI sweep against `mission-cli.js` (read-only happy paths, invalid input, not-found, precondition, --help, mutating happy paths) — all 45 pass. Harness lives at `$env:TEMP\dosapes-cli-sweep\sweep.ps1` and rebuilds the fixture on every run.
+- Smoke tests: `evidence-packet.js generate` produces a valid packet; `mission-worktree.js list/create/remove` works (create correctly refuses without a `main` branch); `log-verification.js` writes valid JSONL.
+- Pre-existing edge case observed (not introduced by M-0002): `move` of a mission whose per-mission directory contains only untracked files (e.g. unstaged `verification.jsonl`) fails with "git mv: source directory is empty." Same shape exists in pre-P5 `apes-mission.md`. Worth a follow-up mission, not a release blocker.
+
+M-0002 is closed. Next mission picks up from a clean library API.

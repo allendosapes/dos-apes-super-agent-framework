@@ -29,6 +29,7 @@ Frontmatter summary (full spec lives in the template):
 | Field | Required | Notes |
 |---|---|---|
 | `id` | yes | `M-NNNN`, zero-padded, never reused |
+| `schema_version` | no | Frontmatter shape version. Defaults to `1` for missions written before versioning; the library auto-migrates on read. New missions ship at the current version (see `mission-schema.js`). |
 | `title` | yes | One-line imperative summary |
 | `state` | yes | `todo` \| `doing` \| `review` \| `done` \| `canceled` |
 | `priority` | no | 1–5, default 3 |
@@ -43,6 +44,7 @@ Frontmatter summary (full spec lives in the template):
 | `workspace.branch` | no | Defaults to `feat/m-nnnn-<slug>` |
 | `workspace.worktree` | no | Defaults to `.worktrees/M-NNNN` |
 | `max_iterations` | no | Default 50 |
+| `codex` | no | L8 cross-model review state (added by L8 on first run, or up-front for opt-in). See [Codex review state](#codex-review-state). |
 
 Body sections (in order, all four required):
 
@@ -234,6 +236,85 @@ Conventions:
 
 A reviewer reading the workpad alongside the evidence packet should be able to verify every claim without re-running the tests themselves.
 
+## Codex review state
+
+Missions optionally carry a `codex` block in frontmatter that records
+the state of the L8 cross-model adversarial review. The block is added
+**automatically** the first time L8 runs against a mission — you do
+not need to declare it by hand. Add it explicitly only when you want
+to opt the mission into adversarial review up front (`required: true`)
+or override the global per-mission iteration cap (`max_rounds`).
+
+### Block fields
+
+| Field                  | Type     | Default      | Meaning |
+|------------------------|----------|--------------|---------|
+| `required`             | boolean  | `false`      | When `true`, the mission cannot transition to `done` without `last_verdict: accepted`, and the loop refuses to terminate with `skipped` (it exits non-zero instead). |
+| `max_rounds`           | integer  | `3`          | Per-mission override of the global `max_iterations` config. |
+| `last_verdict`         | enum     | `none`       | Most recent loop terminal state — see table below. |
+| `last_review_path`     | string   | (unset)      | Repo-relative path to the most recent `review.json` for quick lookup. |
+| `unresolved_findings`  | integer  | `0`          | Count of high/critical findings still open (for `partial-success`, the count of low/medium findings). |
+| `last_run_at`          | string   | (unset)      | ISO 8601 datetime of the most recent L8 run. Bumped at each iteration start AND on terminal. |
+
+### `last_verdict` values
+
+The verdict reflects the loop's terminal state from the most recent
+run. Single-shot reviews (`codex-review.js`) only produce three;
+loop runs (`codex-review-loop.js`) can produce all six.
+
+| Value                | Meaning                                                                                       |
+|----------------------|-----------------------------------------------------------------------------------------------|
+| `none`               | No L8 run has occurred yet.                                                                   |
+| `accepted`           | Reviewer signed off (single-shot `accept` or loop converged on `accept`).                     |
+| `partial-success`    | Loop terminated with only low/medium findings (none loop-eligible).                           |
+| `findings-reported`  | Findings reported without a fix attempt — single-shot `revise`/`reject`, or loop with `--no-fix`. |
+| `exhausted`          | Loop hit `max_rounds` with high/critical findings still open.                                 |
+| `no-progress`        | Loop fix step ran but HEAD did not advance — Claude couldn't make a fix.                      |
+| `skipped`            | Codex was unavailable, disabled, or the diff was empty.                                       |
+
+The full enum is exported as `CODEX_VERDICTS` from
+`framework/lib/mission-schema.js`. Any value not on that list will be
+rejected by frontmatter validation.
+
+### Reading and writing the block
+
+Always go through `MissionTracker` — never edit the codex block by
+hand or via `mission-cli update --field codex.X=Y`. The block has
+schema-validated invariants (`unresolved_findings ≥ 0`, valid
+verdict enum, ISO datetime format) that the tracker enforces on
+every write.
+
+```js
+const t = new MissionTracker({ root: ".planning/missions" });
+
+t.getCodexState("M-0042");           // → { required, max_rounds, ... } | null
+t.setCodexState("M-0042", { ... });  // shallow merge into existing block; creates if absent
+t.clearCodexState("M-0042");         // removes the block entirely
+```
+
+Or via the CLI:
+
+```bash
+node scripts/mission-cli.js show M-0042 \
+  | node -e 'let s=""; process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).frontmatter.codex || null))'
+```
+
+### Where the block surfaces
+
+- **`/apes-status`** renders `codex.last_verdict` and
+  `codex.unresolved_findings` for missions in `doing/` and `review/`.
+- **`/apes-build`** reads `codex.last_verdict` after the L8 loop and
+  branches its post-loop flow on it (Step 4.5 in `apes-build.md`).
+- **`framework/scripts/codex-review.js`** writes `last_verdict`,
+  `last_review_path`, `unresolved_findings`, `last_run_at` after every
+  successful single-shot review.
+- **`framework/scripts/codex-review-loop.js`** maintains the block
+  across iterations and persists the terminal state when the loop
+  ends.
+
+See `cross-model-review.md` "Mission state surface" for the
+end-to-end flow and which writer is responsible for which field.
+
 ## Anti-patterns
 
 These are forbidden. CI hooks, reviewers, and skills should refuse to participate when they appear.
@@ -255,3 +336,43 @@ These are forbidden. CI hooks, reviewers, and skills should refuse to participat
 - **`framework/skills/testing.md`** — The verification pyramid (L0–L7) referenced by `verification.required_levels` and `verification.optional_levels`.
 - **`framework/templates/mission-template.md`** — Canonical mission file template; copy when creating a new mission.
 - **`ROADMAP.md`** (in the consuming project) — Source of phase IDs used in the optional `phase` field.
+
+## Programmatic API
+
+Every rule in this skill — ID format, FSM transitions, dependency resolution, workpad append format, frontmatter validation — is **enforced by a library**. Scripts and slash commands MUST go through that library; do not hand-roll parsing or `git mv` against mission files.
+
+| Layer | File | Purpose |
+|-------|------|---------|
+| Library | `framework/lib/mission-tracker.js` | `MissionTracker` class — identity, state, deps, workpad, active-mission, authoring. The canonical Node API. |
+| Library | `framework/lib/mission-parser.js` | Frontmatter ↔ body splitting, scalar / list / nested-field accessors, acceptance-checkbox parsing, workpad-entry parsing. |
+| Library | `framework/lib/mission-schema.js` | Frozen `STATES`, `LEVEL_IDS`, `CURRENT_SCHEMA_VERSION`; `validateFrontmatter`, `migrateFrontmatter`. |
+| CLI | `framework/scripts/mission-cli.js` | Thin shell-friendly wrapper. Every verb (`list`, `show`, `move`, `workpad`, `update`, `deps`, `active`, `set-active`, `clear-active`, `create`, `next-id`, `can-transition`) prints exactly one JSON object to stdout. Errors prefix `mission-cli:` to stderr. Exit codes: `0` ok, `1` invalid input, `2` not found, `3` precondition failed. |
+
+**Use the library, not direct file manipulation.** Reading frontmatter with a one-off regex, computing the next mission ID by listing a directory, hand-writing a workpad block — every shape that previously appeared inline in scripts and slash commands now has a tested method on `MissionTracker`. Reaching past the library to `fs.readFileSync` a mission file is an anti-pattern: it bypasses validation, schema migration, and the FSM.
+
+**Schema versioning.** Every mission carries an implicit `schema_version` (defaults to `1` for missions written before versioning). The library exports `CURRENT_SCHEMA_VERSION` and a `migrateFrontmatter` function that walks any older version forward to the current one. There are no migrations to apply today — the framework ships at v1 — but adding a new field shape later is a matter of bumping the constant and appending a `{ from, to, migrate(fm) }` record. Callers never need to special-case version numbers; `MissionTracker` migrates on read.
+
+**Library boundary.** The library mutates the working tree (file writes, `git mv`) but never creates commits, branches, tags, or worktrees. Commit boundaries belong to the caller. This is documented at the top of `mission-tracker.js`.
+
+Example (Node, in-process):
+
+```js
+const { MissionTracker } = require("./framework/lib/mission-tracker.js");
+const t = new MissionTracker({ root: ".planning/missions" });
+
+const id = t.generateNextId();              // → "M-0042"
+t.createMission({ id, title: "Add POST /todos endpoint" });
+t.appendWorkpadEntry(id, "scaffolded route");
+const blockers = t.resolveUnmetDependencies(id);  // → []
+```
+
+Example (shell, JSON-shaped):
+
+```bash
+node scripts/mission-cli.js list --state doing
+node scripts/mission-cli.js show M-0042
+node scripts/mission-cli.js move M-0042 review
+node scripts/mission-cli.js workpad M-0042 "evidence packet generated"
+```
+
+If a future operation isn't expressible through the library, that is a library gap to fix — not a license to bypass.

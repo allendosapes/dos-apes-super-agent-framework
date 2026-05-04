@@ -15,15 +15,15 @@ format spec, refusal semantics, and reviewer checklist.
 ## Resolve the mission ID
 
 Use the argument supplied to the command (`$ARGUMENTS`). If empty, fall back
-to `.planning/active-mission`:
+to the active mission via `mission-cli`:
 
 ```bash
 MISSION_ID="${ARGUMENTS:-}"
-if [ -z "$MISSION_ID" ] && [ -f .planning/active-mission ]; then
-  MISSION_ID=$(head -n1 .planning/active-mission | tr -d '[:space:]')
+if [ -z "$MISSION_ID" ]; then
+  MISSION_ID=$(node scripts/mission-cli.js active | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const a=JSON.parse(s).active;if(a)process.stdout.write(a)})')
 fi
 if [ -z "$MISSION_ID" ]; then
-  echo "Usage: /apes-evidence M-NNNN  (or set .planning/active-mission)"
+  echo "Usage: /apes-evidence M-NNNN  (or use /apes-mission to set the active mission)"
   exit 1
 fi
 echo "Generating evidence packet for $MISSION_ID..."
@@ -53,9 +53,11 @@ cat ".planning/missions/review/$MISSION_ID/evidence/summary.md"
 
 If the packet generated cleanly:
 
-- The mission is ready to transition `doing` → `review`. Move the mission
-  file with `git mv` and update the `state` frontmatter field in the same
-  commit. (See `.claude/skills/missions.md`.)
+- The mission is ready to transition `doing` → `review`:
+  ```bash
+  node scripts/mission-cli.js move "$MISSION_ID" review
+  git commit -m "mission(${MISSION_ID}): doing → review"
+  ```
 - Open a PR pointing reviewers at `.planning/missions/review/<M-NNNN>/evidence/summary.md`.
 
 If the generator refused:
@@ -63,6 +65,8 @@ If the generator refused:
 - Read the failure line. It names the missing or failing level(s).
 - Re-run that verification (typically `scripts/check-coverage.sh`,
   `scripts/check-secrets.sh`, or whichever maps to the level).
-- Confirm the new log entry in
-  `.planning/missions/<state>/<M-NNNN>/verification.jsonl` shows `pass`.
+- Confirm the new log entry in the mission's verification log shows `pass`:
+  ```bash
+  cat "$(node scripts/mission-cli.js show "$MISSION_ID" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const m=JSON.parse(s);process.stdout.write(`.planning/missions/${m.state}/${m.frontmatter.id}/verification.jsonl`)})')"
+  ```
 - Re-run `/apes-evidence <M-NNNN>`.

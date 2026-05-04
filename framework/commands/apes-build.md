@@ -71,26 +71,64 @@ executing — verification scripts read it to log to the right place.
 
 ### Step 1 — Resolve the target mission
 
-```
-IF --mission <id> is set:
-  TARGET = <id>
-  IF mission file is not found in any state dir:
-    FAIL: "mission <id> not found"
-  IF mission is in doing/ or review/:
-    FAIL: "mission <id> is already in <state>; use /apes-mission show or /apes-status to inspect"
-  IF mission is in done/ or canceled/:
-    FAIL: "mission <id> is in <state>; missions are immutable after completion"
-  IF mission has unmet dependencies (any depends_on not in done/):
-    FAIL: "mission <id> blocked by: <unmet ids>"
+Mission lookup, dependency resolution, and FSM checks all go through
+`scripts/mission-cli.js`. Do not re-implement them in shell — the CLI's
+exit codes are the contract.
 
-ELIF --prd or --idea is set:
-  Generate missions (Step 1b below). If --ralph is not set, stop here.
-  Otherwise enter the loop in Step 5.
+```bash
+if [ -n "$MISSION_ARG" ]; then
+  # --mission <id> supplied. Validate and check preconditions.
+  TARGET="$MISSION_ARG"
 
-ELSE (no flags):
-  Scan .planning/missions/todo/ for missions with all depends_on in done/.
-  Sort by priority (1 = highest), then created (oldest first).
-  TARGET = first entry, or FAIL: "no unblocked missions in todo/"
+  # Existence + current state.
+  STATE_JSON=$(node scripts/mission-cli.js show "$TARGET" 2>&1)
+  case $? in
+    0) ;;
+    2) echo "apes-build: mission $TARGET not found" >&2; exit 1 ;;
+    *) echo "apes-build: $STATE_JSON" >&2; exit 1 ;;
+  esac
+  CURRENT_STATE=$(echo "$STATE_JSON" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).state))')
+
+  case "$CURRENT_STATE" in
+    doing|review)
+      echo "apes-build: mission $TARGET is already in $CURRENT_STATE; inspect with /apes-mission show or /apes-status" >&2
+      exit 1
+      ;;
+    done|canceled)
+      echo "apes-build: mission $TARGET is in $CURRENT_STATE; missions are immutable after completion" >&2
+      exit 1
+      ;;
+    todo) ;;
+    *) echo "apes-build: unexpected state '$CURRENT_STATE' for $TARGET" >&2; exit 1 ;;
+  esac
+
+  # Unmet dependencies.
+  UNMET=$(node scripts/mission-cli.js deps "$TARGET" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).unmet.join(",")))')
+  if [ -n "$UNMET" ]; then
+    echo "apes-build: mission $TARGET blocked by: $UNMET" >&2
+    exit 1
+  fi
+
+elif [ -n "$PRD_ARG" ] || [ -n "$IDEA_ARG" ]; then
+  # See Step 1b. Without --ralph, stop after generation.
+  :
+
+else
+  # No flags — pick the highest-priority unblocked mission in todo/. The
+  # lib returns missions sorted by (priority, created) within each state.
+  TARGET=$(node -e '
+    const { execFileSync } = require("child_process");
+    const list = JSON.parse(execFileSync("node", ["scripts/mission-cli.js", "list", "--state", "todo"], { encoding: "utf8" }));
+    for (const m of list.missions) {
+      const deps = JSON.parse(execFileSync("node", ["scripts/mission-cli.js", "deps", m.id], { encoding: "utf8" }));
+      if (deps.unmet.length === 0) { console.log(m.id); break; }
+    }
+  ')
+  if [ -z "$TARGET" ]; then
+    echo "apes-build: no unblocked missions in todo/ — create one with /apes-mission new" >&2
+    exit 1
+  fi
+fi
 ```
 
 ### Step 1b — PRD/idea ingestion (only with `--prd` or `--idea`)
@@ -110,15 +148,11 @@ Print a summary table of what was created. Without `--ralph`, stop. With
 For the resolved `TARGET` mission ID:
 
 ```bash
-# Move the mission file (and any per-mission directory) atomically.
-SRC=$(find .planning/missions/todo -name "${TARGET}-*.md")
-SLUG=$(basename "$SRC")
-git mv "$SRC" ".planning/missions/doing/$SLUG"
-if [ -d ".planning/missions/todo/${TARGET}" ]; then
-  git mv ".planning/missions/todo/${TARGET}" ".planning/missions/doing/${TARGET}"
-fi
-# Update frontmatter: state -> doing, updated -> today
-# Commit: "mission(${TARGET}): todo → doing"
+# The CLI runs `git mv` (moves the .md file and the companion per-mission
+# directory if present), then bumps the frontmatter `state` and `updated`
+# fields atomically. It does NOT commit — that's our call.
+node scripts/mission-cli.js move "$TARGET" doing
+git commit -m "mission(${TARGET}): todo → doing"
 ```
 
 ### Step 3 — Create the worktree
@@ -133,7 +167,7 @@ version too old) are non-recoverable for this run — see [Error paths](#error-p
 ### Step 4 — Mark active and execute
 
 ```bash
-echo "$TARGET" > .planning/active-mission
+node scripts/mission-cli.js set-active "$TARGET"
 ```
 
 From this point on, all work happens **inside the worktree directory**
@@ -146,12 +180,12 @@ After every significant action (scaffolding, implementing a module, a
 verification pass), append a workpad entry:
 
 ```bash
-node -e '...append `### YYYY-MM-DD HH:MM — <role>` block to ## Workpad...'
+node scripts/mission-cli.js workpad "$TARGET" "Scaffolded route in src/routes/todos.ts; added Zod validation"
 ```
 
-The `### YYYY-MM-DD HH:MM — <role>` heading format is required — the
-status dashboard parses it. See `.claude/skills/missions.md` "Workpad
-protocol" for the rules.
+The CLI writes the canonical heading `### YYYY-MM-DD HH:MM` followed by
+the note text, preserves prior entries, and bumps `updated`. See
+`.claude/skills/missions.md` "Workpad protocol" for the rules.
 
 The verification pyramid runs as documented in `.claude/skills/testing.md`.
 Each verification script (`check-coverage.sh`, `check-secrets.sh`,
@@ -193,61 +227,77 @@ if [ "$L8_ENABLED" -eq 1 ]; then
 fi
 ```
 
-The loop writes its terminal state to
-`.dos-apes/codex-reviews/result.json` and appends a `## Workpad` entry to
-the active mission file (per `cross-model-review.md`).
+The loop persists its terminal state into the mission's `codex`
+frontmatter block (see `missions.md` "Codex review state" and
+`cross-model-review.md` "Mission state surface"). It also writes
+`.dos-apes/codex-reviews/result.json` for the audit trail and appends
+a workpad entry for terminal states where a human reader benefits
+(`partial-success`, `exhausted`, `no-progress`).
 
-**Branching on the terminal state.** Read `result.json`, then:
+**Hard-stop on non-zero loop exit.** Exit `1` from the loop means
+either a script-level failure (config parse, fs error, codex-review.js
+crash) or the required-skip gate firing (mission has `codex.required:
+true` but Codex was unavailable). Either way the mission is not ready
+for review:
 
-| Terminal state       | Action                                                                                                                                                       |
-|----------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `accepted`           | Continue to Step 5 (generate evidence packet). The L8 entry is already in the mission's `verification.jsonl`.                                                |
-| `partial-success`    | Continue to Step 5. Only low/medium findings remain — those are explicitly out of the loop's scope; the human reviewer addresses them.                       |
-| `findings-reported`  | Continue to Step 5. This state only fires when `--no-fix` was set, which `/apes-build` does NOT set. If you see it here, something passed `--no-fix` upstream — surface to the user. |
-| `exhausted`          | **Mark the mission unresolved**, then continue to Step 5. The packet must include the open findings; do not silently swallow them. (See "Mark unresolved" below.) |
-| `no-progress`        | **Mark the mission unresolved**, then continue to Step 5. Claude Code couldn't make a fix — surface explicitly so the human reviewer sees it.                |
-| `skipped`            | Continue to Step 5 silently. Codex unavailable/disabled is the same as L8 not being configured — never blocks the build.                                     |
+```bash
+if [ "$L8_ENABLED" -eq 1 ] && [ "$L8_LOOP_EXIT" -ne 0 ]; then
+  echo "apes-build: L8 loop exited ${L8_LOOP_EXIT}; mission ${TARGET} stays in doing/" >&2
+  echo "apes-build: inspect the codex block (mission-cli show ${TARGET}) and .dos-apes/codex-reviews/result.json" >&2
+  exit 1
+fi
+```
+
+**Read the verdict from the mission file, not from loop stdout.** The
+codex block on the mission's frontmatter is the single source of truth
+for what L8 concluded. Reading it via `mission-cli show` keeps
+`/apes-build`, `/apes-status`, `/apes-codex-review`, and any future
+caller pointed at the same surface — no fragile pipe-parsing of loop
+output.
+
+```bash
+if [ "$L8_ENABLED" -eq 1 ]; then
+  CODEX_VERDICT=$(node scripts/mission-cli.js show "$TARGET" | node -e '
+    let s = ""; process.stdin.on("data", d => s += d).on("end", () => {
+      const fm = JSON.parse(s).frontmatter || {};
+      console.log((fm.codex && fm.codex.last_verdict) || "none");
+    });
+  ')
+fi
+```
+
+**Branching on `codex.last_verdict`.** The actions per terminal are
+unchanged from M-0004 — only the input source moved (mission file
+instead of loop stdout). The states themselves are M-0005's
+six-terminal set; see `cross-model-review.md` for definitions.
+
+| `codex.last_verdict`    | Action                                                                                                                                                                  |
+|-------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `accepted`              | Continue to Step 5 (generate evidence packet). The L8 entry is already in the mission's `verification.jsonl`.                                                           |
+| `partial-success`       | Continue to Step 5. Only low/medium findings remain — those are explicitly out of the loop's scope; the human reviewer addresses them.                                  |
+| `findings-reported`     | Continue to Step 5. This state only fires when `--no-fix` was set, which `/apes-build` does NOT pass. If you see it here, something else passed `--no-fix` upstream — surface to the user. |
+| `exhausted`             | **Mark the mission unresolved**, then continue to Step 5. The packet must include the open findings; do not silently swallow them.                                      |
+| `no-progress`           | **Mark the mission unresolved**, then continue to Step 5. Claude Code couldn't make a fix — surface explicitly so the human reviewer sees it.                           |
+| `skipped`               | Soft warning, continue to Step 5. (`codex.required: true` would have made the loop exit non-zero already, caught by the hard-stop above — so reaching `skipped` here means the mission did not require L8.) |
+| `none` (no codex block) | The loop didn't write a verdict — typically because L8 is disabled, was skipped before any review ran, or the loop never executed. Continue to Step 5 silently.         |
 
 **Mark unresolved** (used by `exhausted` and `no-progress`):
 
 ```bash
-node -e "
-const fs = require('fs');
-const path = require('path');
-const target = process.argv[1];
-const states = ['todo','doing','review','done','canceled'];
-let file = null;
-for (const s of states) {
-  const dir = '.planning/missions/' + s;
-  if (!fs.existsSync(dir)) continue;
-  for (const f of fs.readdirSync(dir)) {
-    if (f.endsWith('.md') && (f === target+'.md' || f.startsWith(target+'-'))) {
-      file = path.join(dir, f); break;
-    }
-  }
-  if (file) break;
-}
-if (!file) { process.stderr.write('mission file not found\n'); process.exit(0); }
-let body = fs.readFileSync(file, 'utf8');
-const m = body.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
-if (!m) { process.stderr.write('no frontmatter\n'); process.exit(0); }
-let fm = m[1];
-if (/^codex_findings_unresolved:/m.test(fm)) {
-  fm = fm.replace(/^codex_findings_unresolved:.*$/m, 'codex_findings_unresolved: true');
-} else {
-  fm = fm.trimEnd() + '\ncodex_findings_unresolved: true';
-}
-const newBody = body.replace(m[1], fm);
-fs.writeFileSync(file, newBody);
-console.log('marked codex_findings_unresolved: true on ' + file);
-" "$TARGET"
+node scripts/mission-cli.js update "$TARGET" --field codex_findings_unresolved=true
 ```
 
-The mission still moves to `review/` in Step 5. The frontmatter flag is
-the signal to the human reviewer that L8 didn't reach a clean verdict —
-the evidence packet will include the open findings list, and the
-reviewer decides whether to address them, accept the residual risk, or
-push back to `doing/`.
+This top-level boolean flag is preserved for backward compatibility
+with reviewers, dashboards, and queries that look for it. New tooling
+should prefer reading `codex.last_verdict` and `codex.unresolved_findings`
+directly from the codex block — they carry the same signal at higher
+fidelity.
+
+The mission still moves to `review/` in Step 5. The flag plus the codex
+block together signal to the human reviewer that L8 didn't reach a
+clean verdict — the evidence packet will pick up the open findings list
+via `codex.last_review_path`, and the reviewer decides whether to
+address them, accept the residual risk, or push back to `doing/`.
 
 **Why continue to packet generation in every case.** The packet is the
 audit artifact — the goal is "what did this mission produce, what was
@@ -270,16 +320,16 @@ is the moat. If it refuses, the mission is not ready; loop back to Step 4.
 After a successful packet:
 
 ```bash
-git mv ".planning/missions/doing/${TARGET}-*.md" ".planning/missions/review/"
-git mv ".planning/missions/doing/${TARGET}" ".planning/missions/review/${TARGET}"
-# Update frontmatter: state -> review, updated -> today
-# Commit: "mission(${TARGET}): doing → review"
+node scripts/mission-cli.js move "$TARGET" review
+git commit -m "mission(${TARGET}): doing → review"
 ```
 
-Clear the active-mission marker so the next invocation starts clean:
+The CLI moves both the .md file and the per-mission directory, bumps
+`state` and `updated`, and stages the rename. Then clear the
+active-mission marker so the next invocation starts clean:
 
 ```bash
-rm -f .planning/active-mission
+node scripts/mission-cli.js clear-active
 ```
 
 Print a completion summary with the mission ID, branch, and the path to
@@ -302,7 +352,7 @@ Every failure that aborts the run MUST clean up `.planning/active-mission`
 so the next session is not falsely anchored to a half-baked mission:
 
 ```bash
-trap 'rm -f .planning/active-mission' EXIT
+trap 'node scripts/mission-cli.js clear-active >/dev/null 2>&1 || true' EXIT
 ```
 
 (Or its equivalent in the agent's flow control — the contract is

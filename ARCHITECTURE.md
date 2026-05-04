@@ -249,6 +249,62 @@ Phases (`.planning/ROADMAP.md`) are *strategic*; missions are *tactical*. A miss
 
 ---
 
+## Library Layer (`framework/lib/`)
+
+Underneath the scripts that operate on mission state lives a small library
+of pure Node modules. The library is the **canonical interface for mission
+operations** — every script that reads, writes, transitions, or scaffolds
+a mission goes through it. Inline `node -e` blocks in commands and ad-hoc
+regex parsers in scripts have been retired in favor of one tested API.
+
+| Module | Responsibility |
+|--------|----------------|
+| `mission-schema.js` | Frozen constants (`STATES`, `LEVEL_IDS`, `CURRENT_SCHEMA_VERSION`), frontmatter validation, and the migration framework. No I/O. |
+| `mission-parser.js` | Frontmatter ↔ body splitting, scalar/list/nested-field accessors, acceptance-checkbox parsing, workpad-entry parsing. No I/O. |
+| `mission-tracker.js` | The `MissionTracker` class — identity (ID generation, lookup), state (FSM-validated transitions, list-by-state), dependencies (unmet/cycles), workpad (timestamped append), active-mission (read/write/clear), verification-log path resolution, and authoring (`createMission`). |
+
+**Schema versioning.** Every mission carries an implicit `schema_version`.
+Today the framework ships at version 1, with no prior versions to migrate
+from — the migration shape exists so future field additions or shape
+changes can land without rewriting callers. Bumping
+`CURRENT_SCHEMA_VERSION` and appending a `{ from, to, migrate(fm) }`
+record to `MIGRATIONS` is the only change required to introduce a new
+schema version; `migrateFrontmatter` walks the chain automatically.
+
+**Library principles** (documented at the top of `mission-tracker.js`):
+
+- All filesystem operations are synchronous — the framework's hooks run
+  synchronously, and the tracker must compose with them.
+- Every write is validated by `mission-schema.validateFrontmatter` before
+  touching disk.
+- `id` is immutable once a mission exists; mutation methods reject
+  attempts to change it.
+- The library calls `git mv` (which stages the rename) but **never
+  creates commits, branches, tags, or worktrees**. Commit boundaries
+  belong to the caller.
+- Zero npm dependencies. Pure Node built-ins.
+
+**Pluggable storage backends.** The current `MissionTracker` reads and
+writes mission files on the local filesystem under `.planning/missions/`.
+The same API surface — `findMissionById`, `listMissionsByState`,
+`moveMissionState`, `appendWorkpadEntry`, etc. — is shaped to admit
+alternative backends without changing callers. A future Linear or GitHub
+Issues adapter would implement the same methods against a remote source
+of truth, leaving every script and command in place. No backend other
+than the filesystem ships today; the section flags the intent so the
+abstraction is preserved as the library grows.
+
+**Programmatic CLI.** `framework/scripts/mission-cli.js` is a thin
+wrapper that exposes every `MissionTracker` verb as a subcommand
+(`list`, `show`, `next-id`, `move`, `workpad`, `update`, `deps`,
+`active`, `set-active`, `clear-active`, `create`, `can-transition`).
+Every verb prints exactly one JSON object on stdout; errors prefix
+`mission-cli:` to stderr. Exit codes: `0` ok, `1` invalid input, `2`
+not found, `3` precondition failed. Slash-command bodies and external
+tooling call this script instead of hand-rolling Node snippets.
+
+---
+
 ## Verification Pyramid (9 Levels)
 
 ```
@@ -299,6 +355,8 @@ L8 introduces a new pattern: a *second* model reviews the diff produced by the *
 - `.dos-apes/codex-capabilities.json` — capability cache (24h TTL, keyed on model)
 
 The mission verification log (`log-verification.js`) recognizes `L8` as `Adversarial Review` so L8 results land in `verification.jsonl` alongside the other levels — the evidence-packet generator's required-levels check sees it like any other.
+
+**Mission-native review state (3.4.0).** L8 review state is now surfaced in mission frontmatter via the `codex` block (schema v2). The single-shot script and the loop driver both write `last_verdict`, `last_review_path`, `unresolved_findings`, and `last_run_at` through `MissionTracker.setCodexState` — no direct frontmatter writes anywhere in the L8 stack. `/apes-build` reads `codex.last_verdict` from the mission file (rather than parsing loop stdout) to decide its post-L8 branch; `/apes-status` renders the verdict and unresolved-finding count for missions in `doing/` and `review/`. Setting `codex.required: true` on a mission makes `skipped` a hard error: the loop exits non-zero and `/apes-build` refuses to advance the mission to review when Codex was unavailable. See `framework/skills/missions.md` "Codex review state" and `framework/skills/cross-model-review.md` "Mission state surface".
 
 ---
 
@@ -363,11 +421,15 @@ Claude Code's Tasks API replaces v1's manual STATE.md and PLAN.md:
 
 ---
 
-## File Inventory (53 files)
+## File Inventory (57 files)
 
 ```
 framework/
 ├── settings.json                    # Hooks, permissions, MCP, env
+├── lib/                             # Library layer — canonical mission API
+│   ├── mission-schema.js            # Frozen constants + validation + migration
+│   ├── mission-parser.js            # Frontmatter / body / acceptance / workpad parsing
+│   └── mission-tracker.js           # MissionTracker — identity, state, deps, workpad, authoring
 ├── commands/                        # 18 slash commands
 │   ├── apes-build.md                # Mission-aware build (now invokes L8 loop pre-packet)
 │   ├── apes-feature.md
@@ -404,7 +466,7 @@ framework/
 │   ├── evidence-packets.md          # Evidence packet format
 │   ├── cross-model-review.md        # L8 consumer protocol
 │   └── README.md
-├── scripts/                         # 18 hook + helper scripts
+├── scripts/                         # 19 hook + helper scripts
 │   ├── guard-main-branch.sh
 │   ├── hook-format-and-stage.sh
 │   ├── hook-typecheck.sh
@@ -417,6 +479,7 @@ framework/
 │   ├── check-structure.sh
 │   ├── metrics-init.sh
 │   ├── metrics-update.sh
+│   ├── mission-cli.js               # Thin CLI wrapper around MissionTracker (JSON I/O)
 │   ├── mission-worktree.js          # Worktree create/sync/remove/list (Node, zero-dep)
 │   ├── log-verification.js          # Recognizes L0–L8; graceful when no active mission
 │   ├── evidence-packet.js           # Generate the proof-of-work bundle
@@ -466,6 +529,8 @@ Plus: `bin/cli.js`, `package.json`, `assets/banner.txt`, `README.md`, `LICENSE`
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 3.4.0 | 2026-05 | L8 Codex review state is now mission-native via the `codex` frontmatter block (schema v2). Visible on `/apes-status`. Single-shot and loop both write through `MissionTracker.setCodexState`; `/apes-build` reads verdict from frontmatter rather than parsing loop stdout. `codex.required: true` blocks `skipped` termination. v1 missions auto-migrate to v2 on first read. |
+| 3.3.0 | 2026-05 | Refactor: extracted MissionTracker to `framework/lib/`. No behavior changes. Schema versioning introduced (`schema_version: 1`, migration framework in place but no migrations needed yet). All five mission-touching scripts and four mission-touching commands now route through the library. New `mission-cli.js` thin wrapper for JSON-shaped programmatic access. |
 | 3.2.0 | 2026-05 | Added L8 Adversarial Review via Codex CLI (gpt-5.5) with feedback loop. Opt-in, fails open. New skill (cross-model-review), new command (/apes-codex-review), three new scripts (codex-check / codex-review / codex-review-loop), four new templates. log-verification.js recognizes L8. /apes-verify and /apes-build invoke L8 when enabled. |
 | 3.1.0 | 2026-05 | Mission layer: filesystem state machine, isolated worktrees per mission, structured verification log (JSONL), evidence packets, /apes-mission, /apes-evidence, mission-aware /apes-build and /apes-status |
 | 3.0.0 | 2026-02 | Product/orchestration roles, gate-enforced state machine, acceptance criteria verification, 4 new skills, /apes-board, /apes-gc, ExecPlans, architecture boundary enforcement, enhanced installer |

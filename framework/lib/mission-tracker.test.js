@@ -15,6 +15,7 @@ const { execFileSync } = require("child_process");
 
 const { MissionTracker, STATES } = require("./mission-tracker.js");
 const parser = require("./mission-parser.js");
+const schema = require("./mission-schema.js");
 
 let passed = 0;
 let failed = 0;
@@ -386,6 +387,198 @@ group("Mutations", () => {
   });
 });
 
+// ─── Schema migration & Codex block ────────────────────────────────────────
+
+group("Schema v2 migration", () => {
+  test("readMission migrates a v1 mission to v2 in memory without touching disk", () => {
+    const { root } = makeTempTree();
+    const file = seedMission(root, "todo", "M-0001"); // no schema_version → v1
+    const beforeMtime = fs.statSync(file).mtimeMs;
+    const beforeText = fs.readFileSync(file, "utf8");
+    assert(!/schema_version/.test(beforeText), "seed must be v1 (no schema_version)");
+
+    const t = new MissionTracker({ root });
+    const m = t.readMission("M-0001");
+    assert.strictEqual(m.frontmatter.schema_version, 2, "in-memory frontmatter is v2");
+
+    const afterText = fs.readFileSync(file, "utf8");
+    const afterMtime = fs.statSync(file).mtimeMs;
+    assert.strictEqual(afterText, beforeText, "disk file must be unchanged after a pure read");
+    assert.strictEqual(afterMtime, beforeMtime, "mtime must not move on a pure read");
+  });
+
+  test("v2 mission with a codex block round-trips intact", () => {
+    const { root } = makeTempTree();
+    seedMission(root, "doing", "M-0001", {
+      schema_version: 2,
+      codex: {
+        required: true,
+        max_rounds: 5,
+        last_verdict: "accepted",
+        unresolved_findings: 0,
+        last_review_path: ".planning/missions/doing/M-0001/codex/round-1/review.json",
+        last_run_at: "2026-05-03T10:00:00Z",
+      },
+    });
+    const t = new MissionTracker({ root });
+    const m = t.readMission("M-0001");
+    assert.strictEqual(m.frontmatter.schema_version, 2);
+    assert.deepStrictEqual(m.frontmatter.codex, {
+      required: true,
+      max_rounds: 5,
+      last_verdict: "accepted",
+      unresolved_findings: 0,
+      last_review_path: ".planning/missions/doing/M-0001/codex/round-1/review.json",
+      last_run_at: "2026-05-03T10:00:00Z",
+    });
+  });
+
+  test("migrateFrontmatter on an already-v2 mission is a no-op (no field changes)", () => {
+    const original = {
+      id: "M-0001",
+      schema_version: 2,
+      title: "Already v2",
+      state: "todo",
+      created: "2026-05-01",
+      updated: "2026-05-01",
+    };
+    const migrated = schema.migrateFrontmatter(original);
+    assert.deepStrictEqual(migrated, original, "v2 input must produce identical output");
+    assert.notStrictEqual(migrated, original, "result is a fresh object (shallow clone)");
+  });
+
+  test("migrateFrontmatter v1 → v2 adds schema_version and bumps `updated`, no codex block", () => {
+    const original = {
+      id: "M-0001",
+      title: "Old mission",
+      state: "todo",
+      created: "2025-01-01",
+      updated: "2025-01-01",
+    };
+    const migrated = schema.migrateFrontmatter(original);
+    assert.strictEqual(migrated.schema_version, 2);
+    assert.strictEqual(migrated.updated, new Date().toISOString().slice(0, 10));
+    assert.strictEqual(migrated.codex, undefined, "migration must NOT add a codex block");
+  });
+});
+
+group("Codex state helpers", () => {
+  test("getCodexState returns null when the block is absent", () => {
+    const { root } = makeTempTree();
+    seedMission(root, "doing", "M-0001", { schema_version: 2 });
+    const t = new MissionTracker({ root });
+    assert.strictEqual(t.getCodexState("M-0001"), null);
+  });
+
+  test("setCodexState creates the block on a mission that has none", () => {
+    const { root } = makeTempTree();
+    seedMission(root, "doing", "M-0001", { schema_version: 2 });
+    const t = new MissionTracker({ root });
+    t.setCodexState("M-0001", { required: true, max_rounds: 4 });
+    const codex = t.getCodexState("M-0001");
+    assert.deepStrictEqual(codex, { required: true, max_rounds: 4 });
+  });
+
+  test("setCodexState shallow-merges a partial update onto an existing block", () => {
+    const { root } = makeTempTree();
+    seedMission(root, "doing", "M-0001", {
+      schema_version: 2,
+      codex: { required: true, max_rounds: 3, last_verdict: "none", unresolved_findings: 0 },
+    });
+    const t = new MissionTracker({ root });
+    t.setCodexState("M-0001", { last_verdict: "findings-reported", unresolved_findings: 2 });
+    const codex = t.getCodexState("M-0001");
+    assert.deepStrictEqual(codex, {
+      required: true,
+      max_rounds: 3,
+      last_verdict: "findings-reported",
+      unresolved_findings: 2,
+    });
+  });
+
+  test("clearCodexState removes the block; subsequent reads have no codex field", () => {
+    const { root } = makeTempTree();
+    seedMission(root, "doing", "M-0001", {
+      schema_version: 2,
+      codex: { required: true, last_verdict: "accepted" },
+    });
+    const t = new MissionTracker({ root });
+    t.clearCodexState("M-0001");
+    const m = t.readMission("M-0001");
+    assert.strictEqual(m.frontmatter.codex, undefined);
+    assert.strictEqual(t.getCodexState("M-0001"), null);
+    // And the on-disk text must not mention the block any more.
+    const text = fs.readFileSync(m.path, "utf8");
+    assert(!/^\s*codex\s*:/m.test(text), "disk file should not contain a codex key");
+  });
+
+  test("setCodexState with an invalid value is rejected by the validation gate", () => {
+    const { root } = makeTempTree();
+    seedMission(root, "doing", "M-0001", { schema_version: 2 });
+    const t = new MissionTracker({ root });
+    assert.throws(
+      () => t.setCodexState("M-0001", { last_verdict: "bogus" }),
+      /invalid codex.last_verdict/
+    );
+    assert.throws(
+      () => t.setCodexState("M-0001", { unresolved_findings: -1 }),
+      /codex\.unresolved_findings/
+    );
+  });
+});
+
+group("validateFrontmatter — codex block", () => {
+  const baseFm = () => ({
+    id: "M-0001",
+    schema_version: 2,
+    title: "Test",
+    state: "todo",
+    created: "2026-05-01",
+    updated: "2026-05-01",
+  });
+
+  test("a mission with no codex block validates cleanly", () => {
+    const r = schema.validateFrontmatter(baseFm());
+    assert.strictEqual(r.valid, true, `expected valid; got: ${r.errors.join(", ")}`);
+  });
+
+  test("rejects invalid last_verdict enum value", () => {
+    const fm = baseFm();
+    fm.codex = { last_verdict: "totally-made-up" };
+    const r = schema.validateFrontmatter(fm);
+    assert.strictEqual(r.valid, false);
+    assert(r.errors.some((e) => /invalid codex\.last_verdict/.test(e)),
+      `expected last_verdict error; got: ${r.errors.join(", ")}`);
+  });
+
+  test("rejects negative unresolved_findings", () => {
+    const fm = baseFm();
+    fm.codex = { unresolved_findings: -3 };
+    const r = schema.validateFrontmatter(fm);
+    assert.strictEqual(r.valid, false);
+    assert(r.errors.some((e) => /unresolved_findings/.test(e)),
+      `expected unresolved_findings error; got: ${r.errors.join(", ")}`);
+  });
+
+  test("rejects non-boolean `required`", () => {
+    const fm = baseFm();
+    fm.codex = { required: "yes" };
+    const r = schema.validateFrontmatter(fm);
+    assert.strictEqual(r.valid, false);
+    assert(r.errors.some((e) => /codex\.required/.test(e)),
+      `expected codex.required error; got: ${r.errors.join(", ")}`);
+  });
+
+  test("accepts every valid CODEX_VERDICTS value", () => {
+    for (const v of schema.CODEX_VERDICTS) {
+      const fm = baseFm();
+      fm.codex = { last_verdict: v };
+      const r = schema.validateFrontmatter(fm);
+      assert.strictEqual(r.valid, true, `${v} should be valid; got: ${r.errors.join(", ")}`);
+    }
+  });
+});
+
 // ─── Dependencies ──────────────────────────────────────────────────────────
 
 group("Dependencies", () => {
@@ -478,6 +671,76 @@ group("Verification log", () => {
     const { root } = makeTempTree();
     const t = new MissionTracker({ root });
     assert.throws(() => t.getVerificationLogPath("M-9999"), /not found/);
+  });
+});
+
+// ─── Authoring (createMission) ──────────────────────────────────────────────
+
+group("Authoring", () => {
+  test("createMission writes to todo/ with valid frontmatter", () => {
+    const { root } = makeTempTree();
+    const t = new MissionTracker({ root });
+    const r = t.createMission({ title: "Add POST /todos endpoint" });
+    assert.strictEqual(r.id, "M-0001");
+    assert(r.file.includes(path.join("todo", "M-0001-add-post-todos-endpoint.md")));
+    assert(fs.existsSync(r.file));
+    const m = t.readMission("M-0001");
+    assert.strictEqual(m.frontmatter.id, "M-0001");
+    assert.strictEqual(m.frontmatter.state, "todo");
+    assert.strictEqual(m.frontmatter.title, "Add POST /todos endpoint");
+    assert.deepStrictEqual(m.frontmatter.workspace, {
+      branch: "feat/m-0001-add-post-todos-endpoint",
+      worktree: ".worktrees/M-0001",
+    });
+    assert(m.body.includes("## Context"));
+    assert(m.body.includes("## Workpad"));
+  });
+
+  test("createMission accepts priority/phase/dependsOn/labels", () => {
+    const { root } = makeTempTree();
+    seedMission(root, "done", "M-0001"); // for dep validation
+    const t = new MissionTracker({ root });
+    const r = t.createMission({
+      title: "Build feature X",
+      priority: 1,
+      phase: "phase-2-core",
+      dependsOn: ["M-0001"],
+      labels: ["backend", "urgent"],
+    });
+    const m = t.readMission(r.id);
+    assert.strictEqual(m.frontmatter.priority, 1);
+    assert.strictEqual(m.frontmatter.phase, "phase-2-core");
+    assert.deepStrictEqual(m.frontmatter.depends_on, ["M-0001"]);
+    assert.deepStrictEqual(m.frontmatter.labels, ["backend", "urgent"]);
+  });
+
+  test("createMission allocates next ID across all states", () => {
+    const { root } = makeTempTree();
+    seedMission(root, "todo", "M-0003");
+    seedMission(root, "done", "M-0007");
+    const t = new MissionTracker({ root });
+    const r = t.createMission({ title: "Next" });
+    assert.strictEqual(r.id, "M-0008");
+  });
+
+  test("createMission rejects empty title", () => {
+    const { root } = makeTempTree();
+    const t = new MissionTracker({ root });
+    assert.throws(() => t.createMission({ title: "" }), /title is required/);
+    assert.throws(() => t.createMission({}), /title is required/);
+  });
+
+  test("createMission rejects invalid priority and dependency IDs", () => {
+    const { root } = makeTempTree();
+    const t = new MissionTracker({ root });
+    assert.throws(
+      () => t.createMission({ title: "x", priority: 6 }),
+      /priority must be an integer 1–5/
+    );
+    assert.throws(
+      () => t.createMission({ title: "x", dependsOn: ["not-an-id"] }),
+      /invalid dependency id/
+    );
   });
 });
 

@@ -108,7 +108,18 @@ function writeResult(payload) {
 
 function terminal(payload) {
   writeResult(payload);
-  appendMissionWorkpad(payload);
+  try {
+    recordTerminalSideEffects(payload);
+  } catch (err) {
+    if (err && err.code === "REQUIRED_SKIP") {
+      warn(err.message);
+      // Still emit the stdout JSON so callers parsing it see the state, then
+      // exit non-zero to signal the gate failure.
+      process.stdout.write(JSON.stringify(payload) + "\n");
+      process.exit(1);
+    }
+    throw err;
+  }
   process.stdout.write(JSON.stringify(payload) + "\n");
   process.exit(0);
 }
@@ -270,28 +281,217 @@ function spawnClaudeFix({ packetPath, missionId, iteration, timeoutMs }) {
   return { ok: true };
 }
 
-// ─── Mission workpad ────────────────────────────────────────────────────────
+// ─── Terminal-state side effects ───────────────────────────────────────────
 //
-// Appends a workpad block summarizing the loop's terminal state to the
-// active mission. Best-effort: any failure (no missions tree, mission not
-// found, write error) is logged to stderr and the loop continues.
+// On every terminal state, the loop persists state in two places:
 //
-// Format note: pre-migration, this script wrote
-//   `### YYYY-MM-DD HH:MM UTC — codex-loop`
-// as the heading. Post-migration it uses tracker.appendWorkpadEntry, whose
-// canonical format is
-//   `### YYYY-MM-DD HH:MM`  (no UTC marker, no role suffix).
-// The "codex-loop" attribution moves into the note body so readers still
-// see at a glance which subsystem wrote the entry.
+//   1. The mission's `codex` frontmatter block (last_verdict,
+//      last_review_path, unresolved_findings, last_run_at) via
+//      MissionTracker.setCodexState.
+//   2. The mission's Workpad section, but ONLY for states where a human
+//      reader benefits from seeing it — see workpadEntryForTerminal.
+//
+// Mission state (todo/doing/review/done/canceled) is intentionally NOT
+// touched here. The build flow decides lifecycle transitions; the loop only
+// produces verdicts and packets. This separation is what makes
+// /apes-codex-review usable in standalone mode.
+//
+// All persistence routes through MissionTracker — no direct file writes.
+// All updates are best-effort: a tracker failure logs a warning but never
+// kills the loop. The single hard exception is `codex.required: true`,
+// which makes a `skipped` terminal an error.
 
-function appendMissionWorkpad(payload) {
+function makeTracker(opts = {}) {
+  if (opts.tracker) return opts.tracker;
+  const root = opts.projectRoot || PROJECT_ROOT;
+  const missionsRoot = path.join(root, ".planning", "missions");
+  if (!fs.existsSync(missionsRoot)) return null;
+  return new MissionTracker({ root: missionsRoot });
+}
+
+function relativizeReviewPath(p, projectRoot) {
+  if (!p) return null;
+  const root = projectRoot || PROJECT_ROOT;
+  return path.relative(root, p).split(path.sep).join("/");
+}
+
+function finalReviewPath(payload, projectRoot) {
+  if (!Array.isArray(payload.reviews) || payload.reviews.length === 0) return null;
+  return relativizeReviewPath(payload.reviews[payload.reviews.length - 1], projectRoot);
+}
+
+// Map a terminal payload onto the partial codex block to merge. Returns
+// null when the state warrants no update (currently never — every terminal
+// at least bumps last_verdict and last_run_at). Per the playbook table:
+//
+//   accepted          last_verdict=accepted,           unresolved_findings=0
+//   partial-success   last_verdict=partial-success,    unresolved_findings=count of low/medium
+//   findings-reported last_verdict=findings-reported,  unresolved_findings=count of filtered
+//   exhausted         last_verdict=exhausted,          unresolved_findings=count of filtered
+//   no-progress       last_verdict=no-progress,        unresolved_findings=count of filtered
+//   skipped           last_verdict=skipped             (no review ran — preserve prior count)
+
+function codexBlockUpdateForTerminal(payload, opts = {}) {
+  const update = {
+    last_verdict: payload.state,
+    last_run_at: new Date().toISOString(),
+  };
+
+  if (payload.state === "skipped") {
+    // No review ran. Preserve prior unresolved_findings / last_review_path
+    // by not including them in the partial update (setCodexState merges
+    // shallowly, so unspecified keys retain their previous value).
+    return update;
+  }
+
+  const finalReview = finalReviewPath(payload, opts.projectRoot);
+  if (finalReview) update.last_review_path = finalReview;
+
+  switch (payload.state) {
+    case "accepted":
+      update.unresolved_findings = 0;
+      break;
+    case "partial-success":
+      // partial-success terminates with NO loop-eligible findings; payload
+      // .findings_count carries the total reported count, all low/medium.
+      update.unresolved_findings = Number(payload.findings_count) || 0;
+      break;
+    case "findings-reported":
+    case "exhausted":
+    case "no-progress":
+      update.unresolved_findings = Number(payload.findings_count) || 0;
+      break;
+    default:
+      // Defensive: if a new state is introduced upstream without updating
+      // this switch, fall back to whatever the payload reports.
+      update.unresolved_findings = Number(payload.findings_count) || 0;
+  }
+  return update;
+}
+
+// Render the workpad note body for a terminal payload, or return null when
+// no entry should be written. Per the playbook table:
+//
+//   accepted          → no entry (clean accept doesn't merit a note)
+//   partial-success   → summary of low/medium findings
+//   findings-reported → no entry (--no-fix; user wanted findings only)
+//   exhausted         → list unresolved findings + path to final review
+//   no-progress       → note about no progress + path to final review
+//   skipped           → no entry (skip is not an interesting event)
+//
+// The returned string is the note BODY only — MissionTracker
+// .appendWorkpadEntry adds the canonical `### YYYY-MM-DD HH:MM` heading
+// (M-0002 format).
+
+function workpadEntryForTerminal(payload, opts = {}) {
+  switch (payload.state) {
+    case "accepted":
+    case "findings-reported":
+    case "skipped":
+      return null;
+
+    case "partial-success": {
+      const findings = Array.isArray(payload.open_findings) ? payload.open_findings : [];
+      const lines = [
+        `**codex-loop** — partial-success after ${payload.iteration || 0} iteration(s).`,
+        `${findings.length} low/medium finding(s) reported (none loop-eligible):`,
+      ];
+      appendFindingLines(lines, findings);
+      return lines.join("\n");
+    }
+
+    case "exhausted": {
+      const findings = Array.isArray(payload.open_findings) ? payload.open_findings : [];
+      const finalReview = finalReviewPath(payload, opts.projectRoot) || "(none)";
+      const lines = [
+        `**codex-loop** — exhausted after ${payload.iteration || 0} iteration(s) (cap=${payload.max_iterations}).`,
+        `${findings.length} loop-eligible finding(s) remain unresolved:`,
+      ];
+      appendFindingLines(lines, findings);
+      lines.push(`Final review: ${finalReview}`);
+      return lines.join("\n");
+    }
+
+    case "no-progress": {
+      const findings = Array.isArray(payload.open_findings) ? payload.open_findings : [];
+      const finalReview = finalReviewPath(payload, opts.projectRoot) || "(none)";
+      const lines = [
+        `**codex-loop** — no-progress on iteration ${payload.iteration || 0}: the fix step did not advance HEAD.`,
+      ];
+      if (payload.message) lines.push(payload.message);
+      lines.push(`${findings.length} loop-eligible finding(s) remain.`);
+      lines.push(`Final review: ${finalReview}`);
+      return lines.join("\n");
+    }
+
+    default:
+      return null;
+  }
+}
+
+function appendFindingLines(lines, findings) {
+  for (const f of findings.slice(0, 10)) {
+    const start = (f && f.line_range && f.line_range.start) || "?";
+    const sev = (f && f.severity) || "?";
+    const file = (f && f.file) || "?";
+    const note = (f && f.explanation) || "";
+    lines.push(`- ${sev} · ${file}:${start}: ${note}`);
+  }
+  if (findings.length > 10) {
+    lines.push(`- … (${findings.length - 10} more)`);
+  }
+}
+
+// codex.required: true forbids the loop from terminating with skipped.
+// Throws RequiredSkipError so terminal() can decide what to do (CLI exits
+// non-zero; tests assert on the throw).
+
+class RequiredSkipError extends Error {
+  constructor(missionId, reason) {
+    super(
+      `mission ${missionId} has codex.required: true — refusing to terminate with state 'skipped' ` +
+      `(reason: ${reason || "unspecified"})`
+    );
+    this.name = "RequiredSkipError";
+    this.code = "REQUIRED_SKIP";
+    this.missionId = missionId;
+    this.reason = reason;
+  }
+}
+
+function preventRequiredSkip(payload, opts = {}) {
+  if (payload.state !== "skipped" || !payload.mission) return;
+  const tracker = makeTracker(opts);
+  if (!tracker) return;
+  let codex;
+  try { codex = tracker.getCodexState(payload.mission); }
+  catch (_) { return; }
+  if (codex && codex.required === true) {
+    throw new RequiredSkipError(payload.mission, payload.message);
+  }
+}
+
+// Best-effort codex block update. Logs a warning on failure; never throws.
+function recordCodexState(payload, opts = {}) {
   if (!payload.mission) return;
+  const tracker = makeTracker(opts);
+  if (!tracker) return;
+  const update = codexBlockUpdateForTerminal(payload, opts);
+  if (!update) return;
+  try {
+    tracker.setCodexState(payload.mission, update);
+  } catch (err) {
+    warn(`codex block update skipped: ${err && err.message ? err.message : err}`);
+  }
+}
 
-  const missionsRoot = path.join(PROJECT_ROOT, ".planning", "missions");
-  if (!fs.existsSync(missionsRoot)) return;
-
-  const tracker = new MissionTracker({ root: missionsRoot });
-
+// Best-effort workpad append, only for states that warrant an entry.
+function appendMissionWorkpad(payload, opts = {}) {
+  if (!payload.mission) return;
+  const note = workpadEntryForTerminal(payload, opts);
+  if (note === null) return;
+  const tracker = makeTracker(opts);
+  if (!tracker) return;
   let mission;
   try { mission = tracker.findMissionById(payload.mission); }
   catch (err) {
@@ -299,27 +499,31 @@ function appendMissionWorkpad(payload) {
     return;
   }
   if (!mission) return;
-
-  const noteLines = [
-    `**codex-loop** — L8 cross-model review terminal state: **${payload.state}** after ${payload.iteration || 0} iteration(s).`,
-  ];
-  if (payload.verdict) noteLines.push(`Last verdict: ${payload.verdict} (confidence ${payload.confidence ?? "n/a"}).`);
-  if (payload.summary) noteLines.push(`Summary: ${payload.summary}`);
-  if (Array.isArray(payload.open_findings) && payload.open_findings.length) {
-    noteLines.push(`Open findings (${payload.open_findings.length}):`);
-    for (const f of payload.open_findings.slice(0, 10)) {
-      noteLines.push(`- ${f.severity} · ${f.file}:${f.line_range && f.line_range.start}: ${f.explanation}`);
-    }
-    if (payload.open_findings.length > 10) {
-      noteLines.push(`- … (${payload.open_findings.length - 10} more)`);
-    }
-  }
-  if (payload.message) noteLines.push(payload.message);
-
   try {
-    tracker.appendWorkpadEntry(payload.mission, noteLines.join("\n"));
+    tracker.appendWorkpadEntry(payload.mission, note);
   } catch (err) {
-    warn(`could not append workpad entry to ${mission.path}: ${err.message}`);
+    warn(`could not append workpad entry to ${mission.path}: ${err && err.message ? err.message : err}`);
+  }
+}
+
+// Composite — order matters: required-skip is the only guard that aborts;
+// codex-block and workpad updates are independent best-effort writes.
+function recordTerminalSideEffects(payload, opts = {}) {
+  preventRequiredSkip(payload, opts);
+  recordCodexState(payload, opts);
+  appendMissionWorkpad(payload, opts);
+}
+
+// Per-iteration last_run_at bump on the codex block. Best-effort: a missing
+// mission, missing tracker, or schema mismatch logs a warning and continues.
+function bumpLastRunAt(missionId, opts = {}) {
+  if (!missionId) return;
+  const tracker = makeTracker(opts);
+  if (!tracker) return;
+  try {
+    tracker.setCodexState(missionId, { last_run_at: new Date().toISOString() });
+  } catch (err) {
+    warn(`codex last_run_at update skipped: ${err && err.message ? err.message : err}`);
   }
 }
 
@@ -372,6 +576,10 @@ function main() {
 
   while (true) {
     iteration += 1;
+
+    // Bump last_run_at on the codex block at iteration start so the mission
+    // file reflects activity even if the iteration ends in failure mode.
+    bumpLastRunAt(args.mission);
 
     const inv = invokeReview({ base, mission: args.mission, iteration });
     if (inv.error) {
@@ -506,9 +714,28 @@ function main() {
   }
 }
 
-try {
-  main();
-} catch (err) {
-  warn(`fatal: ${err && err.message ? err.message : String(err)}`);
-  process.exit(1);
+// Exposed for tests. Production CLI invocation lives behind require.main.
+module.exports = {
+  // Pure helpers — no I/O.
+  codexBlockUpdateForTerminal,
+  workpadEntryForTerminal,
+  finalReviewPath,
+  relativizeReviewPath,
+  // Side-effect orchestration — accept opts.tracker / opts.projectRoot.
+  recordTerminalSideEffects,
+  recordCodexState,
+  appendMissionWorkpad,
+  preventRequiredSkip,
+  bumpLastRunAt,
+  // Error class for the required-skip gate.
+  RequiredSkipError,
+};
+
+if (require.main === module) {
+  try {
+    main();
+  } catch (err) {
+    warn(`fatal: ${err && err.message ? err.message : String(err)}`);
+    process.exit(1);
+  }
 }

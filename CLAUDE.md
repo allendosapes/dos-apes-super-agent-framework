@@ -98,6 +98,16 @@ Each slash command assembles an appropriate Agent Teams configuration. `/apes-bu
 - Don't reference v1 artifacts (ORCHESTRATOR.md, agents/, standards/, STATE.md, PLAN.md)
 - Don't add `settings.local.json` to git — that's user-specific permissions
 
+## Operational hazards
+
+These rules are learned from real incidents in this codebase. Each is short, behavioral, and applies any time you're working on the framework. The full incident histories live in `_planning/incidents/`.
+
+1. **`rm -rf` is never part of a chain.** Run it as its own single command, *after* explicitly confirming the target with `ls` or `pwd` in a separate prior call. Empty/unset variable expansion can silently change the target — a chained `cd "$VAR" && rm -rf framework` where `$VAR` is empty will run `rm -rf` in the current working directory, because `cd ""` is a bash no-op that returns 0. If the path is parameterized, confirm with the user before issuing. This applies even — *especially* — when "the path is obviously safe." See `_planning/incidents/2026-05-03-framework-destruction.md`.
+
+2. **Phase deliverables get tracked at creation, not at completion.** `git add` a new file the first time you save it, even if it isn't ready to commit. Untracked files have no recovery path — not from `git stash`, not from `git checkout`, not from `git fsck`. The default-stash without `--include-untracked` will silently leave new work behind, and any subsequent destructive action (incident #1, `git clean`, branch switch) loses it permanently. The cost of `git add wip/` is zero; the cost of losing P5's work is hours.
+
+3. **Protections that live only in agent judgment must be encoded in tool config or in CLAUDE.md — judgment alone is not a protection.** When you find yourself thinking "I should remember to X," that thought has a half-life of one context window. If the rule matters across sessions or across agents, it belongs in `settings.json` permissions, in a hook script, or in this file. The first incident postmortem in this repo (#1 above) was caused by an unwritten rule; the second won't be.
+
 ## Verification Pyramid (8 levels)
 
 The framework teaches projects this verification stack:

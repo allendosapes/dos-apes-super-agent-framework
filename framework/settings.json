@@ -117,6 +117,7 @@
       "Bash(pnpm *)",
       "Bash(bun *)",
       "Bash(node *)",
+      "Bash(node scripts/mission-cli.js:*)",
       "Bash(node scripts/mission-worktree.js:*)",
       "Bash(node scripts/codex-check.js:*)",
       "Bash(node scripts/codex-review.js:*)",

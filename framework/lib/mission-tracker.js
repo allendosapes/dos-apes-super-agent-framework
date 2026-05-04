@@ -31,6 +31,11 @@
 //   t.updateFrontmatter(id, partial)            → newPath  (shallow merge; bumps `updated`)
 //   t.appendWorkpadEntry(id, note)              → newPath  (timestamped append; bumps `updated`)
 //
+//   // Codex (L8) state block — see mission-schema.js for field semantics.
+//   t.getCodexState(id)                         → object | null
+//   t.setCodexState(id, partial)                → newPath  (shallow merge into block; creates if absent)
+//   t.clearCodexState(id)                       → newPath  (removes the block entirely)
+//
 //   // Dependencies
 //   t.getDependencies(id)                       → [mission IDs]
 //   t.resolveUnmetDependencies(id)              → [mission IDs not in done/]
@@ -43,6 +48,9 @@
 //
 //   // Verification log
 //   t.getVerificationLogPath(id)                → path to <state>/<id>/verification.jsonl
+//
+//   // Authoring
+//   t.createMission(options)                    → { id, file }
 //
 // =============================================================================
 // PRINCIPLES
@@ -337,7 +345,13 @@ class MissionTracker {
   readMission(id) {
     const m = this.findMissionById(id);
     if (!m) throw new Error(`readMission: mission ${id} not found`);
-    return m;
+    // Migrate in memory only. The disk file stays untouched until the caller
+    // performs an actual mutation (updateFrontmatter / writeMission /
+    // appendWorkpadEntry), which is when the migrated form gets persisted.
+    // This preserves the no-surprise-mutation principle from M-0002 while
+    // ensuring every consumer of readMission sees a current-version object.
+    const migrated = schema.migrateFrontmatter(m.frontmatter);
+    return { ...m, frontmatter: migrated };
   }
 
   writeMission(id, { frontmatter, body }) {
@@ -396,6 +410,42 @@ class MissionTracker {
 
     const newFm = { ...m.frontmatter, updated: todayIso() };
     this._writeFile(m.path, { frontmatter: newFm, body: newBody });
+    return m.path;
+  }
+
+  // ── Codex (L8) state block ────────────────────────────────────────────
+  //
+  // The block is optional and is added the first time L8 runs against a
+  // mission (or up-front for missions that opt in via `required: true`).
+  // All three helpers route through the existing validation gate so an
+  // invalid update can never reach disk.
+
+  getCodexState(id) {
+    const m = this.readMission(id);
+    const codex = m.frontmatter.codex;
+    if (codex === undefined || codex === null) return null;
+    return { ...codex };
+  }
+
+  setCodexState(id, partialUpdate) {
+    if (partialUpdate == null || typeof partialUpdate !== "object" || Array.isArray(partialUpdate)) {
+      throw new Error("setCodexState: partialUpdate must be a plain object");
+    }
+    const m = this.readMission(id);
+    const existing = (m.frontmatter.codex && typeof m.frontmatter.codex === "object" && !Array.isArray(m.frontmatter.codex))
+      ? m.frontmatter.codex
+      : {};
+    const merged = { ...existing, ...partialUpdate };
+    // Routes through updateFrontmatter so validation runs and `updated` bumps.
+    return this.updateFrontmatter(id, { codex: merged });
+  }
+
+  clearCodexState(id) {
+    const m = this.readMission(id);
+    if (m.frontmatter.codex === undefined) return m.path;
+    const newFm = { ...m.frontmatter, updated: todayIso() };
+    delete newFm.codex;
+    this._writeFile(m.path, { frontmatter: newFm, body: m.body });
     return m.path;
   }
 
@@ -484,6 +534,101 @@ class MissionTracker {
     const m = this.findMissionById(id);
     if (!m) throw new Error(`getVerificationLogPath: mission ${id} not found`);
     return path.join(this.root, m.state, id, "verification.jsonl");
+  }
+
+  // ── Authoring ──────────────────────────────────────────────────────────
+
+  // Create a new mission file with valid frontmatter and the four canonical
+  // body sections. Writes to <root>/todo/M-NNNN-<slug>.md. Slug is derived
+  // from `title`. Returns { id, file }. Does NOT stage the file or commit.
+  //
+  // options:
+  //   title      (required) one-line imperative summary
+  //   priority   (optional) integer 1–5; omitted from frontmatter when absent
+  //   phase      (optional) phase ID string from ROADMAP.md
+  //   dependsOn  (optional) array of mission IDs (validated)
+  //   labels     (optional) array of free-form strings
+  createMission(options) {
+    const opts = options || {};
+    const title = typeof opts.title === "string" ? opts.title.trim() : "";
+    if (!title) throw new Error("createMission: title is required");
+
+    if (opts.priority !== undefined) {
+      if (!Number.isInteger(opts.priority) || opts.priority < 1 || opts.priority > 5) {
+        throw new Error("createMission: priority must be an integer 1–5");
+      }
+    }
+    if (opts.dependsOn !== undefined) {
+      if (!Array.isArray(opts.dependsOn)) {
+        throw new Error("createMission: dependsOn must be an array");
+      }
+      for (const dep of opts.dependsOn) {
+        if (!this.isValidId(dep)) {
+          throw new Error(`createMission: invalid dependency id "${dep}"`);
+        }
+      }
+    }
+    if (opts.labels !== undefined && !Array.isArray(opts.labels)) {
+      throw new Error("createMission: labels must be an array");
+    }
+
+    const id = this.generateNextId();
+    const slug = title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 60);
+    const filename = `${id}-${slug}.md`;
+    const file = path.join(this.root, "todo", filename);
+
+    if (fs.existsSync(file)) {
+      throw new Error(`createMission: file already exists at ${file}`);
+    }
+
+    const today = todayIso();
+    const branch = `feat/${id.toLowerCase()}${slug ? "-" + slug : ""}`;
+    const worktree = `.worktrees/${id}`;
+
+    const frontmatter = {
+      id,
+      schema_version: schema.CURRENT_SCHEMA_VERSION,
+      title,
+      state: "todo",
+      created: today,
+      updated: today,
+    };
+    if (opts.priority !== undefined) frontmatter.priority = opts.priority;
+    if (opts.phase) frontmatter.phase = String(opts.phase);
+    if (Array.isArray(opts.dependsOn) && opts.dependsOn.length > 0) {
+      frontmatter.depends_on = opts.dependsOn.slice();
+    }
+    if (Array.isArray(opts.labels) && opts.labels.length > 0) {
+      frontmatter.labels = opts.labels.map((l) => String(l));
+    }
+    frontmatter.workspace = { branch, worktree };
+
+    const body = [
+      "## Context",
+      "",
+      "[Describe the problem this mission solves and the surrounding context.]",
+      "",
+      "## Implementation notes",
+      "",
+      "[Tech choices, libraries, patterns to follow.]",
+      "",
+      "## Out of scope",
+      "",
+      "[Explicit non-goals.]",
+      "",
+      "## Workpad",
+      "",
+      "<!-- Append timestamped entries; do not delete prior entries. -->",
+      "",
+    ].join("\n");
+
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    this._writeFile(file, { frontmatter, body });
+    return { id, file };
   }
 
   // ── Internal write path ────────────────────────────────────────────────
