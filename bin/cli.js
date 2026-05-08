@@ -5,7 +5,7 @@ const path = require("path");
 const readline = require("readline");
 
 const FRAMEWORK_DIR = path.join(__dirname, "..", "framework");
-const VERSION = "3.1.0";
+const { version: VERSION } = require("../package.json");
 
 // ─── ANSI Colors ────────────────────────────────────────────────────────────
 

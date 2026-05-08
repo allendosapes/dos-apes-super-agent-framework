@@ -1,6 +1,6 @@
 {
   "name": "dos-apes-super-agent",
-  "version": "3.4.0",
+  "version": "3.5.0",
   "description": "Dos Apes Super Agent Framework — PRD-to-product pipeline with role-based agent teams, gate-enforced task state machine, and 9-level verification pyramid (incl. opt-in Codex cross-model review) for Claude Code",
   "main": "bin/cli.js",
   "bin": {
