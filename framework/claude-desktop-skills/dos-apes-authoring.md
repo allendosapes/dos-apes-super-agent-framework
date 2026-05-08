@@ -1,6 +1,6 @@
 ---
-name: dos-apes-authoring
-description: Routes Claude Desktop conversations about new builds, features, or bugs into the appropriate Dos Apes authoring workflow (PRD, feature mission, or bugfix mission).
+audience: claude-desktop
+purpose: Routes Claude Desktop conversations about Dos Apes authoring to the right workflow guide (PRD, feature, or bugfix).
 ---
 
 # Dos Apes Authoring (parent skill)
