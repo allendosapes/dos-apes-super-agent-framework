@@ -1078,6 +1078,10 @@ ${c.green}╔══════════════════════�
     console.log();
     print("       /apes-build --prd your-prd.md", c.cyan);
     console.log();
+    print("    4. (Optional) Enable the Claude Desktop authoring workflow:", c.white);
+    print("       Copy ./claude-desktop-skills/*.md into your Claude Desktop project.", c.dim);
+    print("       Lets Claude Desktop guide you through PRDs, feature missions, and bug reports.", c.dim);
+    console.log();
     print("    The framework will plan, build, test, and ship autonomously. 🚀", c.dim);
   } else {
     print("  Next steps:", c.bold);
@@ -1089,6 +1093,10 @@ ${c.green}╔══════════════════════�
     print('       /apes-feature "Add user authentication"', c.cyan);
     print('       /apes-fix "Login button not responding"', c.cyan);
     print('       /apes-refactor "Extract API client"', c.cyan);
+    console.log();
+    print("    4. (Optional) Enable the Claude Desktop authoring workflow:", c.white);
+    print("       Copy ./claude-desktop-skills/*.md into your Claude Desktop project.", c.dim);
+    print("       Lets Claude Desktop guide you through PRDs, feature missions, and bug reports.", c.dim);
     console.log();
     print("    The framework will plan, implement, test, and commit. 🚀", c.dim);
   }
