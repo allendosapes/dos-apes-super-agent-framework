@@ -996,6 +996,26 @@ _Add requirements here or run /apes-build with a PRD._
     totalFiles += codexCount;
   }
 
+  // ── 8c. Claude Desktop authoring skills ──
+  // Authoring guides (parent + PRD/feature/bugfix workflows) for users to
+  // drop into a Claude Desktop project. Skipped entirely if the destination
+  // directory already exists — user may have customized.
+  const cdsSrc = path.join(FRAMEWORK_DIR, "claude-desktop-skills");
+  const cdsDest = path.join(installBase, "claude-desktop-skills");
+
+  if (fs.existsSync(cdsSrc)) {
+    if (!fs.existsSync(cdsDest)) {
+      const cdsCount = copyDir(cdsSrc, cdsDest, "claude-desktop-skills");
+      if (cdsCount > 0) {
+        printStep("Claude Desktop", `${cdsCount} authoring skills → claude-desktop-skills/`);
+        print(`    ${c.dim}↳ Copy these .md files into your Claude Desktop project's project files.${c.reset}`);
+        totalFiles += cdsCount;
+      }
+    } else {
+      printSkip("Claude Desktop", "claude-desktop-skills/ already exists — preserved");
+    }
+  }
+
   // ── 9. CI Workflows (optional) ──
   if (!flags.noCi) {
     const ciSrc = path.join(FRAMEWORK_DIR, "ci");

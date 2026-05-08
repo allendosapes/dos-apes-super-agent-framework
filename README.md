@@ -110,6 +110,23 @@ claude
 
 ---
 
+## Claude Desktop authoring workflow
+
+Dos Apes can be used end-to-end, including the planning step in Claude Desktop. After install, the framework drops a `claude-desktop-skills/` directory at your project root. Copy those `.md` files into your Claude Desktop project's project files to enable the full authoring → execution workflow:
+
+```bash
+# After running npx dos-apes-super-agent in your project,
+# copy these files into your Claude Desktop project's project files:
+./claude-desktop-skills/dos-apes-authoring.md
+./claude-desktop-skills/authoring-prd-missions.md
+./claude-desktop-skills/authoring-feature-missions.md
+./claude-desktop-skills/authoring-bugfix-missions.md
+```
+
+With these files loaded, Claude Desktop will guide you through structured interviews to produce well-formed PRDs, feature missions, and bug reports that Claude Code then executes against. The parent skill (`dos-apes-authoring.md`) routes each conversation to the right workflow guide; the three sub-guides handle greenfield PRDs, brownfield feature missions, and bugfix missions respectively.
+
+---
+
 ## How It Works
 
 Dos Apes is a **playbook, not a runtime**. It provides Claude Code with:

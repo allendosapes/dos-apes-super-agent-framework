@@ -67,6 +67,10 @@
                                             └────────────────────────────┘
 ```
 
+### Two Claude surfaces
+
+Dos Apes spans two Claude surfaces. Claude Desktop handles **authoring** — interviewing the user, producing PRDs and mission stubs — via the skills in `framework/claude-desktop-skills/`. Claude Code handles **execution** — building from the missions — via the rest of the framework. The two surfaces are connected by mission files and PRDs as the canonical artifact: Claude Desktop writes them; Claude Code reads them and acts on them. Each surface has its own conventions (Claude Desktop skill files use `audience: claude-desktop` frontmatter; Claude Code skill files use the `name: / description:` shape) so the loaders don't conflate them.
+
 ---
 
 ## Task State Machine
@@ -490,20 +494,25 @@ framework/
 │   ├── weekly-quality.yml
 │   ├── dependency-audit.yml
 │   └── post-merge-verify.yml
-└── templates/                       # 13 templates
-    ├── CLAUDE-TEMPLATE.md
-    ├── PRD-TEMPLATE.md
-    ├── ROADMAP-TEMPLATE.md          # Phases + auto-tracked missions
-    ├── mission-template.md          # Canonical mission file format
-    ├── adr-template.md
-    ├── execplan-template.md
-    ├── architecture-rules-template.md
-    ├── pipeline-test-scenario.md
-    ├── multi-repo-config.json
-    ├── codex-review-config.json     # L8 config template (copied to .dos-apes/ on init)
-    ├── codex-review-config.README.md
-    ├── codex-review-prompt.md       # Reviewer prompt template (placeholders)
-    └── codex-review-schema.json     # JSON schema for Codex structured output
+├── templates/                       # 13 templates
+│   ├── CLAUDE-TEMPLATE.md
+│   ├── PRD-TEMPLATE.md
+│   ├── ROADMAP-TEMPLATE.md          # Phases + auto-tracked missions
+│   ├── mission-template.md          # Canonical mission file format
+│   ├── adr-template.md
+│   ├── execplan-template.md
+│   ├── architecture-rules-template.md
+│   ├── pipeline-test-scenario.md
+│   ├── multi-repo-config.json
+│   ├── codex-review-config.json     # L8 config template (copied to .dos-apes/ on init)
+│   ├── codex-review-config.README.md
+│   ├── codex-review-prompt.md       # Reviewer prompt template (placeholders)
+│   └── codex-review-schema.json     # JSON schema for Codex structured output
+└── claude-desktop-skills/           # 4 authoring skills (Claude Desktop side)
+    ├── dos-apes-authoring.md        # Parent router skill
+    ├── authoring-prd-missions.md    # Greenfield PRD workflow
+    ├── authoring-feature-missions.md# Brownfield feature workflow
+    └── authoring-bugfix-missions.md # Bugfix workflow
 ```
 
 Plus: `bin/cli.js`, `package.json`, `assets/banner.txt`, `README.md`, `LICENSE`
@@ -529,6 +538,7 @@ Plus: `bin/cli.js`, `package.json`, `assets/banner.txt`, `README.md`, `LICENSE`
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 3.5.0 | 2026-05 | Added Claude Desktop authoring skills (parent + PRD + feature + bugfix workflows) under `framework/claude-desktop-skills/`. CLI installer copies them to `claude-desktop-skills/` at the project root; users drop the four `.md` files into their Claude Desktop project to enable the full authoring → execution loop. Closes the gap between Claude Desktop planning and Claude Code execution. |
 | 3.4.0 | 2026-05 | L8 Codex review state is now mission-native via the `codex` frontmatter block (schema v2). Visible on `/apes-status`. Single-shot and loop both write through `MissionTracker.setCodexState`; `/apes-build` reads verdict from frontmatter rather than parsing loop stdout. `codex.required: true` blocks `skipped` termination. v1 missions auto-migrate to v2 on first read. |
 | 3.3.0 | 2026-05 | Refactor: extracted MissionTracker to `framework/lib/`. No behavior changes. Schema versioning introduced (`schema_version: 1`, migration framework in place but no migrations needed yet). All five mission-touching scripts and four mission-touching commands now route through the library. New `mission-cli.js` thin wrapper for JSON-shaped programmatic access. |
 | 3.2.0 | 2026-05 | Added L8 Adversarial Review via Codex CLI (gpt-5.5) with feedback loop. Opt-in, fails open. New skill (cross-model-review), new command (/apes-codex-review), three new scripts (codex-check / codex-review / codex-review-loop), four new templates. log-verification.js recognizes L8. /apes-verify and /apes-build invoke L8 when enabled. |

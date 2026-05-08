@@ -36,6 +36,7 @@
     "bin/",
     "framework/commands/",
     "framework/skills/",
+    "framework/claude-desktop-skills/",
     "framework/scripts/check-coverage.sh",
     "framework/scripts/check-doc-drift.sh",
     "framework/scripts/check-secrets.sh",
