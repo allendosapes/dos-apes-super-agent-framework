@@ -17,3 +17,13 @@ for the P0 sync-check that future mission playbooks should adopt.
 
 3.4.0 publish deferred to a fresh session per CPO call. Tag will point at
 HEAD-of-main at publish time, not at the M-0005 squash commit.
+
+## 3.4.0 published 2026-05-08
+
+- Channel: beta
+- gitHead: 27bfc3f8edd71fae83a1eaa1e0439817e59d6ad6 (matches main HEAD)
+- latest dist-tag: still 3.0.0 (unchanged)
+- Provenance: not generated (local publish; --provenance unsupported without GitHub Actions OIDC)
+- Token used: temporary granular access token, revoked/expiring per its set lifetime
+
+M-0005 fully closed.
