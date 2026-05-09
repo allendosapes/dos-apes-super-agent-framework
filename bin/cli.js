@@ -5,7 +5,7 @@ const path = require("path");
 const readline = require("readline");
 
 const FRAMEWORK_DIR = path.join(__dirname, "..", "framework");
-const VERSION = "3.1.0";
+const { version: VERSION } = require("../package.json");
 
 // ─── ANSI Colors ────────────────────────────────────────────────────────────
 
@@ -996,6 +996,26 @@ _Add requirements here or run /apes-build with a PRD._
     totalFiles += codexCount;
   }
 
+  // ── 8c. Claude Desktop authoring skills ──
+  // Authoring guides (parent + PRD/feature/bugfix workflows) for users to
+  // drop into a Claude Desktop project. Skipped entirely if the destination
+  // directory already exists — user may have customized.
+  const cdsSrc = path.join(FRAMEWORK_DIR, "claude-desktop-skills");
+  const cdsDest = path.join(installBase, "claude-desktop-skills");
+
+  if (fs.existsSync(cdsSrc)) {
+    if (!fs.existsSync(cdsDest)) {
+      const cdsCount = copyDir(cdsSrc, cdsDest, "claude-desktop-skills");
+      if (cdsCount > 0) {
+        printStep("Claude Desktop", `${cdsCount} authoring skills → claude-desktop-skills/`);
+        print(`    ${c.dim}↳ Copy these .md files into your Claude Desktop project's project files.${c.reset}`);
+        totalFiles += cdsCount;
+      }
+    } else {
+      printSkip("Claude Desktop", "claude-desktop-skills/ already exists — preserved");
+    }
+  }
+
   // ── 9. CI Workflows (optional) ──
   if (!flags.noCi) {
     const ciSrc = path.join(FRAMEWORK_DIR, "ci");
@@ -1058,6 +1078,10 @@ ${c.green}╔══════════════════════�
     console.log();
     print("       /apes-build --prd your-prd.md", c.cyan);
     console.log();
+    print("    4. (Optional) Enable the Claude Desktop authoring workflow:", c.white);
+    print("       Copy ./claude-desktop-skills/*.md into your Claude Desktop project.", c.dim);
+    print("       Lets Claude Desktop guide you through PRDs, feature missions, and bug reports.", c.dim);
+    console.log();
     print("    The framework will plan, build, test, and ship autonomously. 🚀", c.dim);
   } else {
     print("  Next steps:", c.bold);
@@ -1069,6 +1093,10 @@ ${c.green}╔══════════════════════�
     print('       /apes-feature "Add user authentication"', c.cyan);
     print('       /apes-fix "Login button not responding"', c.cyan);
     print('       /apes-refactor "Extract API client"', c.cyan);
+    console.log();
+    print("    4. (Optional) Enable the Claude Desktop authoring workflow:", c.white);
+    print("       Copy ./claude-desktop-skills/*.md into your Claude Desktop project.", c.dim);
+    print("       Lets Claude Desktop guide you through PRDs, feature missions, and bug reports.", c.dim);
     console.log();
     print("    The framework will plan, implement, test, and commit. 🚀", c.dim);
   }

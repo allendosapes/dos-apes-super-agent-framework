@@ -4,6 +4,81 @@ All notable changes to the Dos Apes Super Agent Framework are documented in
 this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.0] — 2026-05-08
+
+The **Claude Desktop authoring release**. Closes the loop between Claude
+Desktop planning and Claude Code execution by shipping a parent skill +
+three workflow sub-guides (PRD, feature, bugfix) that teach Claude
+Desktop how to interview a user and produce well-formed inputs for
+`/apes-build`. The CLI installer drops the four `.md` files into a
+`claude-desktop-skills/` directory at the project root; users copy them
+into their Claude Desktop project's project files to enable the full
+authoring workflow.
+
+### Added
+
+- **`framework/claude-desktop-skills/dos-apes-authoring.md`** — parent
+  router skill. Targets Claude Desktop. Routes greenfield, brownfield-
+  feature, and bugfix conversations to the right workflow sub-guide.
+  Documents the two-Claude split (Claude Desktop authors; Claude Code
+  executes), the canonical artifact formats, and the handoff to
+  `/apes-build`.
+- **`framework/claude-desktop-skills/authoring-prd-missions.md`** —
+  greenfield workflow guide. Seven-question interview, six pushback
+  patterns, phase-breakdown opinion, PRD template, mission-stub
+  production. Produces `PRD.md` + Phase 1 mission stubs in
+  `.planning/missions/todo/`.
+- **`framework/claude-desktop-skills/authoring-feature-missions.md`** —
+  brownfield-feature workflow guide. Six-question interview, five
+  pushback patterns, three anti-patterns. Produces a single mission
+  file via `/apes-mission new "<title>"`.
+- **`framework/claude-desktop-skills/authoring-bugfix-missions.md`** —
+  bugfix workflow guide. Five-question interview (steps → expected →
+  actual → reproducible → error output), four pushback patterns,
+  bugfix body shape (Steps to reproduce / Expected / Actual / Error
+  output / Frequency / Suspected location). Filed via
+  `/apes-mission new "<title>" --label bug` per current CLI; forward-
+  compatibility note describes the planned `--type bugfix` transition.
+- **CLI installer copy step.** `bin/cli.js` copies
+  `framework/claude-desktop-skills/` → `claude-desktop-skills/` at the
+  project root during `npx dos-apes-super-agent`. Skipped if the
+  destination already exists (matches the `.planning/` preservation
+  pattern).
+- **Post-install Next Steps.** Both greenfield and brownfield Next
+  Steps blocks now surface the Claude Desktop step as bullet 4 with
+  an "(Optional)" prefix.
+
+### Changed
+
+- **README.md** — new `## Claude Desktop authoring workflow` section
+  between Quick Start and How It Works, with the four-file copy
+  instruction and a one-paragraph workflow summary.
+- **ARCHITECTURE.md** — new `### Two Claude surfaces` paragraph under
+  Architecture Overview describing the authoring (Claude Desktop) ↔
+  execution (Claude Code) split. `claude-desktop-skills/` added to
+  the framework File Inventory tree. `3.5.0` row added to Version
+  History.
+- **`package.json` `files`** — `framework/claude-desktop-skills/`
+  added so the npm tarball includes all four authoring `.md` files.
+
+### Fixed
+
+- **CLI VERSION constant drift.** `bin/cli.js` previously hardcoded
+  `const VERSION = "3.1.0"` and had drifted across the 3.2.0, 3.3.0,
+  and 3.4.0 releases — `node bin/cli.js --version` would print stale
+  values regardless of the actual `package.json` version. VERSION now
+  derives from `package.json` via `require("../package.json")`. Six
+  call sites (banner, help, --version, summary box, generated
+  CLAUDE.md footer, .planning/MEMORY.md initializer) now share a
+  single source of truth.
+
+### Migration
+
+None. Existing installs are unaffected. Re-running
+`npx dos-apes-super-agent` adds the `claude-desktop-skills/` directory
+without disturbing other content; if the directory already exists, it
+is preserved as-is.
+
 ## [3.4.0] — 2026-05-03
 
 The **mission-native L8 release**. Codex adversarial-review state now
