@@ -27,3 +27,21 @@ HEAD-of-main at publish time, not at the M-0005 squash commit.
 - Token used: temporary granular access token, revoked/expiring per its set lifetime
 
 M-0005 fully closed.
+
+## 3.5.0 merged to main 2026-05-08
+
+3.5.0 merged to main, awaiting publish in fresh session per dual-publish
+convention. M-0006 (Claude Desktop authoring instructions) shipped.
+
+- Squash commit on main: `4ecc0a9` ("M-0006: Claude Desktop authoring instructions (3.5.0) (#8)")
+- PR: #8
+- L8 Codex review: skipped — framework repo doesn't yet have an L8 config
+  set up against itself. Manual review only. Future mission queued to set
+  up L8 for self-review.
+- Smoke test: passed (Allen ran the eight-item checklist manually,
+  including the three Claude Desktop workflow round-trips).
+- Branch hygiene: P0 sync-check (CLAUDE.md hazard #4) ran clean — local
+  main was at v3.4.0 + the post-publish docs commit (`943e768`),
+  in-sync with origin before branch creation.
+- Publish: deferred to a fresh session per dual-publish convention. Tag
+  will point at HEAD-of-main at publish time.
