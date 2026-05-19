@@ -36,7 +36,22 @@ const { MissionTracker } = require("../lib/mission-tracker.js");
 
 // ─── Paths ──────────────────────────────────────────────────────────────────
 
-const PROJECT_ROOT = process.cwd();
+function findProjectRoot() {
+  // From inside a worktree, `git rev-parse --git-common-dir` points at the
+  // main repo's .git/ directory; its parent is the canonical project root.
+  try {
+    const commonDir = execFileSync(
+      "git", ["rev-parse", "--git-common-dir"],
+      { encoding: "utf8", cwd: process.cwd() }
+    ).trim();
+    const abs = path.resolve(process.cwd(), commonDir);
+    return path.dirname(abs);
+  } catch {
+    return process.cwd();
+  }
+}
+
+const PROJECT_ROOT = findProjectRoot();
 const DOS_APES_DIR = path.join(PROJECT_ROOT, ".dos-apes");
 const CONFIG_PATH = path.join(DOS_APES_DIR, "codex-review-config.json");
 const REVIEWS_DIR = path.join(DOS_APES_DIR, "codex-reviews");

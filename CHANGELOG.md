@@ -4,6 +4,118 @@ All notable changes to the Dos Apes Super Agent Framework are documented in
 this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.1] — 2026-05-19
+
+The **L8 hardening release**. Patch-level bug fixes covering five defects in
+the Codex cross-model review (L8) pipeline plus two YAML-author-experience
+papercuts surfaced during the same review. No API changes. Every entry leads
+with the **root cause** and the **reusable pattern** so the prevention is
+discoverable, not just the symptom.
+
+### Fixed
+
+- **L8 #1 (Critical) — OpenAI structured-output schema rejected with HTTP 400.**
+  *Root cause:* OpenAI's structured-output JSON Schema has no notion of
+  "optional property" — every key in `properties` must also appear in
+  `required`; optionality is expressed by a `["T", "null"]` type union. The
+  shipped `findings.items` schema declared `suggested_fix` in `properties`
+  but omitted it from `required`, so every `codex exec --output-schema` call
+  failed `invalid_json_schema` 400. Blocked 100% of L8 reviews in every
+  consuming project.
+  *Pattern:* when writing schemas for OpenAI structured outputs, every leaf
+  object's `required` array must be a superset of its `properties` keys.
+  Audit the whole schema for this class on every change.
+  Fix: `framework/templates/codex-review-schema.json`.
+
+- **L8 #2 (High) — `.dos-apes/` and mission paths resolved against the worktree, not the main checkout.**
+  *Root cause:* `const PROJECT_ROOT = process.cwd()` at the top of
+  `codex-review.js` and `codex-review-loop.js`. Run from a git worktree,
+  PROJECT_ROOT pointed at the worktree path and read the branch's stale
+  copy of `.dos-apes/` — so any fix on `main` (including L8 #1's schema
+  fix) was invisible to in-flight missions.
+  *Pattern:* never derive a project root from `process.cwd()` in scripts
+  that can run from a git worktree. Resolve via
+  `git rev-parse --git-common-dir`; its parent directory is the canonical
+  project root from any worktree, the main checkout, or CI.
+  Fix: `framework/scripts/codex-review.js`, `framework/scripts/codex-review-loop.js`.
+
+- **L8 #3 (Medium) — Codex failure messages were truncated from the START, missing the real error footer.**
+  *Root cause:* failure handling did `detail.slice(0, 500)` — the **first**
+  500 chars. Codex CLI 0.130 prints a ~400-char startup banner and echoes
+  the user prompt before any error, so the slice window never reached the
+  actual `invalid_request_error / status: 400` footer. Made every other L8
+  bug undebuggable (had to land this before #2/#4).
+  *Pattern:* tools that print banners and echo input before failing
+  produce diagnostics where the signal lives at the **tail**. Slice from
+  the end (`detail.slice(-1000)`) and side-file the full output to
+  `os.tmpdir()` so nothing is lost regardless of cap. Wrap the side-file
+  write so a write failure can never mask the original error.
+  Fix: `framework/scripts/codex-review.js`.
+
+- **L8 #4 (Critical) — Loop emitted `state:"skipped"` exit 0 for in-flight missions with an empty diff.**
+  *Root cause:* `git diff <base>...HEAD`. From the main checkout HEAD == base
+  for un-merged missions, so the diff was empty and `codex-review.js`
+  emitted a `"no changes"` skip — indistinguishable from "L8 disabled" or
+  "Codex unavailable". `/apes-build` treated it as success, advanced the
+  mission to `review/`, and never wrote an L8 entry to `verification.jsonl`.
+  Silent no-op on every mission run from the wrong directory.
+  *Pattern:* when computing a diff for a mission-scoped review, pin the
+  range to the mission's `workspace.branch` from frontmatter, not to HEAD.
+  An empty diff for a mission in `doing/` is a misconfiguration, not a
+  legitimate skip — hard-fail (exit 2). Regression-lock at the
+  **loop-forwarding** layer too, not just the single-shot caller: the
+  silent no-op originally lived in how the loop relayed the skip.
+  Fix: `framework/scripts/codex-review.js`. Regression test:
+  `framework/scripts/codex-review-cwd-equivalence.test.js` (4 cases, both
+  layers).
+
+- **L8 #5 (Medium) — `apes-build` step 4.5 specced an undocumented CWD dependency.**
+  *Root cause:* the build spec invoked `codex-review-loop.js` without
+  specifying a working directory; the underlying script silently depended
+  on one. An agent reading the spec literally would run it from the main
+  checkout and trip L8 #4.
+  *Pattern:* specs and the code they invoke must agree on prerequisites —
+  a CWD requirement that lives only in oral tradition is a latent bug.
+  After fixing the script to be cwd-independent, the spec comment now
+  documents that, and explicitly warns against re-introducing a
+  `( cd .worktrees/<id> && ... )` wrapper, which would mask future cwd
+  regressions instead of surfacing them.
+  Comment-only change: `framework/commands/apes-build.md`.
+
+- **YAML parser error (Low-Medium) — flow-style rejection named the rule, not the fix.**
+  *Root cause:* `lib/mission-parser.js#rejectExotic` deliberately rejects
+  flow-style sequences/mappings — the hand-rolled parser accepts only a
+  YAML subset, and that constraint is intentional. But the error said
+  "unsupported YAML feature flow-style sequence" without showing the
+  supported form or pointing at the spec, so authors had no actionable
+  path forward.
+  *Pattern:* when intentionally rejecting a construct, the error at the
+  point of failure should name **what** is rejected and show **what to
+  use instead**, with a doc pointer. "It's by design" is not an excuse for
+  unactionable diagnostics.
+  Fix: `framework/lib/mission-parser.js`.
+
+- **YAML template guidance (Low-Medium) — author-facing surface didn't surface the constraint.**
+  *Root cause:* the mission template (the file authors copy when writing
+  missions) had no inline note about the YAML subset. The constraint
+  only surfaced at parse time — late, after the author had committed to a
+  shape.
+  *Pattern:* parser-scope constraints belong on the author's surface
+  (the template), inside the frontmatter fence as YAML comments so the
+  parser ignores them. The skill file is deliberately left untouched —
+  skills stay domain-generic; tooling constraints live with the tooling.
+  Comment block added in `framework/templates/mission-template.md`.
+
+### Added
+
+- **`framework/scripts/codex-review-cwd-equivalence.test.js`** — four-case
+  regression test that exercises `codex-review.js` and
+  `codex-review-loop.js` from both the main checkout and a worktree with a
+  stubbed `codex` binary, asserting identical review content and that the
+  loop propagates the doing-guard exit code rather than relaying it as
+  `state:"skipped"`. Packed in the tarball so consumers can run it
+  (`node scripts/codex-review-cwd-equivalence.test.js`).
+
 ## [3.5.0] — 2026-05-08
 
 The **Claude Desktop authoring release**. Closes the loop between Claude

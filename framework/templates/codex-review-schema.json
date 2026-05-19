@@ -12,7 +12,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["severity", "category", "file", "line_range", "explanation"],
+        "required": ["severity", "category", "file", "line_range", "explanation", "suggested_fix"],
         "properties": {
           "severity": { "type": "string", "enum": ["critical", "high", "medium", "low"] },
           "category": { "type": "string", "enum": ["correctness", "performance", "security", "maintainability", "dx", "testing"] },
@@ -27,7 +27,7 @@
             }
           },
           "explanation": { "type": "string" },
-          "suggested_fix": { "type": "string" }
+          "suggested_fix": { "type": ["string", "null"] }
         }
       }
     }

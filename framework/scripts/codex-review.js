@@ -42,7 +42,22 @@ const parser = require("../lib/mission-parser.js");
 
 // ─── Paths ──────────────────────────────────────────────────────────────────
 
-const PROJECT_ROOT = process.cwd();
+function findProjectRoot() {
+  // From inside a worktree, `git rev-parse --git-common-dir` points at the
+  // main repo's .git/ directory; its parent is the canonical project root.
+  try {
+    const commonDir = execFileSync(
+      "git", ["rev-parse", "--git-common-dir"],
+      { encoding: "utf8", cwd: process.cwd() }
+    ).trim();
+    const abs = path.resolve(process.cwd(), commonDir);
+    return path.dirname(abs);
+  } catch {
+    return process.cwd();
+  }
+}
+
+const PROJECT_ROOT = findProjectRoot();
 const DOS_APES_DIR = path.join(PROJECT_ROOT, ".dos-apes");
 const CONFIG_PATH = path.join(DOS_APES_DIR, "codex-review-config.json");
 const PROMPT_PATH = path.join(DOS_APES_DIR, "codex-review-prompt.md");
@@ -246,13 +261,14 @@ function spawnCodex(args, opts) {
 
 // ─── Diff ───────────────────────────────────────────────────────────────────
 
-function computeDiff(base) {
-  const args = ["diff", "--unified=5", `${base}...HEAD`];
+function computeDiff(range) {
+  const args = ["diff", "--unified=5", range];
   let text;
   try {
     text = execFileSync("git", args, {
       encoding: "utf8",
       maxBuffer: 64 * 1024 * 1024,
+      cwd: PROJECT_ROOT,
     });
   } catch (err) {
     throw new Error(`git diff failed: ${err.stderr ? err.stderr.toString().trim() : err.message}`);
@@ -260,9 +276,10 @@ function computeDiff(base) {
 
   let stat;
   try {
-    stat = execFileSync("git", ["diff", "--stat", `${base}...HEAD`], {
+    stat = execFileSync("git", ["diff", "--stat", range], {
       encoding: "utf8",
       maxBuffer: 4 * 1024 * 1024,
+      cwd: PROJECT_ROOT,
     });
   } catch (err) {
     stat = "";
@@ -285,8 +302,9 @@ function computeDiff(base) {
 // a small probe here that covers those legacy shapes.
 
 function loadMission(missionId) {
+  const empty = { context: "", acceptance: "", state: null, frontmatter: null };
   const missionsRoot = path.join(PROJECT_ROOT, ".planning", "missions");
-  if (!fs.existsSync(missionsRoot)) return { context: "", acceptance: "" };
+  if (!fs.existsSync(missionsRoot)) return empty;
 
   const tracker = new MissionTracker({ root: missionsRoot });
 
@@ -296,24 +314,33 @@ function loadMission(missionId) {
   } catch (err) {
     // Duplicate-mission corruption — surface and continue with empty context.
     warn(`mission lookup failed for ${missionId}: ${err.message}`);
-    return { context: "", acceptance: "" };
+    return empty;
   }
 
   let body;
+  let state = null;
+  let frontmatter = null;
   if (mission) {
     body = mission.body;
+    state = mission.state;
+    frontmatter = mission.frontmatter;
   } else {
     // Legacy filename probes: <id>.md, <id>_<slug>.md (the canonical form
     // is <id>-<slug>.md and is what tracker.findMissionById returns).
     const legacyFile = findLegacyMissionFile(missionsRoot, missionId);
-    if (!legacyFile) return { context: "", acceptance: "" };
+    if (!legacyFile) return empty;
     let text;
     try { text = fs.readFileSync(legacyFile, "utf8"); }
     catch (err) {
       warn(`could not read mission ${missionId}: ${err.message}`);
-      return { context: "", acceptance: "" };
+      return empty;
     }
-    body = parser.parseFrontmatter(text).body;
+    const parsed = parser.parseFrontmatter(text);
+    body = parsed.body;
+    frontmatter = parsed.frontmatter || null;
+    // The legacy probe finds the file at <missionsRoot>/<state>/<file>; the
+    // immediate parent dir name is the canonical state.
+    state = path.basename(path.dirname(legacyFile));
   }
 
   // Extract an Acceptance Criteria section (## or ### heading). The lib's
@@ -334,6 +361,8 @@ function loadMission(missionId) {
   return {
     context: body.trim(),
     acceptance: accLines.join("\n").trim(),
+    state,
+    frontmatter,
   };
 }
 
@@ -453,7 +482,10 @@ function invokeCodex({ config, prompt }) {
     }
     if (result.status !== 0) {
       const detail = (result.stderr || result.stdout || `exit ${result.status}`).trim();
-      return { ok: false, message: `codex exec failed: ${detail.slice(0, 500)}` };
+      const tail = detail.length > 1000 ? `…${detail.slice(-1000)}` : detail;
+      const errPath = path.join(os.tmpdir(), `codex-review-err-${process.pid}.log`);
+      try { fs.writeFileSync(errPath, detail); } catch {}
+      return { ok: false, message: `codex exec failed (full output: ${errPath}):\n${tail}` };
     }
 
     if (!fs.existsSync(tmpFile)) {
@@ -633,15 +665,36 @@ function main() {
 
   const base = args.base || config.diff_base || DEFAULT_CONFIG.diff_base;
 
+  // Load mission first so we can pin the diff to its branch from frontmatter
+  // instead of HEAD. From the main checkout HEAD is on `main` (== base) and
+  // the diff is empty — silent no-op. Pinning to workspace.branch lets the
+  // review run identically from main, a worktree, or CI.
+  const mission = args.mission
+    ? loadMission(args.mission)
+    : { context: "", acceptance: "", state: null, frontmatter: null };
+  const branch = mission.frontmatter?.workspace?.branch || "HEAD";
+  // branch already defaults to "HEAD" above, so the single range form is
+  // correct from main checkout, worktree, and CI alike.
+  const diffRange = `${base}...${branch}`;
+
   let diff;
   try {
-    diff = computeDiff(base);
+    diff = computeDiff(diffRange);
   } catch (err) {
     warn(err.message);
     process.exit(1);
   }
 
   if (!diff.text.trim()) {
+    // Belt-and-suspenders: a mission in doing/ with an empty diff is a hard
+    // error, not a silent skip. The misconfiguration (stale branch, wrong
+    // base, branch not reachable) needs to surface — /apes-build was
+    // treating it as success and advancing missions with no L8 record.
+    if (args.mission && mission.state === "doing") {
+      warn(`mission ${args.mission} is in doing/ but the diff vs ${base} is empty — `
+         + `check the mission's branch is reachable and up to date`);
+      process.exit(2);
+    }
     return emit({ skipped: true, reason: "no changes" }, 0);
   }
 
@@ -654,7 +707,6 @@ function main() {
     process.exit(1);
   }
 
-  const mission = args.mission ? loadMission(args.mission) : { context: "", acceptance: "" };
   const template = fs.readFileSync(PROMPT_PATH, "utf8");
   const prompt = buildPrompt(template, {
     mission_context: mission.context,
