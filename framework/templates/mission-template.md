@@ -10,6 +10,14 @@
 # The audit trail is reconstructed from `git log --follow <path>`.
 # ============================================================================
 
+# ─── YAML style ────────────────────────────────────────────────────────────
+# The mission parser accepts a subset of YAML:
+#   - Block-style sequences only:  depends_on:\n    - M-0001
+#   - NOT flow-style:              depends_on: [M-0001]  ← rejected
+#   - Empty containers may use flow style: labels: []  (or omit entirely)
+#   - No anchors, references, tags, or multi-line scalars
+# See lib/mission-parser.js for the full list of rejected constructs.
+
 # REQUIRED. Canonical mission ID. Format: M-NNNN (zero-padded to 4 digits).
 # Must be unique across the repo. Allocate the next free number.
 id: M-0001

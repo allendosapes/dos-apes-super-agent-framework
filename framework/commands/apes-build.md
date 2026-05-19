@@ -222,6 +222,13 @@ if [ "$L8_ENABLED" -eq 1 ]; then
   echo ""
   echo "Level 8: Adversarial Review (loop, mission ${TARGET})"
   echo "─────────────────────────────"
+  # The loop is worktree-aware as of the Task 3 fix in codex-review.js
+  # (findProjectRoot via `git rev-parse --git-common-dir`, plus a
+  # diff range pinned to the mission's workspace.branch). Invoke from
+  # any cwd inside the repo — main checkout, .worktrees/<id>, or CI —
+  # the loop resolves PROJECT_ROOT and the diff branch itself. Do not
+  # wrap this in `( cd .worktrees/<id> && ... )`: the wrapper would
+  # mask future cwd-resolution regressions instead of surfacing them.
   node scripts/codex-review-loop.js --mission "$TARGET" --base main
   L8_LOOP_EXIT=$?
 fi

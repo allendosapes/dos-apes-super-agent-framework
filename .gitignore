@@ -54,3 +54,6 @@ test-cli.ps1
 
 # Planning state (project-specific, not framework)
 .planning/
+
+# npm pack artifacts
+*.tgz

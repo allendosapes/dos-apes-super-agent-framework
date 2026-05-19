@@ -70,11 +70,23 @@ function rejectExotic(line, lineNum) {
 
   // Inline flow-style sequence with content: `key: [a, b]`
   if (/^\s*[A-Za-z_][A-Za-z0-9_]*\s*:\s*\[/.test(line)) {
-    throw exoticError("flow-style sequence (`[a, b]`)", line, lineNum);
+    throw exoticError(
+      "flow-style sequence (`[a, b]`). Use block style:\n"
+    + "  key:\n"
+    + "    - item\n"
+    + "See docs/templates/mission-template.md for the supported YAML subset.",
+      line, lineNum
+    );
   }
   // Inline flow-style mapping with content: `key: {a: b}`
   if (/^\s*[A-Za-z_][A-Za-z0-9_]*\s*:\s*\{/.test(line)) {
-    throw exoticError("flow-style mapping (`{a: b}`)", line, lineNum);
+    throw exoticError(
+      "flow-style mapping (`{a: b}`). Use block style:\n"
+    + "  key:\n"
+    + "    a: b\n"
+    + "See docs/templates/mission-template.md for the supported YAML subset.",
+      line, lineNum
+    );
   }
   // Anchor: `key: &anchor ...`
   if (/^\s*[A-Za-z_][A-Za-z0-9_]*\s*:\s*&/.test(line)) {

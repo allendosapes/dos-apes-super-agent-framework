@@ -1,6 +1,6 @@
 {
   "name": "dos-apes-super-agent",
-  "version": "3.5.0",
+  "version": "3.5.1",
   "description": "Dos Apes Super Agent Framework — PRD-to-product pipeline with role-based agent teams, gate-enforced task state machine, and 9-level verification pyramid (incl. opt-in Codex cross-model review) for Claude Code",
   "main": "bin/cli.js",
   "bin": {
@@ -8,7 +8,7 @@
   },
   "scripts": {
     "test": "npm run test:lib",
-    "test:lib": "node framework/lib/mission-parser.test.js && node framework/lib/mission-tracker.test.js && node framework/scripts/codex-review.test.js && node framework/scripts/codex-review-loop.test.js"
+    "test:lib": "node framework/lib/mission-parser.test.js && node framework/lib/mission-tracker.test.js && node framework/scripts/codex-review.test.js && node framework/scripts/codex-review-loop.test.js && node framework/scripts/codex-review-cwd-equivalence.test.js"
   },
   "keywords": [
     "claude",
@@ -45,6 +45,7 @@
     "framework/scripts/codex-check.js",
     "framework/scripts/codex-review.js",
     "framework/scripts/codex-review-loop.js",
+    "framework/scripts/codex-review-cwd-equivalence.test.js",
     "framework/scripts/evidence-packet.js",
     "framework/scripts/guard-main-branch.sh",
     "framework/scripts/hook-format-and-stage.sh",
