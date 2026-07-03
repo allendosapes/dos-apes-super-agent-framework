@@ -254,8 +254,24 @@ amendments and deviations, all reviewer-directed or surfaced here:
   (M-0005 deviation #2 precedent); `test:cli` script added and chained into `test`.
   `npm pack --dry-run`: 84 files, cli.js in, cli.test.js out.
 
+### Queued for Task 5 — packaging finding from Task 3 review (2026-07-03)
+
+`framework/scripts/codex-review-cwd-equivalence.test.js` ships in the npm tarball while
+the four other test files are correctly excluded: the exclusion mechanism is
+name-enumerated (`package.json` `files` lists production scripts explicitly, and that
+test file was itself added to the whitelist — drift at addition time). Task 5 fix,
+pattern-based rather than one more name:
+
+- Verify against npm docs whether `.npmignore` patterns prune *within* directories (and
+  alongside explicit entries) whitelisted by `files`; if so, add a `*.test.js` exclusion
+  so future test files can't leak. Record the verified npm behavior here.
+- Remove the test file's explicit `files` entry either way.
+- Confirm `npm pack --dry-run` drops 84 → 83 files with `bin/cli.js` and all production
+  `framework/scripts/*` still present.
+
 - **Still owed by this mission** (later tasks):
   `scripts/guard-forbidden-commands.sh` + PreToolUse registration (AC #6/#7 backstop),
   settings-README rationale note for tag-mutation-as-ask (AC #6 — no settings README
   exists yet; needs a home, likely a new `framework/templates/` doc or README section),
+  tarball test-file exclusion made pattern-based (Task 5, see above),
   fresh-install verification on Windows Git Bash (final AC).
