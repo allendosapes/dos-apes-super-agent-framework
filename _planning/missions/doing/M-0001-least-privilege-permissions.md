@@ -269,9 +269,72 @@ pattern-based rather than one more name:
 - Confirm `npm pack --dry-run` drops 84 → 83 files with `bin/cli.js` and all production
   `framework/scripts/*` still present.
 
+### Task 4 (2026-07-03, guard-forbidden-commands.sh — AC #7)
+
+- **`guard-main-branch.sh` drift CONFIRMED** (the known candidate): it emits
+  `{"block": true, "message": "..."}` JSON on **stderr** with exit 2. Exit-2 + stderr is
+  the documented blocking mechanism, but that JSON shape is not the documented interface —
+  JSON decisions belong on stdout with exit 0 as `hookSpecificOutput.permissionDecision`,
+  and `{"block": ...}` isn't even that shape (v1-era relic). It still blocks (exit code
+  governs); Claude just receives raw JSON as opaque stderr text. The new guard uses
+  plain-text stderr per the documented interface. Fixing guard-main-branch.sh's output is
+  a small cleanup **not** done here (out of Task 4 scope) — flagged for a follow-up.
+- **`run-hook.cmd` degraded-mode CONFLICT — flagged, deliberately not resolved.** When
+  Git Bash is not at one of its four probe paths (Program Files ×2, LocalAppData, scoop),
+  run-hook.cmd prints "Hook skipped" and **exits 0** — on such a box the blocking guard
+  silently cannot block, while the Bash tool may still work (e.g. Git Bash on PATH from a
+  nonstandard install). The new hook is registered identically to guard-main-branch.sh
+  (`bash scripts/guard-forbidden-commands.sh`, no `|| true`) and patchHooksForWindows
+  routes both through run-hook.cmd, so both guards share the gap. Maintainer options:
+  (a) accept — Claude Code's Bash tool itself requires Git Bash, so the window is
+  nonstandard-install-location only; (b) add a PATH probe (`where bash.exe`) to
+  run-hook.cmd and/or make it exit 2 when the script name starts with `guard-`;
+  (c) a `--strict` runner flag used only by guard hooks. Not chosen silently per
+  Task 4 instruction (3).
+- **AC #7 deviation, surfaced: tag mutation is NOT in the hook's forbidden set.** AC #7's
+  text lists "tag mutation" among the scanned patterns, but AC #6 makes tag mutation
+  ask-not-deny by design (`/apes-build` creates and cleans phase tags — a hard block
+  would break the build loop, and a hook block outranks any allow/ask rule). The hook
+  covers exactly the deny-audit fall-through set per the Task 4 instruction. Promote tag
+  mutation into the hook + deny together, when phase tags are replaced.
+- **Guard design**: extracts `tool_input.command` from stdin JSON via node (hard framework
+  dependency; raw-JSON scan fallback if node missing — may overmatch, never undermatches).
+  Full-string scan for npm registry mutation (`publish|version|dist-tag|unpublish|deprecate`,
+  flags allowed between `npm` and verb); per-segment scan (split on `&&`/`||`/`;`/`|`/`&`/
+  newlines) for force push in any flag position/spelling (`--force`, `--force-with-lease[=]`,
+  `--force-if-includes`, short-bundle `-f`/`-fu`, `+refspec`), refspec deletion
+  (`git push origin :branch`), and recursive+force rm respellings (`-fr`, `-r -f`,
+  `-Rf`, `--recursive --force`) aimed at `/`, `~`, or `..` targets — mirroring the deny
+  rules' target set exactly, so hook and deny stay policy-consistent.
+- **Overmatch policy documented in the script header**: backstop prefers false block over
+  false pass; quotes count as token boundaries, so `bash -c "npm publish"` is blocked
+  (real evasion) and `echo "npm publish"` is too (rare, harmless loss). Fail-closed: an
+  internal script error exits 2 (blocks) via ERR trap rather than failing open.
+- **Tests**: `guard-forbidden-commands.test.js`, 46 fixture cases through real bash with
+  hook-shaped stdin JSON — includes the required compound case
+  (`git commit -m x && npm publish`) and flag-last force push
+  (`git push origin main --force`), plus allowed-side guards against false positives
+  (`npm run version`, `npm run publish-docs`, `git push origin HEAD:main`,
+  `rm -rf ./build`). Chained into `test:lib`; script added to `files` (ships), test not.
+- **Review amendments (accepted-with-amendments, 2026-07-03)**: (1) JSON parse failure in
+  the node extractor now emits the RAW input instead of empty, so the raw-scan overmatch
+  applies — the previous empty-emit exited 0, a fail-open inconsistent with the no-node
+  fallback and the header's no-undermatch policy; fixtures added for corrupt-envelope-with-
+  forbidden-string (blocked) and benign corrupt envelope (allowed). (2) The accepted
+  overmatch is pinned by fixture: `git commit -m "docs: explain why npm publish is denied"`
+  asserts blocked, commented as the documented false-positive trade-off; the block message
+  now ends with a rephrase hint for quoted-text false positives. 49 fixture cases total.
+- **Placement decision — tag-mutation-as-ask rationale doc**: a new
+  `framework/settings.README.md`, installed to `.claude/settings.README.md` next to
+  settings.json. Rationale: settings.json cannot carry comments, so the README must live
+  where the policy lives to be found when someone questions a prompt; `docs/templates/`
+  is for authoring templates, ARCHITECTURE.md is repo-only (not installed). Costs one
+  `files` entry + one copy line in cli.js. To be written in the owed settings-README task.
+
 - **Still owed by this mission** (later tasks):
-  `scripts/guard-forbidden-commands.sh` + PreToolUse registration (AC #6/#7 backstop),
-  settings-README rationale note for tag-mutation-as-ask (AC #6 — no settings README
-  exists yet; needs a home, likely a new `framework/templates/` doc or README section),
+  settings README (`framework/settings.README.md` → `.claude/settings.README.md`, home
+  decided above) with the tag-mutation-as-ask rationale (AC #6),
   tarball test-file exclusion made pattern-based (Task 5, see above),
   fresh-install verification on Windows Git Bash (final AC).
+  Flagged for maintainer decision: run-hook.cmd degraded-mode gap (Task 4 note above);
+  guard-main-branch.sh stderr-JSON cleanup (follow-up, out of mission scope).

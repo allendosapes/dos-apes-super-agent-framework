@@ -29,6 +29,16 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/guard-forbidden-commands.sh",
+            "timeout": 10
+          }
+        ]
       }
     ],
 
