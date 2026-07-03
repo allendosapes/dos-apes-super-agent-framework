@@ -256,6 +256,62 @@ group("customizeSettings", () => {
   });
 });
 
+// ─── packaging drift guard ───────────────────────────────────────────────────
+// Second defensive layer next to the per-directory `*.test.js` .npmignore
+// files: those cover bin/, framework/lib/, framework/scripts/, while this
+// catches leaks from directory-whitelisted `files` entries (framework/
+// commands|skills|ci, assets) and any future drift in either mechanism.
+
+group("packaging (npm pack --dry-run --json)", () => {
+  const { spawnSync } = require("child_process");
+  const res = spawnSync("npm pack --dry-run --json", {
+    cwd: REPO_ROOT,
+    shell: true,
+    encoding: "utf8",
+    maxBuffer: 16 * 1024 * 1024,
+  });
+  let shipped = null;
+  try {
+    shipped = JSON.parse(res.stdout)[0].files.map((f) => f.path.replace(/\\/g, "/"));
+  } catch (_) {
+    // fall through — the first test below reports the failure
+  }
+
+  test("npm pack --dry-run --json parses", () => {
+    assert.ok(Array.isArray(shipped), `npm pack failed: ${res.stderr || res.stdout}`);
+  });
+  if (!Array.isArray(shipped)) return;
+
+  test("no *.test.js ships in the tarball", () => {
+    const leaked = shipped.filter((p) => /\.test\.js$/.test(p));
+    assert.deepStrictEqual(leaked, [], `test files leaked into the tarball: ${leaked.join(", ")}`);
+  });
+
+  test("nothing from _planning/ ships", () => {
+    const leaked = shipped.filter((p) => p.startsWith("_planning/"));
+    assert.deepStrictEqual(leaked, []);
+  });
+
+  test("cli, guard script, hook runner, and settings ship", () => {
+    for (const required of [
+      "bin/cli.js",
+      "framework/scripts/guard-forbidden-commands.sh",
+      "framework/scripts/guard-main-branch.sh",
+      "framework/scripts/run-hook.cmd",
+      "framework/settings.json",
+    ]) {
+      assert.ok(shipped.includes(required), `missing from tarball: ${required}`);
+    }
+  });
+
+  test("every production file enumerated in the files whitelist ships", () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "package.json"), "utf8"));
+    const explicit = pkg.files.filter((f) => !f.endsWith("/") && !/\.test\.js$/.test(f));
+    const missing = explicit.filter((f) => !shipped.includes(f));
+    assert.deepStrictEqual(missing, [], `whitelisted files missing from tarball: ${missing.join(", ")}`);
+  });
+});
+
 // ─── Summary ─────────────────────────────────────────────────────────────────
 
 cleanupFixtures();

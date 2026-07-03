@@ -46,7 +46,6 @@
     "framework/scripts/codex-check.js",
     "framework/scripts/codex-review.js",
     "framework/scripts/codex-review-loop.js",
-    "framework/scripts/codex-review-cwd-equivalence.test.js",
     "framework/scripts/evidence-packet.js",
     "framework/scripts/guard-forbidden-commands.sh",
     "framework/scripts/guard-main-branch.sh",

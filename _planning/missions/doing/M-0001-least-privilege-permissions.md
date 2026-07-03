@@ -362,9 +362,72 @@ pattern-based rather than one more name:
   stdin flowing through to the real guard script (full envelope → block). Test file not
   shipped; run-hook.cmd already in `files`. Tarball steady at 85.
 
-- **Still owed by this mission** (later tasks):
-  settings README (`framework/settings.README.md` → `.claude/settings.README.md`, home
-  decided above) with the tag-mutation-as-ask rationale (AC #6),
-  tarball test-file exclusion made pattern-based (Task 5, see above; expected count 84),
-  fresh-install verification on Windows Git Bash (final AC).
+### Task 5 (2026-07-03, L0–L2 pass + pattern-based tarball exclusion)
+
+- **npm behavior VERIFIED, docs + empirically**: npm docs (`package.json` § files):
+  "You can also provide a .npmignore file in the root of your package or in
+  subdirectories... At the root of your package it will not override the 'files' field,
+  but in subdirectories it will." Empirical confirmation in this repo: with
+  `framework/scripts/.npmignore` containing `*.test.js` and the explicit
+  `codex-review-cwd-equivalence.test.js` entry STILL in `files`, `npm pack --dry-run`
+  dropped 85 → 84 and the test file vanished — a subdirectory .npmignore prunes even an
+  explicitly files-listed file. Root .npmignore would NOT have worked.
+- **Implementation**: `*.test.js` .npmignore added to the three code dirs that hold test
+  files (`bin/`, `framework/lib/`, `framework/scripts/`); the stale explicit
+  `codex-review-cwd-equivalence.test.js` entry removed from `files` (dead weight once
+  ignored — and the drift vector this finding was about).
+- **Second layer, deliberate** (belt-and-suspenders per standing feedback): a packaging
+  drift-guard group in `bin/cli.test.js` runs `npm pack --dry-run --json` and asserts
+  (a) no `*.test.js` ships, (b) nothing from `_planning/` ships, (c) cli.js, both guard
+  scripts, run-hook.cmd, and settings.json ship, (d) every explicitly whitelisted
+  production file ships. This also covers the directory-whitelisted `files` entries
+  (framework/commands|skills|ci, assets) that carry no .npmignore, and catches future
+  drift in either mechanism.
+- **L0–L2 pass, all suites**: L0 — `node bin/cli.js --version` (3.5.1) and `--help` OK.
+  L1 — `node --check` clean on all JS (bin, lib, scripts), `bash -n` clean on all shell
+  scripts, settings.json + package.json parse. L2 — 205 tests green across 8 suites
+  (31+51+14+30+4 lib/codex, 49 guard, 8 run-hook, 18 cli incl. packaging).
+- **Tarball confirmed**: 84 files exactly (maintainer-corrected expectation); all 21
+  `framework/scripts/` production entries present; nothing from `_planning/`; zero
+  `.test.js`.
+
+### Acceptance criteria walkthrough (2026-07-03, end of Task 5)
+
+- **AC #1 — permissions block matches reviewed policy**: **satisfied** (Task 2 rewrite,
+  diff-reviewed; Task 3 pre-notes re-verified branch-switching scope, `git mv` scope,
+  and deny spellings against the shipped block).
+- **AC #2 — install-time Skill-rule generation, no hand-maintained list**: **satisfied**
+  (Task 3: `generateSkillRules` + `customizeSettings` swap with static-list fallback;
+  drift-guard test keeps the fallback synced; 13 dedicated tests).
+- **AC #3 — deny blocks npm publish/version/dist-tag/unpublish/deprecate, force-push,
+  remote delete, rm -rf /* ~* ..***: **satisfied** (Task 2 rules; Task 3 deny-spelling
+  audit confirmed real invocation forms; Task 4 hook backstops the fall-through
+  spellings).
+- **AC #4 — deny protects secrets and the policy itself**: **satisfied** (Task 2:
+  `Read(.env)`, `Read(.env.*)`, `Edit/Write(.claude/settings.json)`; rule syntax
+  verified against live docs in Task 1, incl. bare-filename ≡ any-depth anchoring).
+- **AC #5 — no blanket codex in allow**: **satisfied** (only `codex login` and
+  `codex --version`; L8 runs through allowlisted `node scripts/codex-*.js`).
+- **AC #6 — ask list exact + tag-mutation rationale in settings README**: **partially
+  satisfied** — ask list matches the specified set exactly (Task 2). The settings README
+  carrying the rationale is NOT yet written; home decided (Task 4 note:
+  `framework/settings.README.md` → `.claude/settings.README.md`), owed as the next task.
+- **AC #7 — guard-forbidden-commands.sh PreToolUse backstop**: **satisfied** (Tasks 4 +
+  4b; 49 + 8 fixture tests), with one surfaced deviation: tag mutation deliberately
+  excluded from the hook because AC #6 makes it ask-by-design — recorded in the Task 4
+  notes, promote hook+deny together when phase tags are replaced.
+- **AC #8 — DOS_APES_VERSION reads the real package version**: **satisfied** (static
+  value corrected in Task 2; stamped from package.json at install time in Task 3 so it
+  cannot drift again).
+- **AC #9 — fresh install on Windows Git Bash (skills prompt-free, read-onlies
+  prompt-free, push/reset/rm prompt, publish/dist-tag blocked)**: **awaiting-smoke-test**
+  (final mission task, after the settings README).
+- **Mission verification block (`required_levels: [L0, L1, L2, L8]`, codex required)**:
+  L0–L2 **satisfied** this task (see pass above); L8 codex cross-model review
+  **awaiting-L8** — must reach a real verdict, no skipped terminal, per frontmatter.
+
+- **Still owed by this mission**:
+  settings README with tag-mutation-as-ask rationale (AC #6 remainder, home decided),
+  fresh-install smoke test on Windows Git Bash (AC #9),
+  L8 codex review (mission verification block).
   Flagged follow-up, out of mission scope: guard-main-branch.sh stderr-JSON cleanup.
