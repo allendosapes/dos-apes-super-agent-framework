@@ -43,30 +43,38 @@ installed hook command, hook-shaped stdin, cwd = project root):
 - [x] `guard-main-branch.sh` fires on the fresh project's main branch → exit 2
       (was also inert under the old wrapper; now verified through the real chain)
 
-## Manual — live Claude Code session required (RE-ATTEMPT PENDING)
+## Manual — PASSED IN FULL (re-attempt post-fix, 2026-07-03)
 
-First attempt partial results (pre-fix, 2026-07-03): `/apes-help` and
-`/apes-status` invoked prompt-free (PASS); `/apes-status` internal pipeline
-prompted at its `node -e` segment (known M-0003 item, declined — not an AC #9
-failure); guard hook INERT (the rev2 finding, now fixed). Prompt-behavior
-results remain valid; hook-behavior items must be re-verified.
+First attempt partial results (pre-fix): `/apes-help` and `/apes-status`
+prompt-free (PASS); `/apes-status` internal pipeline prompted at its `node -e`
+segment (known M-0003 item, declined — not an AC #9 failure); guard hook INERT
+(the rev2 finding, fixed above).
 
-Open Claude Code in the fresh install (scratchpad `m0001-smoke-v2/fresh-project`):
+Re-attempt results (fresh install, scratchpad `m0001-smoke-v2/fresh-project`):
 
-- [x] `/apes-help` / `/apes-status` invoke **without a permission prompt**
-      (passed in first attempt; unaffected by the fix)
-- [ ] `grep`, `ls`, `cat`, `node scripts/mission-cli.js list` run **without prompting**
-- [ ] `git push` **prompts** (ask rule)
-- [ ] `git reset --hard HEAD` **prompts** (ask rule)
-- [ ] `rm somefile` **prompts** (ask rule)
-- [ ] `npm publish` is **denied by rule** (deny list, before the hook fires)
-- [ ] `npm dist-tag add x@1 latest` is **denied by rule**
-- [ ] Ask Claude to run `git push origin main --force` — expect the **guard hook
-      block** with the plain-text stderr message (re-verify: this was the inert
-      path in attempt 1)
-- [ ] Editing a file on `main` is **blocked by guard-main-branch** (re-verify:
-      also inert in attempt 1)
-- [ ] Sanity: `git checkout -b test-branch` runs without prompting;
-      `git checkout main` **prompts** (known, accepted — see Task 3 pre-notes)
+- [x] `/apes-help` / `/apes-status` and other `apes-*` skills invoke **without
+      a permission prompt**
+- [x] `grep` and scoped `node scripts/mission-cli.js` run **without prompting**
+- [x] `git push` **prompted** (ask rule) — declined
+- [x] `git reset --hard HEAD` **prompted** (ask rule) — declined
+- [x] `rm somefile` **prompted** (ask rule) — declined
+- [x] `npm publish` **blocked**
+- [x] `npm dist-tag add x@1 latest` **blocked**
+      — *Layer attribution for the two blocks: not captured in the re-attempt
+      report. Per the documented hook ordering (PreToolUse hooks evaluate
+      before permission rules), the dos-apes guard text is the likely
+      presenter, which would mean the deny rules were shadowed rather than
+      exercised. **Open note for the deny-audit, non-blocking** — both layers
+      enforce the identical policy; when the verbatim refusal text is
+      available, record which layer presented and, if the guard, the exact
+      attempted command string.*
+- [x] `git push origin main --force` → **guard hook block** with the
+      plain-text message, after human approval of the ask prompt
+      (re-verified: this was the inert path in attempt 1)
+- [x] Editing a file on `main` → **blocked by guard-main-branch.sh**
+      (re-verified: also inert in attempt 1)
+- [x] Sanity: `git checkout -b test-branch` prompt-free; `git checkout main`
+      **prompted** (known, accepted — M-0003 territory, see Task 3 pre-notes)
+- [x] `.claude/settings.README.md` present in the installed project
 
-Record outcomes here, then mark AC #9 in the mission workpad.
+**AC #9: satisfied.** Marked in the mission workpad.

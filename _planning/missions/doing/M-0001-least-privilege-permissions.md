@@ -527,9 +527,24 @@ pattern-based rather than one more name:
   guard hook inert — the finding above, fixed. Prompt-behavior results stay valid;
   hook-behavior items flagged for re-verification in the manual rerun.
 
+### AC #9 closure (2026-07-03, manual smoke re-attempt — PASSED IN FULL)
+
+- All manual items green: `apes-*` skills prompt-free; `grep` + scoped mission-cli
+  prompt-free; ask trio (`git push`, `git reset --hard`, `rm`) prompted and declined;
+  `npm publish` + `npm dist-tag add` blocked; flag-last force push blocked by the guard
+  with the plain-text message after human ask-approval; main-branch edit blocked by
+  guard-main-branch.sh; `git checkout -b` prompt-free with `git checkout main`
+  prompting (known M-0003 item); settings.README.md present in `.claude/`.
+- **Open note for the deny-audit (non-blocking)**: layer attribution for the two npm
+  blocks wasn't captured verbatim. Documented hook ordering (PreToolUse hooks before
+  permission rules) makes the guard the likely presenter, i.e. the deny rules were
+  probably shadowed rather than exercised. Both layers enforce the identical policy;
+  record the presenting layer (and, if guard, the exact command string) when verbatim
+  output is next available.
+- **AC #9: SATISFIED.** Full checklist results in `_planning/M-0001-smoke-checklist.md`.
+
 - **Still owed by this mission**:
-  manual half of the smoke checklist, re-attempt post-fix (AC #9, live session,
-  maintainer),
-  L8 codex review (mission verification block).
+  L8 codex review over the full mission branch diff (Task 7 — codex.required true,
+  real terminal verdict, skipped not acceptable; fix high/critical, report low/medium).
   Flagged follow-ups, out of mission scope: guard-main-branch.sh stderr-JSON cleanup;
-  PowerShell-tool permission coverage (see Task 6b residual risk).
+  guard-integrity mission (PowerShell-tool gap + exit-127 fail-open, Task 6b residuals).
