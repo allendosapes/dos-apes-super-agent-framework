@@ -13,7 +13,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
-const { generateSkillRules, customizeSettings } = require("./cli.js");
+const { generateSkillRules, customizeSettings, unpatchWindowsHooks } = require("./cli.js");
 const { version: PKG_VERSION } = require("../package.json");
 
 const REPO_ROOT = path.join(__dirname, "..");
@@ -272,6 +272,65 @@ group("customizeSettings", () => {
   });
 });
 
+// ─── unpatchWindowsHooks ─────────────────────────────────────────────────────
+// Claude Code runs hook commands through Git Bash natively on Windows; the
+// retired run-hook.cmd rewrite silently broke every hook. These cover the
+// reverse migration for previously-patched installs.
+
+group("unpatchWindowsHooks", () => {
+  test("restores the script form to bash scripts/*.sh", () => {
+    const settings = {
+      hooks: {
+        PreToolUse: [{ matcher: "Bash", hooks: [
+          { type: "command", command: "scripts\\run-hook.cmd scripts/guard-forbidden-commands.sh", timeout: 10 },
+        ]}],
+      },
+    };
+    assert.strictEqual(unpatchWindowsHooks(settings), true);
+    assert.strictEqual(
+      settings.hooks.PreToolUse[0].hooks[0].command,
+      "bash scripts/guard-forbidden-commands.sh"
+    );
+  });
+
+  test("restores the inline -c form with quotes unescaped", () => {
+    const settings = {
+      hooks: {
+        SessionStart: [{ hooks: [
+          { type: "command", command: 'scripts\\run-hook.cmd -c "echo \\"hi\\" && cat x | head -5"' },
+        ]}],
+      },
+    };
+    assert.strictEqual(unpatchWindowsHooks(settings), true);
+    assert.strictEqual(
+      settings.hooks.SessionStart[0].hooks[0].command,
+      'echo "hi" && cat x | head -5'
+    );
+  });
+
+  test("leaves unpatched settings untouched and reports no change", () => {
+    const settings = {
+      hooks: {
+        PreToolUse: [{ matcher: "Bash", hooks: [
+          { type: "command", command: "bash scripts/guard-forbidden-commands.sh" },
+        ]}],
+      },
+    };
+    assert.strictEqual(unpatchWindowsHooks(settings), false);
+    assert.strictEqual(
+      settings.hooks.PreToolUse[0].hooks[0].command,
+      "bash scripts/guard-forbidden-commands.sh"
+    );
+  });
+
+  test("customizeSettings output contains no run-hook.cmd on any platform", () => {
+    const out = customizeSettings({}, REAL_FRAMEWORK_DIR);
+    assert.ok(!out.includes("run-hook.cmd"), "hook commands must ship in bash form");
+    assert.ok(out.includes("bash scripts/guard-forbidden-commands.sh"));
+    assert.ok(out.includes("bash scripts/guard-main-branch.sh"));
+  });
+});
+
 // ─── packaging drift guard ───────────────────────────────────────────────────
 // Second defensive layer next to the per-directory `*.test.js` .npmignore
 // files: those cover bin/, framework/lib/, framework/scripts/, while this
@@ -313,7 +372,6 @@ group("packaging (npm pack --dry-run --json)", () => {
       "bin/cli.js",
       "framework/scripts/guard-forbidden-commands.sh",
       "framework/scripts/guard-main-branch.sh",
-      "framework/scripts/run-hook.cmd",
       "framework/settings.json",
       "framework/settings.README.md",
     ]) {

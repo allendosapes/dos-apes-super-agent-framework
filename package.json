@@ -8,7 +8,7 @@
   },
   "scripts": {
     "test": "npm run test:lib && npm run test:cli",
-    "test:lib": "node framework/lib/mission-parser.test.js && node framework/lib/mission-tracker.test.js && node framework/scripts/codex-review.test.js && node framework/scripts/codex-review-loop.test.js && node framework/scripts/codex-review-cwd-equivalence.test.js && node framework/scripts/guard-forbidden-commands.test.js && node framework/scripts/run-hook.test.js",
+    "test:lib": "node framework/lib/mission-parser.test.js && node framework/lib/mission-tracker.test.js && node framework/scripts/codex-review.test.js && node framework/scripts/codex-review-loop.test.js && node framework/scripts/codex-review-cwd-equivalence.test.js && node framework/scripts/guard-forbidden-commands.test.js",
     "test:cli": "node bin/cli.test.js"
   },
   "keywords": [
@@ -57,7 +57,6 @@
     "framework/scripts/metrics-update.sh",
     "framework/scripts/mission-cli.js",
     "framework/scripts/mission-worktree.js",
-    "framework/scripts/run-hook.cmd",
     "framework/scripts/track-modified-files.sh",
     "framework/lib/mission-parser.js",
     "framework/lib/mission-schema.js",

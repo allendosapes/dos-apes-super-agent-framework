@@ -447,7 +447,89 @@ pattern-based rather than one more name:
   cli suite now 19; **tarball baseline 84 → 85** with the README shipping at 4.2kB.
 - AC #6 now **fully satisfied** (ask list exact since Task 2; rationale documented).
 
+### Task 6 (2026-07-03, fresh-install smoke test — AC #9)
+
+- **True tarball path exercised**, not a repo-direct install: `npm pack` (85 files) →
+  extract → `node package/bin/cli.js --local --yes --greenfield` into a fresh `git init`
+  project on Windows Git Bash. 86 files installed, no prompts, no errors.
+- **Automated portion: 15/15 passed** against the installed tree — Skill-rule generation
+  (18 command pairs + 15 skills, zero stale rules), exact ask set, deny set intact, no
+  blanket allows, `DOS_APES_VERSION` stamped 3.5.1, guard hook registered and
+  Windows-routed, settings README installed, and guard behavior end-to-end through the
+  INSTALLED `run-hook.cmd`: `npm publish` / `npm dist-tag add` / flag-last force push /
+  compound-chain publish all exit 2; benign commands (incl. plain `git push`, ask's
+  territory) exit 0.
+- **Checklist location: `_planning/M-0001-smoke-checklist.md`** — automated results
+  recorded; manual section lists the live-session items (prompt-vs-no-prompt behavior
+  for skills, read-onlies, push/reset/rm; deny-by-rule for publish/dist-tag; hook block
+  for the flag-last force push; the known `git checkout main` prompt). AC #9 stays
+  **awaiting-smoke-test** until the maintainer runs the manual section in a live
+  session — prompting is permission-layer behavior only observable there.
+- Verification script preserved in scratchpad (`m0001-smoke/verify-install.js`) and
+  referenced from the checklist for reproduction.
+
+### Task 6b (2026-07-03, BLOCKING smoke finding: hooks silently inert on Windows)
+
+- **Finding (manual smoke attempt 1)**: every PreToolUse hook — including the guard —
+  failed non-blocking in a live session with `/usr/bin/bash: line 1: scriptsrun-hook.cmd:
+  command not found`. Root cause: `patchHooksForWindows` rewrote hook commands to
+  `scripts\run-hook.cmd …`, but current Claude Code executes hook commands through
+  **Git Bash natively** on Windows — bash consumed the backslash as an escape, and the
+  cmd-wrapper targets an execution model that no longer exists. The error path is
+  non-blocking, so the whole hook layer was silently inert in installed projects.
+- **Docs verification**: hooks reference (`/en/hooks`): "The `command` string is passed
+  to a shell: `sh -c` on macOS and Linux, **Git Bash on Windows**, or PowerShell when
+  Git Bash isn't installed"; per-hook `shell` field exists for overrides. The public
+  changelog has **no dated entry** for this behavior — "since when" is unresolvable from
+  the changelog; current docs plus the live-session error both confirm bash-native
+  execution today. (Historical note: the wrapper predates this mission; whether it was
+  ever load-bearing is moot — it is provably harmful now.)
+- **Fix**: `patchHooksForWindows` deleted; hooks ship in their original
+  `bash scripts/*.sh` form on every platform. The existing-settings migration block now
+  runs `unpatchWindowsHooks` (reverse migration, unconditional — the damage lives in the
+  settings file, not the installer's platform): `scripts\run-hook.cmd scripts/foo.sh` →
+  `bash scripts/foo.sh`, inline `-c "escaped"` → original unescaped command. 4 unit
+  tests (both forms, no-change case, no-wrapper-in-output on any platform).
+- **run-hook.cmd RETIRED** (decision + rationale): nothing else invokes it (verified by
+  repo-wide grep — only patchHooksForWindows generated invocations); it duplicates Git
+  Bash discovery the product now does itself, including the `CLAUDE_CODE_GIT_BASH_PATH`
+  override honored in Task 4b. Deleted with its 8-case test suite; `files` and test:lib
+  entries removed; tarball 85 → 84. **The Task 4b work is superseded**, not wasted: its
+  docs-verified env-var finding moved into settings.README.md and README troubleshooting,
+  and its fail-closed intent transfers to the residual-risk note below.
+- **Residual risk #1, follow-up mission candidate**: on a Git-Bash-less Windows box,
+  Claude Code switches to the **PowerShell tool** — where `Bash(...)` permission rules
+  and the Bash-matcher guard hook do not apply at all. The policy as shipped requires
+  Git Bash on Windows (now stated in settings.README.md); a PowerShell-matcher guard +
+  rule set is a separate mission.
+- **Residual risk #2, accepted (maintainer, 2026-07-03), same follow-up mission**: under
+  bash-native hook execution, a missing or deleted `guard-forbidden-commands.sh` yields
+  exit **127** (command not found), which Claude Code treats as a **non-blocking**
+  hook error — silent fail-open. The guard's internal ERR trap only protects a script
+  that runs; the retired runner's fail-closed *discovery* check (guard-* → exit 2 when
+  the chain can't execute) has **no equivalent** in the native model, and Claude Code
+  offers no per-hook on-missing-fail-closed knob. Belongs with residual #1 in one
+  follow-up mission — scope: **guard integrity**, the conditions under which the
+  backstop is silently absent (wrong tool, missing script, unrunnable interpreter).
+- **Docs updated**: settings.README.md Windows section rewritten (native execution,
+  env var, Git-Bash-required statement); README.md "Hooks not firing" rewritten incl.
+  re-run-installer migration note, version-neutral.
+- **Smoke rerun (rev2)**: tarball rebuilt (84 files), fresh install (85 files installed),
+  verification rewritten to exercise the REAL chain — `bash -c` on the exact hook command
+  string from the installed settings.json with hook-shaped stdin, no cmd.exe entry point.
+  **19/19 passed**, including a new check that `guard-main-branch.sh` fires (it was
+  equally inert under the wrapper). Checklist updated to rev2:
+  `_planning/M-0001-smoke-checklist.md`; script at scratchpad
+  `m0001-smoke-v2/verify-install.js`.
+- **Partial manual results recorded (attempt 1, pre-fix)**: `/apes-help` and
+  `/apes-status` Skill invocations prompt-free — PASS; `/apes-status` internal pipeline
+  prompted at its `node -e` segment — known M-0003 item, declined, not an AC #9 failure;
+  guard hook inert — the finding above, fixed. Prompt-behavior results stay valid;
+  hook-behavior items flagged for re-verification in the manual rerun.
+
 - **Still owed by this mission**:
-  fresh-install smoke test on Windows Git Bash (AC #9),
+  manual half of the smoke checklist, re-attempt post-fix (AC #9, live session,
+  maintainer),
   L8 codex review (mission verification block).
-  Flagged follow-up, out of mission scope: guard-main-branch.sh stderr-JSON cleanup.
+  Flagged follow-ups, out of mission scope: guard-main-branch.sh stderr-JSON cleanup;
+  PowerShell-tool permission coverage (see Task 6b residual risk).

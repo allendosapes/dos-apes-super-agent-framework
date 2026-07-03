@@ -315,15 +315,20 @@ _Managed by [Dos Apes Super Agent Framework v${VERSION}](https://github.com/alle
   return claudeMd;
 }
 
-// ─── Windows Hook Patching ──────────────────────────────────────────────────
+// ─── Windows Hook Un-patching ───────────────────────────────────────────────
 
 /**
- * On Windows, the bare `bash` command often resolves to WSL's bash, which may
- * be broken or misconfigured. This rewrites hook commands to use
- * `scripts/run-hook.cmd` — a wrapper that finds Git Bash explicitly.
+ * Reverse migration for installs patched by the retired patchHooksForWindows.
+ * Claude Code executes hook commands through Git Bash natively on Windows
+ * (docs /en/hooks: "sh -c on macOS and Linux, Git Bash on Windows"), so the
+ * old `scripts\run-hook.cmd …` rewrite is doubly broken there: bash eats the
+ * backslash (`scriptsrun-hook.cmd: command not found`) and the cmd wrapper
+ * targets an execution model that no longer exists. Restore the original
+ * `bash scripts/*.sh` / inline forms. Returns true if anything changed.
  */
-function patchHooksForWindows(settings) {
-  if (!settings.hooks) return;
+function unpatchWindowsHooks(settings) {
+  if (!settings.hooks) return false;
+  let changed = false;
 
   for (const hookGroups of Object.values(settings.hooks)) {
     if (!Array.isArray(hookGroups)) continue;
@@ -331,21 +336,24 @@ function patchHooksForWindows(settings) {
       if (!group.hooks || !Array.isArray(group.hooks)) continue;
       for (const hook of group.hooks) {
         if (hook.type !== "command" || typeof hook.command !== "string") continue;
-        if (hook.command.includes("run-hook.cmd")) continue;
 
-        const cmd = hook.command;
-        // Script-file invocation: bash scripts/foo.sh [args]
-        const scriptMatch = cmd.match(/^bash\s+(scripts\/[\w.-]+\.sh(?:\s+.*)?)$/);
+        // Inline form: scripts\run-hook.cmd -c "escaped command"
+        const inlineMatch = hook.command.match(/^scripts\\run-hook\.cmd\s+-c\s+"([\s\S]*)"$/);
+        if (inlineMatch) {
+          hook.command = inlineMatch[1].replace(/\\"/g, '"');
+          changed = true;
+          continue;
+        }
+        // Script form: scripts\run-hook.cmd scripts/foo.sh [args]
+        const scriptMatch = hook.command.match(/^scripts\\run-hook\.cmd\s+(scripts\/[\w.-]+\.sh(?:\s+.*)?)$/);
         if (scriptMatch) {
-          hook.command = `scripts\\run-hook.cmd ${scriptMatch[1]}`;
-        } else {
-          // Inline command: wrap with -c for Git Bash evaluation
-          const escaped = cmd.replace(/"/g, '\\"');
-          hook.command = `scripts\\run-hook.cmd -c "${escaped}"`;
+          hook.command = `bash ${scriptMatch[1]}`;
+          changed = true;
         }
       }
     }
   }
+  return changed;
 }
 
 // ─── Settings.json Customizer ───────────────────────────────────────────────
@@ -421,10 +429,8 @@ function customizeSettings(config, frameworkDir = FRAMEWORK_DIR) {
     settings.env.DOS_APES_VERSION = VERSION;
   }
 
-  // Windows: route hook commands through Git Bash wrapper
-  if (process.platform === "win32") {
-    patchHooksForWindows(settings);
-  }
+  // Hook commands ship in their original `bash scripts/*.sh` form on every
+  // platform — Claude Code runs them through Git Bash natively on Windows.
 
   // Add cloud CLI permissions based on deploy target
   if (config.deployTarget === "gcp") {
@@ -877,13 +883,12 @@ ${c.bold}Optional:${c.reset}
         }
       }
 
-      // Windows: patch hook commands to use Git Bash wrapper
-      if (process.platform === "win32") {
-        const hasUnpatchedBash = JSON.stringify(existingSettings.hooks || {}).includes('"bash ');
-        if (hasUnpatchedBash) {
-          patchHooksForWindows(existingSettings);
-          migrated = true;
-        }
+      // Un-break installs patched by the retired run-hook.cmd rewrite: Claude
+      // Code runs hooks through Git Bash natively on Windows, where the old
+      // cmd-wrapper form silently fails. Unconditional — the damage lives in
+      // the settings file, not the platform running the installer.
+      if (unpatchWindowsHooks(existingSettings)) {
+        migrated = true;
       }
 
       if (migrated) {
@@ -1182,4 +1187,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { generateSkillRules, customizeSettings, patchHooksForWindows };
+module.exports = { generateSkillRules, customizeSettings, unpatchWindowsHooks };

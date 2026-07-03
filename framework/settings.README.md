@@ -59,13 +59,14 @@ for example `git commit -m "docs: explain why npm publish is denied"`.
 (e.g. `"docs: explain why publishing to npm is denied"`) and retry. This
 trade-off is intentional: a backstop must never undermatch.
 
-## Windows: nonstandard Git Bash installs
+## Windows: Git Bash and hooks
 
-Hooks run through `scripts/run-hook.cmd`, which locates Git Bash via the
-standard install paths and a PATH probe. If your Git Bash lives somewhere
-unusual and hooks report "Git Bash not found", set
-`CLAUDE_CODE_GIT_BASH_PATH` — the same variable Claude Code itself uses — in
-your settings `env`:
+Claude Code executes hook commands through Git Bash natively on Windows (per
+the hooks docs: "`sh -c` on macOS and Linux, Git Bash on Windows"), so the
+`bash scripts/*.sh` hook commands in settings.json work unchanged across
+platforms. If your Git Bash lives somewhere unusual and hooks fail to run, set
+`CLAUDE_CODE_GIT_BASH_PATH` — the variable Claude Code itself uses to locate
+Git Bash — in your settings `env`:
 
 ```json
 {
@@ -75,6 +76,7 @@ your settings `env`:
 }
 ```
 
-Note: when Git Bash can't be found at all, blocking `guard-*` hooks fail
-closed (commands are blocked) rather than silently skipping — a blocking hook
-that can't block is worse than none.
+**Git Bash is required for this policy on Windows.** Without it, Claude Code
+switches to the PowerShell tool, where neither the `Bash(...)` permission
+rules nor the Bash-matcher guard hook apply — the policy as shipped does not
+cover PowerShell-tool sessions.
