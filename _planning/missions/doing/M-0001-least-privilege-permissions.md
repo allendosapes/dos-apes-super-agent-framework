@@ -1,5 +1,5 @@
 ---
-id: M-XXXX  # renumber on filing
+id: M-0001
 title: Replace shipped permissions with least-privilege allow/ask/deny policy
 priority: 1
 labels: [security, dx, permissions]
@@ -74,3 +74,74 @@ in command files (follow-up mission), existing-install migration (follow-up miss
 Analysis report §2.2 (trigger inventory), §2.3 (proposed block + rationale + deviations),
 §2.6 (Windows check). Docs to re-verify at implementation time: permissions rule syntax,
 hooks permissionDecision interface, settings scope precedence.
+
+## Workpad
+
+### Docs verification (2026-07-02, live docs at code.claude.com/docs)
+
+Sources: `/en/permissions`, `/en/settings`, `/en/hooks` (PreToolUse reference),
+`/en/skills` (§ Restrict Claude's skill access), `/en/tools-reference`.
+
+1. **allow/ask/deny** — all three lists supported under `permissions`. Evaluation order is
+   deny → ask → allow; first match in that order wins and specificity does not change it
+   (a broad deny beats a narrow allow; a matching ask prompts even when a narrower allow
+   matches). Rules merge across settings scopes; a deny at any scope cannot be overridden
+   by an allow at any other scope.
+
+2. **`Bash(cmd:*)` vs `Bash(cmd *)`** — documented as equivalent: "The `:*` suffix is an
+   equivalent way to write a trailing wildcard, so `Bash(ls:*)` matches the same commands
+   as `Bash(ls *)`." Caveat: `:*` is only recognized at the *end* of a pattern; mid-pattern
+   colons are literal. The permission dialog writes the space form. → Shipped colon-form
+   rules (`Bash(codex:*)`, `Bash(node scripts/*.js:*)`) are valid; standardize new policy
+   on the space form for consistency with what the dialog generates.
+
+3. **Skill rules** — confirmed to exist: `Skill(name)` exact match, `Skill(name *)` prefix
+   match with any arguments; usable in allow and deny. Name globs like `Skill(apes-*)` are
+   NOT documented anywhere (the `*` in `Skill(name *)` covers arguments, not the name) —
+   treat as unsupported. AC #2's approach stands: enumerate skill/command names at install
+   time and emit one `Skill(name)` + `Skill(name *)` pair each.
+
+4. **Read/Edit path scoping** — follows the gitignore spec with four anchors: `//path`
+   (filesystem root), `~/path` (home), `/path` (project root), `path` or `./path` (cwd).
+   A bare filename matches at any depth under cwd: `Read(.env)` ≡ `Read(**/.env)` — so the
+   planned `Read(.env)` / `Read(.env.*)` deny rules cover nested `.env` files too, but not
+   parent directories (use `Read(//**/.env)` for filesystem-wide). `Edit` rules apply to
+   all built-in editing tools (Edit, Write, NotebookEdit), so `Edit(.claude/settings.json)`
+   deny alone covers Write — keep the explicit Write rule anyway as documentation. Read/Edit
+   deny rules also extend to recognized file commands in Bash (`cat`, `head`, `tail`, `sed`)
+   but NOT to arbitrary subprocesses (a node script that opens `.env` itself is not blocked
+   — only sandboxing gives OS-level enforcement). Windows paths are normalized to POSIX
+   before matching (`C:\Users` → `/c/Users`).
+
+5. **PreToolUse hook interface** — hook receives stdin JSON with `tool_name` and
+   `tool_input.command` (full command string for Bash). Exit code 2 = blocking error,
+   stderr is fed to Claude, tool call prevented. Alternative: exit 0 with
+   `{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision":
+   "allow"|"deny"|"ask"|"defer", "permissionDecisionReason": "..."}}`. Ordering guarantees:
+   a blocking hook (exit 2) takes precedence over allow rules; deny/ask permission rules
+   are still evaluated even if a hook returns "allow". → `guard-forbidden-commands.sh`
+   exit-2 design is sound and cannot be overridden by the allow list.
+
+6. **Settings scope precedence** — managed > CLI args > `.claude/settings.local.json` >
+   `.claude/settings.json` > `~/.claude/settings.json`. Permission rules merge across
+   scopes rather than override; deny wins from any scope.
+
+### Additional findings relevant to the policy
+
+- **`TodoWrite` is disabled by default** since v2.1.142 (replaced by TaskCreate/TaskGet/
+  TaskList/TaskUpdate, which require no permission). No tool named `Task` exists in the
+  current tools reference (subagents are the `Agent` tool). Confirms AC #1: both allow
+  entries are dead weight. Note: deny/ask rules with unknown tool names produce startup
+  warnings; allow rules do not.
+- **Built-in read-only command set** — `ls`, `cat`, `echo`, `pwd`, `head`, `tail`, `grep`,
+  `find`, `wc`, `which`, `diff`, `stat`, `du`, `cd`, and read-only git forms run without
+  prompting in every mode, not configurable. Many current allow entries (`cat *`, `ls *`,
+  `grep *`, …) are therefore redundant — dropping them from allow loses nothing.
+- **Compound commands** — the permission layer splits on `&&`, `||`, `;`, `|`, `|&`, `&`,
+  and newlines, and each subcommand must independently match a rule. Process wrappers
+  `timeout`/`time`/`nice`/`nohup`/`stdbuf` and bare `xargs` are stripped before matching
+  (so `Bash(xargs *)` in allow is both dangerous and unnecessary). `find -exec`/`-delete`
+  and exec wrappers (`watch`, `setsid`, …) always prompt regardless of prefix rules.
+- **Wildcard semantics** — a single `*` in Bash rules matches any sequence *including
+  spaces* and can appear at any position; trailing ` *` enforces a word boundary
+  (`Bash(ls *)` matches `ls -la` but not `lsof`).
