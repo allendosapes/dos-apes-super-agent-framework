@@ -266,7 +266,9 @@ pattern-based rather than one more name:
   alongside explicit entries) whitelisted by `files`; if so, add a `*.test.js` exclusion
   so future test files can't leak. Record the verified npm behavior here.
 - Remove the test file's explicit `files` entry either way.
-- Confirm `npm pack --dry-run` drops 84 → 83 files with `bin/cli.js` and all production
+- Confirm `npm pack --dry-run` drops to **84** files (maintainer correction: Task 4's
+  guard script moved the baseline 84 → 85, so removing the leaked test file lands on 84,
+  not the originally stated 83) with `bin/cli.js` and all production
   `framework/scripts/*` still present.
 
 ### Task 4 (2026-07-03, guard-forbidden-commands.sh — AC #7)
@@ -331,10 +333,38 @@ pattern-based rather than one more name:
   is for authoring templates, ARCHITECTURE.md is repo-only (not installed). Costs one
   `files` entry + one copy line in cli.js. To be written in the owed settings-README task.
 
+### Task 4b (2026-07-03, run-hook.cmd fail-closed for guards — maintainer Decision 1)
+
+- **Env var verified against live docs first** (`/en/setup`, § Set up on Windows):
+  `CLAUDE_CODE_GIT_BASH_PATH` is the documented variable Claude Code itself uses when it
+  can't find Git Bash, set via settings.json `env` — which is exactly the env applied to
+  hook processes, so honoring it in run-hook.cmd is coherent. Checked FIRST in discovery
+  (explicit user config outranks probing).
+- **PATH probe added as last resort**: `where bash.exe`, skipping any hit under
+  `\Windows\` — the WSL bash shim lives in System32 and is precisely what this runner
+  exists to avoid; a naive PATH probe would have reintroduced it.
+- **Fail-closed split on discovery failure**: hook args matching `guard-` exit 2 with
+  clear stderr (names the env var fix); all other hooks keep the exit-0 "Hook skipped"
+  so non-blocking quality hooks stay best-effort. Closes the Task 4 flagged gap per
+  maintainer Decision 1. Runner diff kept minimal: two inserted stanzas, existing four
+  probe paths untouched.
+- **`guard-` detection is substring-over-the-full-argument-line, overmatching toward
+  fail-closed by design**: on a bashless machine, an inline `-c` command whose TEXT
+  happens to contain "guard-" also exits 2 rather than skipping. Accepted — the failure
+  direction is safe (a spurious block on a machine where no hook can run anyway), and
+  the alternative (parsing the script path out of `%*` in batch) buys precision only in
+  that degenerate state.
+- **Tests**: `run-hook.test.js`, 8 cases, Windows-only (skips with a message elsewhere,
+  so the test:lib chain stays green cross-platform). Simulates discovery failure via a
+  stripped env (probe vars absent, PATH=System32 only) — verifies guard-* exits 2 /
+  non-guard exits 0; positive path verifies the env-var override, the PATH probe, exit-
+  code propagation (bash `exit 2` → runner exit 2 — blocking fidelity end-to-end), and
+  stdin flowing through to the real guard script (full envelope → block). Test file not
+  shipped; run-hook.cmd already in `files`. Tarball steady at 85.
+
 - **Still owed by this mission** (later tasks):
   settings README (`framework/settings.README.md` → `.claude/settings.README.md`, home
   decided above) with the tag-mutation-as-ask rationale (AC #6),
-  tarball test-file exclusion made pattern-based (Task 5, see above),
+  tarball test-file exclusion made pattern-based (Task 5, see above; expected count 84),
   fresh-install verification on Windows Git Bash (final AC).
-  Flagged for maintainer decision: run-hook.cmd degraded-mode gap (Task 4 note above);
-  guard-main-branch.sh stderr-JSON cleanup (follow-up, out of mission scope).
+  Flagged follow-up, out of mission scope: guard-main-branch.sh stderr-JSON cleanup.
