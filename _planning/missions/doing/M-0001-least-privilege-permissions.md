@@ -145,3 +145,50 @@ Sources: `/en/permissions`, `/en/settings`, `/en/hooks` (PreToolUse reference),
 - **Wildcard semantics** — a single `*` in Bash rules matches any sequence *including
   spaces* and can appear at any position; trailing ` *` enforces a word boundary
   (`Bash(ls *)` matches `ls -la` but not `lsof`).
+
+### Task 2 decisions (2026-07-03, permissions block rewrite)
+
+Rewrote `framework/settings.json` permissions to the §2.3 reviewed policy, with these
+amendments and deviations, all reviewer-directed or surfaced here:
+
+- **Space-wildcard form standardized** throughout allow/ask (`node scripts/mission-cli.js *`,
+  `npm test *`, `npm audit fix *`, etc.). Exception, deliberate: deny rules keep
+  boundary-free trailing `*` where the broader match is the point —
+  `Bash(git push --force*)` also catches `--force-with-lease`, `Bash(git push -f*)`
+  catches `-f`/`-force` spellings, and `Bash(rm -rf /*)` / `~*` / `..*` are path prefixes.
+  Also kept boundary-free: `Bash(git mv .planning/missions/*)` (path prefix, a space
+  before `*` would break it).
+- **Dropped as redundant with the built-in read-only set** (never prompt in any mode,
+  not configurable): `cat *`, `ls *`, `find *`, `grep *`, `wc *`, `head *`, `tail *`,
+  `echo *`, `which *`, `pwd`. Kept because *outside* the documented set: `rg *`, `date *`,
+  `sort *`, `uniq *`, `tr *`, `cut *`, `mkdir *`, `touch *`, `cp *`. Edge accepted: `find`
+  with an unquoted glob still prompts (glob could expand to `-delete`) now that no explicit
+  `find *` allow exists — acceptable, that prompt is protective.
+- **Kept explicit git read-only rules** (`git status *`, `git diff *`, `git log *`, …)
+  even though docs say "read-only forms of git" are in the built-in set: the docs don't
+  enumerate which forms, and git is glob-sensitive, so the explicit rules prevent prompt
+  regressions and document intent. Zero added risk.
+- **Dropped entirely**: `Task`, `TodoWrite` (dead tool names — TodoWrite disabled by
+  default since v2.1.142, no `Task` tool exists), `Bash(xargs *)` (bare xargs is stripped
+  before matching, so the rule was unnecessary; flagged xargs is matched as xargs, so the
+  rule was also an escape hatch), `Bash(yarn *)`, `Bash(pnpm *)`, `Bash(bun *)` (blanket
+  package-manager escape hatches; npm is scoped instead), `Bash(mv *)`, `Bash(sed *)`,
+  `Bash(awk *)` (awk `system()` is arbitrary exec), `Bash(chmod +x *)`, `Bash(bash *)`,
+  `Bash(node *)`, `Bash(npm *)`, `Bash(npx *)`, `Bash(git push *)`, `Bash(git checkout *)`,
+  `Bash(git rebase *)`, `Bash(git tag *)`, blanket `WebFetch`.
+- **codex** scoped per AC #5: only `Bash(codex login)` and `Bash(codex --version)` in
+  allow; all L8 invocations go through the allowlisted `node scripts/codex-*.js` entry
+  points.
+- **Skill rules shipped statically** in the template (18 `apes-*` commands × exact+args
+  pair, 15 domain skills exact-only), verified against the live file inventory of
+  `framework/commands/` and `framework/skills/`. Task for cli.js remains: *generate* these
+  at install time from the installed file set so new skills auto-enroll (AC #2); the static
+  list doubles as the fallback when generation is skipped.
+- **`DOS_APES_VERSION`** bumped `2.0.0` → `3.5.1` (current package.json). Drift risk
+  remains until `customizeSettings` stamps it from `package.json` at install time — do
+  that in the cli.js task.
+- **Still owed by this mission** (later tasks): cli.js Skill-rule generation (AC #2),
+  `scripts/guard-forbidden-commands.sh` + PreToolUse registration (AC #6/#7 backstop),
+  settings-README rationale note for tag-mutation-as-ask (AC #6 — no settings README
+  exists yet; needs a home, likely a new `framework/templates/` doc or README section),
+  fresh-install verification on Windows Git Bash (final AC).
