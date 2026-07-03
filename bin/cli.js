@@ -895,6 +895,16 @@ ${c.bold}Optional:${c.reset}
     }
   }
 
+  // ── 5b. Settings README ──
+  // Framework-owned documentation of the permission policy; always refreshed
+  // so the rationale tracks the installed framework version.
+  const settingsReadmeSrc = path.join(FRAMEWORK_DIR, "settings.README.md");
+  if (fs.existsSync(settingsReadmeSrc)) {
+    fs.copyFileSync(settingsReadmeSrc, path.join(claudeDir, "settings.README.md"));
+    printStep("Settings README", ".claude/settings.README.md (permission policy rationale)");
+    totalFiles++;
+  }
+
   // ── 6. CLAUDE.md ──
   const claudeMdPath = path.join(installBase, "CLAUDE.md");
   const claudeMdExists = fs.existsSync(claudeMdPath);

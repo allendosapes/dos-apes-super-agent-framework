@@ -242,6 +242,22 @@ group("customizeSettings", () => {
     assert.deepStrictEqual(out, { permissions: {}, hooks: {} });
   });
 
+  test("settings README ships beside the policy and covers its required topics", () => {
+    const readme = fs
+      .readFileSync(path.join(REAL_FRAMEWORK_DIR, "settings.README.md"), "utf8")
+      .replace(/\s+/g, " ");
+    for (const topic of [
+      "deny → ask → allow",
+      "phase tags",
+      "never one without the other",
+      "guard-forbidden-commands.sh",
+      "rephrase",
+      "CLAUDE_CODE_GIT_BASH_PATH",
+    ]) {
+      assert.ok(readme.includes(topic), `settings.README.md missing required topic: ${topic}`);
+    }
+  });
+
   test("real framework settings customize cleanly and keep the full allow policy", () => {
     const out = JSON.parse(customizeSettings({}, REAL_FRAMEWORK_DIR));
     // Skill rules present and generated
@@ -299,6 +315,7 @@ group("packaging (npm pack --dry-run --json)", () => {
       "framework/scripts/guard-main-branch.sh",
       "framework/scripts/run-hook.cmd",
       "framework/settings.json",
+      "framework/settings.README.md",
     ]) {
       assert.ok(shipped.includes(required), `missing from tarball: ${required}`);
     }

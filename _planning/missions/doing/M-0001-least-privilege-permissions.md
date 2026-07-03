@@ -426,8 +426,28 @@ pattern-based rather than one more name:
   L0–L2 **satisfied** this task (see pass above); L8 codex cross-model review
   **awaiting-L8** — must reach a real verdict, no skipped terminal, per frontmatter.
 
+### Settings README task (2026-07-03, AC #6 remainder)
+
+- `framework/settings.README.md` written per the Task 4 placement decision; installed
+  beside the policy as `.claude/settings.README.md`. Content: allow/ask/deny philosophy,
+  tag-mutation-as-ask rationale with the **paired-promotion precondition** (tags promote
+  to deny only when `/apes-build` phase tags are replaced — never one without the other),
+  the guard hook's deny-backstop role incl. the documented quoted-text false positive and
+  its rephrase workaround, and the `CLAUDE_CODE_GIT_BASH_PATH` note for nonstandard Git
+  Bash installs.
+- **Installer verified: it would NOT have shipped.** cli.js copies only enumerated paths
+  (commands/, skills/, scripts/, lib/, explicit template list, claude-desktop-skills/,
+  ci/) and *writes* settings.json via customizeSettings — a framework-root sibling .md is
+  never copied. Fixed with a new step 5b: unconditional copy to
+  `.claude/settings.README.md` (framework-owned doc, refreshed each install so the
+  rationale tracks the installed version — unlike user-owned settings.json, which is
+  preserved). Added to the `files` whitelist.
+- Tests: presence assertion in the packaging drift-guard; content test pinning the six
+  required topics (whitespace-normalized — the paired-promotion phrase wraps a line).
+  cli suite now 19; **tarball baseline 84 → 85** with the README shipping at 4.2kB.
+- AC #6 now **fully satisfied** (ask list exact since Task 2; rationale documented).
+
 - **Still owed by this mission**:
-  settings README with tag-mutation-as-ask rationale (AC #6 remainder, home decided),
   fresh-install smoke test on Windows Git Bash (AC #9),
   L8 codex review (mission verification block).
   Flagged follow-up, out of mission scope: guard-main-branch.sh stderr-JSON cleanup.

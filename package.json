@@ -77,6 +77,7 @@
     "framework/templates/codex-review-prompt.md",
     "framework/templates/codex-review-schema.json",
     "framework/settings.json",
+    "framework/settings.README.md",
     "assets/",
     "README.md",
     "LICENSE"
