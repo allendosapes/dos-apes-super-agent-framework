@@ -350,8 +350,42 @@ function patchHooksForWindows(settings) {
 
 // ─── Settings.json Customizer ───────────────────────────────────────────────
 
-function customizeSettings(config) {
-  const settingsPath = path.join(FRAMEWORK_DIR, "settings.json");
+/**
+ * Enumerate the shipped command and skill files and emit the Skill permission
+ * rules for them. Commands are user-invocable with arguments, so each gets an
+ * exact + args pair; domain skills are loaded by teammates without arguments,
+ * so each gets an exact rule only. Name globs like Skill(apes-*) are not
+ * supported by the permission syntax — enumeration is the only option.
+ *
+ * Returns [] when neither directory yields a name, so the caller can fall
+ * back to the static Skill rules shipped in settings.json.
+ */
+function generateSkillRules(commandsDir, skillsDir) {
+  const mdNames = (dir) => {
+    let entries;
+    try {
+      entries = fs.readdirSync(dir);
+    } catch (_) {
+      return [];
+    }
+    return entries
+      .filter((f) => f.endsWith(".md") && f.toLowerCase() !== "readme.md")
+      .map((f) => path.basename(f, ".md"))
+      .sort();
+  };
+
+  const rules = [];
+  for (const name of mdNames(commandsDir)) {
+    rules.push(`Skill(${name})`, `Skill(${name} *)`);
+  }
+  for (const name of mdNames(skillsDir)) {
+    rules.push(`Skill(${name})`);
+  }
+  return rules;
+}
+
+function customizeSettings(config, frameworkDir = FRAMEWORK_DIR) {
+  const settingsPath = path.join(frameworkDir, "settings.json");
 
   if (!fs.existsSync(settingsPath)) {
     printWarn("settings.json template not found — using defaults");
@@ -363,6 +397,29 @@ function customizeSettings(config) {
   // Remove v1 artifacts if present
   delete settings.contextFiles;
   delete settings._comment;
+
+  // Regenerate Skill allow rules from the shipped command/skill inventory so
+  // new skills auto-enroll; the static list in settings.json is the fallback
+  // when enumeration comes up empty.
+  if (settings.permissions && Array.isArray(settings.permissions.allow)) {
+    const generated = generateSkillRules(
+      path.join(frameworkDir, "commands"),
+      path.join(frameworkDir, "skills")
+    );
+    if (generated.length > 0) {
+      const nonSkillRules = settings.permissions.allow.filter(
+        (rule) => typeof rule !== "string" || !rule.startsWith("Skill(")
+      );
+      settings.permissions.allow = [...generated, ...nonSkillRules];
+    } else {
+      printWarn("could not enumerate commands/skills — keeping static Skill rules");
+    }
+  }
+
+  // Stamp the real package version so the shipped value can't drift
+  if (settings.env && typeof settings.env.DOS_APES_VERSION === "string") {
+    settings.env.DOS_APES_VERSION = VERSION;
+  }
 
   // Windows: route hook commands through Git Bash wrapper
   if (process.platform === "win32") {
@@ -1108,7 +1165,11 @@ ${c.green}╔══════════════════════�
 
 // ─── Run ────────────────────────────────────────────────────────────────────
 
-main().catch((err) => {
-  console.error(`\n${c.red}  Installation failed:${c.reset}`, err.message);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((err) => {
+    console.error(`\n${c.red}  Installation failed:${c.reset}`, err.message);
+    process.exit(1);
+  });
+}
+
+module.exports = { generateSkillRules, customizeSettings, patchHooksForWindows };

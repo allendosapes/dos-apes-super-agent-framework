@@ -7,8 +7,9 @@
     "dos-apes-super-agent": "bin/cli.js"
   },
   "scripts": {
-    "test": "npm run test:lib",
-    "test:lib": "node framework/lib/mission-parser.test.js && node framework/lib/mission-tracker.test.js && node framework/scripts/codex-review.test.js && node framework/scripts/codex-review-loop.test.js && node framework/scripts/codex-review-cwd-equivalence.test.js"
+    "test": "npm run test:lib && npm run test:cli",
+    "test:lib": "node framework/lib/mission-parser.test.js && node framework/lib/mission-tracker.test.js && node framework/scripts/codex-review.test.js && node framework/scripts/codex-review-loop.test.js && node framework/scripts/codex-review-cwd-equivalence.test.js",
+    "test:cli": "node bin/cli.test.js"
   },
   "keywords": [
     "claude",
@@ -33,7 +34,7 @@
     "url": "https://github.com/allendosapes/dos-apes-super-agent-framework/issues"
   },
   "files": [
-    "bin/",
+    "bin/cli.js",
     "framework/commands/",
     "framework/skills/",
     "framework/claude-desktop-skills/",

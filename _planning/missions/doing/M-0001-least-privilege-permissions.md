@@ -187,7 +187,74 @@ amendments and deviations, all reviewer-directed or surfaced here:
 - **`DOS_APES_VERSION`** bumped `2.0.0` → `3.5.1` (current package.json). Drift risk
   remains until `customizeSettings` stamps it from `package.json` at install time — do
   that in the cli.js task.
-- **Still owed by this mission** (later tasks): cli.js Skill-rule generation (AC #2),
+### Pre-Task-3 verification notes (2026-07-03, reviewer-directed; no settings changes — no check failed)
+
+1. **Plain branch-switching in workflows — will now prompt.** Grep of `framework/` found
+   no plain `git switch <branch>` anywhere, but plain `git checkout <existing-branch>`
+   appears throughout the mission/build workflows: `apes-build.md:523,796,845,1022,1076,1249`
+   (`git checkout main`, `git checkout feat/phase-N-slug`), `apes-feature.md:227`,
+   `apes-fix.md:206`, `apes-refactor.md:180` (all `git checkout main`). With allow limited
+   to `git checkout -b *` / `git switch -c *`, each branch-return step now prompts once.
+   Branch-creation-only is therefore NOT sufficient for a prompt-free build loop.
+   **Flagged for review:** `Bash(git switch *)` as a candidate ask rule (documents intent;
+   an unmatched command prompts anyway, so the rule is declarative not behavioral). The
+   real fix — migrating command files from `git checkout <branch>` to `git switch <branch>`
+   and/or a scoped `git checkout main` allow — belongs to the compound-command-hygiene
+   follow-up mission, not M-0001.
+
+2. **`Bash(git mv .planning/missions/*)` scope is intentional.** The rule matches installed
+   projects, where the CLI creates `.planning/missions/` — correct for the shipped template.
+   It deliberately does NOT match this repo's own `_planning/` root: dogfooding moves (this
+   repo consuming its own shipped policy) are out of scope for M-0001 and belong to the P3
+   dogfooding mission.
+
+3. **Deny-spelling audit — every entry matches its real invocation form.**
+   - `npm publish` / `npm version`: exact + ` *` pair covers bare and argument forms.
+   - `npm dist-tag *`: matches all subcommand forms (`add`/`rm`/`ls <pkg>`); bare
+     `npm dist-tag` (implicit read-only `ls`) falls through — harmless.
+   - `npm unpublish *`: matches any argument form incl. `--force`; bare `npm unpublish`
+     refuses to run without `--force`, and `--force` matches the rule.
+   - `npm deprecate *`: real form requires two args and matches; bare form errors in npm.
+   - `git push --force*` / `-f*`: boundary-free `*` catches `--force-with-lease` and `-f`
+     spellings when flag-first; the common `git push origin main --force` ordering falls
+     through to ask `git push *` (still prompts) — known and by design, the Task 4
+     `guard-forbidden-commands.sh` regex scan is the deterministic backstop (AC #7).
+   - `git push origin --delete *` / `git push --delete *`: match the documented delete
+     forms; other-remote deletes and refspec deletion (`git push origin :branch`) fall to
+     ask (prompt) + guard hook.
+   - `rm -rf /*` / `~*` / `..*`: boundary-free path prefixes as intended; alternate
+     spellings (`rm -fr`, `rm -r -f`) fall to ask `Bash(rm *)` (prompt).
+   - `Read(.env)` / `Read(.env.*)`: bare filename matches at any depth under cwd per the
+     gitignore-spec anchoring (workpad docs-verification #4) — nested `.env` covered.
+   - `Edit(.claude/settings.json)` / `Write(...)`: slash-containing pattern anchors at
+     project root — exactly the installed path.
+   Verdict: no deny entry is mis-spelled for its primary invocation; all known bypass
+   spellings land on an ask rule (prompt) or the Task 4 guard hook. No changes made.
+
+### Task 3 (2026-07-03, install-time Skill-rule generation — AC #2)
+
+- `bin/cli.js`: new `generateSkillRules(commandsDir, skillsDir)` — enumerates `*.md`
+  (excluding `README.md`, case-insensitive), commands get `Skill(name)` + `Skill(name *)`
+  pairs, domain skills get `Skill(name)` only (preserves the Task 2 static-list semantics:
+  commands are user-invoked with args, skills are teammate-loaded without). Sorted
+  alphabetically per group, commands first — byte-identical to the static list today.
+- `customizeSettings(config, frameworkDir = FRAMEWORK_DIR)`: strips all `Skill(...)`
+  entries from `allow` and prepends the generated set; when enumeration yields zero names
+  (missing/empty dirs), the static list is kept untouched and a warning prints — the
+  fallback the Task 2 note promised. `frameworkDir` param added for testability.
+- Also stamps `env.DOS_APES_VERSION` from `package.json` at install time (closes the
+  drift risk recorded in Task 2; template value no longer load-bearing).
+- `main()` gated behind `require.main === module` (M-0005 precedent) +
+  `module.exports = { generateSkillRules, customizeSettings, patchHooksForWindows }`.
+- `bin/cli.test.js`: 13 tests, hand-rolled zero-dep runner per house style. Includes a
+  **drift guard**: generated rules from the real `framework/commands|skills` must equal
+  the static Skill list in `framework/settings.json` — fails when a skill is added
+  without regenerating the fallback.
+- `package.json`: `files` narrowed `bin/` → `bin/cli.js` so the test doesn't ship
+  (M-0005 deviation #2 precedent); `test:cli` script added and chained into `test`.
+  `npm pack --dry-run`: 84 files, cli.js in, cli.test.js out.
+
+- **Still owed by this mission** (later tasks):
   `scripts/guard-forbidden-commands.sh` + PreToolUse registration (AC #6/#7 backstop),
   settings-README rationale note for tag-mutation-as-ask (AC #6 — no settings README
   exists yet; needs a home, likely a new `framework/templates/` doc or README section),

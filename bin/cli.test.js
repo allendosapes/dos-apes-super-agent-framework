@@ -1,0 +1,269 @@
+"use strict";
+//
+// cli.test.js — tests for the installer's settings customization: install-time
+// Skill-rule generation (M-0001 AC #2), static-list fallback, and version
+// stamping. Hand-rolled runner so we don't pull in a test framework (CLI must
+// remain zero-dep — and the rest of the framework follows suit).
+//
+// Run:  node bin/cli.test.js
+//
+
+const assert = require("assert");
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
+
+const { generateSkillRules, customizeSettings } = require("./cli.js");
+const { version: PKG_VERSION } = require("../package.json");
+
+const REPO_ROOT = path.join(__dirname, "..");
+const REAL_FRAMEWORK_DIR = path.join(REPO_ROOT, "framework");
+
+let passed = 0;
+let failed = 0;
+const failures = [];
+
+function test(name, fn) {
+  try {
+    fn();
+    passed++;
+    process.stdout.write(`  ✓ ${name}\n`);
+  } catch (err) {
+    failed++;
+    failures.push({ name, err });
+    process.stdout.write(`  ✗ ${name}\n`);
+  }
+}
+
+function group(name, fn) {
+  process.stdout.write(`\n${name}\n`);
+  fn();
+}
+
+// ─── Fixture helpers ─────────────────────────────────────────────────────────
+
+const tmpRoots = [];
+
+function makeFixtureFrameworkDir({ commands = [], skills = [], settings } = {}) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "dos-apes-cli-test-"));
+  tmpRoots.push(root);
+  fs.mkdirSync(path.join(root, "commands"));
+  fs.mkdirSync(path.join(root, "skills"));
+  for (const name of commands) {
+    fs.writeFileSync(path.join(root, "commands", name), "# fixture command\n");
+  }
+  for (const name of skills) {
+    fs.writeFileSync(path.join(root, "skills", name), "# fixture skill\n");
+  }
+  if (settings !== undefined) {
+    fs.writeFileSync(path.join(root, "settings.json"), JSON.stringify(settings, null, 2));
+  }
+  return root;
+}
+
+function baseFixtureSettings() {
+  return {
+    permissions: {
+      allow: [
+        "Skill(stale-command)",
+        "Skill(stale-command *)",
+        "Skill(stale-skill)",
+        "Bash(git status *)",
+        "Bash(npm test *)",
+      ],
+      ask: ["Bash(git push *)"],
+      deny: ["Bash(npm publish)"],
+    },
+    env: {
+      DOS_APES_FRAMEWORK: "true",
+      DOS_APES_VERSION: "0.0.0-template",
+    },
+  };
+}
+
+function cleanupFixtures() {
+  for (const root of tmpRoots) {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+}
+
+// ─── generateSkillRules ──────────────────────────────────────────────────────
+
+group("generateSkillRules", () => {
+  test("commands get exact + args pair; skills get exact only", () => {
+    const dir = makeFixtureFrameworkDir({
+      commands: ["apes-build.md"],
+      skills: ["testing.md"],
+    });
+    const rules = generateSkillRules(path.join(dir, "commands"), path.join(dir, "skills"));
+    assert.deepStrictEqual(rules, [
+      "Skill(apes-build)",
+      "Skill(apes-build *)",
+      "Skill(testing)",
+    ]);
+  });
+
+  test("names are sorted alphabetically within each group", () => {
+    const dir = makeFixtureFrameworkDir({
+      commands: ["apes-fix.md", "apes-build.md"],
+      skills: ["testing.md", "backend.md"],
+    });
+    const rules = generateSkillRules(path.join(dir, "commands"), path.join(dir, "skills"));
+    assert.deepStrictEqual(rules, [
+      "Skill(apes-build)",
+      "Skill(apes-build *)",
+      "Skill(apes-fix)",
+      "Skill(apes-fix *)",
+      "Skill(backend)",
+      "Skill(testing)",
+    ]);
+  });
+
+  test("README.md is excluded regardless of case; non-md files ignored", () => {
+    const dir = makeFixtureFrameworkDir({
+      commands: ["apes-build.md", "notes.txt"],
+      skills: ["README.md", "readme.md", "testing.md", "helper.sh"],
+    });
+    const rules = generateSkillRules(path.join(dir, "commands"), path.join(dir, "skills"));
+    assert.deepStrictEqual(rules, [
+      "Skill(apes-build)",
+      "Skill(apes-build *)",
+      "Skill(testing)",
+    ]);
+  });
+
+  test("missing directories yield an empty list (fallback signal)", () => {
+    const rules = generateSkillRules(
+      path.join(os.tmpdir(), "dos-apes-does-not-exist-a"),
+      path.join(os.tmpdir(), "dos-apes-does-not-exist-b")
+    );
+    assert.deepStrictEqual(rules, []);
+  });
+
+  test("generated rules from the real framework match the static list in settings.json (drift guard)", () => {
+    const generated = generateSkillRules(
+      path.join(REAL_FRAMEWORK_DIR, "commands"),
+      path.join(REAL_FRAMEWORK_DIR, "skills")
+    );
+    const shipped = JSON.parse(
+      fs.readFileSync(path.join(REAL_FRAMEWORK_DIR, "settings.json"), "utf8")
+    );
+    const staticSkillRules = shipped.permissions.allow.filter((r) => r.startsWith("Skill("));
+    assert.deepStrictEqual(
+      generated,
+      staticSkillRules,
+      "framework/settings.json static Skill rules have drifted from the command/skill inventory — regenerate the static fallback list"
+    );
+  });
+});
+
+// ─── customizeSettings ───────────────────────────────────────────────────────
+
+group("customizeSettings", () => {
+  test("replaces static Skill rules with generated ones, preserving non-Skill rules and order", () => {
+    const dir = makeFixtureFrameworkDir({
+      commands: ["apes-build.md"],
+      skills: ["testing.md"],
+      settings: baseFixtureSettings(),
+    });
+    const out = JSON.parse(customizeSettings({}, dir));
+    assert.deepStrictEqual(out.permissions.allow, [
+      "Skill(apes-build)",
+      "Skill(apes-build *)",
+      "Skill(testing)",
+      "Bash(git status *)",
+      "Bash(npm test *)",
+    ]);
+    // ask/deny untouched
+    assert.deepStrictEqual(out.permissions.ask, ["Bash(git push *)"]);
+    assert.deepStrictEqual(out.permissions.deny, ["Bash(npm publish)"]);
+  });
+
+  test("a newly added skill file auto-enrolls without touching the static list", () => {
+    const dir = makeFixtureFrameworkDir({
+      commands: ["apes-build.md", "apes-new-thing.md"],
+      skills: ["testing.md"],
+      settings: baseFixtureSettings(),
+    });
+    const out = JSON.parse(customizeSettings({}, dir));
+    assert.ok(out.permissions.allow.includes("Skill(apes-new-thing)"));
+    assert.ok(out.permissions.allow.includes("Skill(apes-new-thing *)"));
+  });
+
+  test("keeps the static Skill rules when enumeration comes up empty (fallback)", () => {
+    const dir = makeFixtureFrameworkDir({
+      commands: [],
+      skills: [],
+      settings: baseFixtureSettings(),
+    });
+    const out = JSON.parse(customizeSettings({}, dir));
+    assert.deepStrictEqual(out.permissions.allow, baseFixtureSettings().permissions.allow);
+  });
+
+  test("stamps DOS_APES_VERSION from package.json", () => {
+    const dir = makeFixtureFrameworkDir({
+      commands: ["apes-build.md"],
+      skills: [],
+      settings: baseFixtureSettings(),
+    });
+    const out = JSON.parse(customizeSettings({}, dir));
+    assert.strictEqual(out.env.DOS_APES_VERSION, PKG_VERSION);
+    assert.strictEqual(out.env.DOS_APES_FRAMEWORK, "true");
+  });
+
+  test("strips v1 artifacts (contextFiles, _comment)", () => {
+    const settings = baseFixtureSettings();
+    settings.contextFiles = ["OLD.md"];
+    settings._comment = "v1 leftover";
+    const dir = makeFixtureFrameworkDir({
+      commands: ["apes-build.md"],
+      skills: [],
+      settings,
+    });
+    const out = JSON.parse(customizeSettings({}, dir));
+    assert.strictEqual(out.contextFiles, undefined);
+    assert.strictEqual(out._comment, undefined);
+  });
+
+  test("appends cloud CLI rule for the chosen deploy target after generation", () => {
+    const dir = makeFixtureFrameworkDir({
+      commands: ["apes-build.md"],
+      skills: [],
+      settings: baseFixtureSettings(),
+    });
+    const out = JSON.parse(customizeSettings({ deployTarget: "gcp" }, dir));
+    assert.ok(out.permissions.allow.includes("Bash(gcloud *)"));
+    assert.ok(out.permissions.allow.includes("Skill(apes-build)"));
+  });
+
+  test("missing settings.json template falls back to defaults", () => {
+    const dir = makeFixtureFrameworkDir({ commands: ["apes-build.md"], skills: [] });
+    const out = JSON.parse(customizeSettings({}, dir));
+    assert.deepStrictEqual(out, { permissions: {}, hooks: {} });
+  });
+
+  test("real framework settings customize cleanly and keep the full allow policy", () => {
+    const out = JSON.parse(customizeSettings({}, REAL_FRAMEWORK_DIR));
+    // Skill rules present and generated
+    assert.ok(out.permissions.allow.includes("Skill(apes-build)"));
+    assert.ok(out.permissions.allow.includes("Skill(testing)"));
+    // Non-Skill policy intact
+    assert.ok(out.permissions.allow.includes("Bash(git checkout -b *)"));
+    assert.ok(out.permissions.deny.includes("Bash(npm publish)"));
+    assert.ok(out.permissions.ask.includes("Bash(git push *)"));
+    // Version stamped from package.json
+    assert.strictEqual(out.env.DOS_APES_VERSION, PKG_VERSION);
+  });
+});
+
+// ─── Summary ─────────────────────────────────────────────────────────────────
+
+cleanupFixtures();
+
+process.stdout.write(`\n${passed} passed, ${failed} failed\n`);
+if (failed > 0) {
+  for (const { name, err } of failures) {
+    process.stdout.write(`\nFAIL: ${name}\n${err && err.stack ? err.stack : err}\n`);
+  }
+  process.exit(1);
+}
