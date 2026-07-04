@@ -1,6 +1,6 @@
 ---
 description: Automated accessibility audit
-allowed-tools: Bash, Read
+allowed-tools: Read, Grep, Bash(npx playwright:*)
 ---
 
 # Accessibility Audit

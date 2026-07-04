@@ -40,6 +40,24 @@ shipped policy. Found during M-0002 Task 2 body re-verification.
 
 ## Non-M-0003 process notes (extract at closeout)
 
+### 2026-07-04 — Task 6 design input: `Read, Grep, Glob` floor convention
+
+Guard convention ruled at the M-0002 Task 4 gate: `Read, Grep, Glob` is the
+permitted floor for prose-only files — the drift guard never flags those three
+as declarations-without-usage. Everything above the floor requires body
+evidence. (Basis: apes-help/apes-metrics reversal — pre-evidence shared-row
+ruling superseded by body evidence.)
+
+### 2026-07-04 — Candidate follow-up mission: L5 outcomes never logged
+
+`apes-security-scan.md` runs the L5 pipeline (npm audit, check-secrets,
+semgrep) but never invokes `log-verification.js` — security-scan outcomes
+leave no trace in any mission's `verification.jsonl`, so an evidence packet
+can't prove L5 ran via this command (only `/apes-verify`'s L5 step logs...
+actually apes-verify logs only L8 explicitly; the check-scripts self-log).
+Candidate mission: make L5 (and any level executed by a command rather than
+a self-logging check-script) append its outcome. Found during M-0002 Task 4.
+
 ### 2026-07-04 — Task 6 requirement: indented-fence regression fixture
 
 The M-0002 Task 0 scoping-table gaps were caused by a fence parser anchored at column 0

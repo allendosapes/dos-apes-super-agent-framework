@@ -1,6 +1,6 @@
 ---
 description: Full security audit pipeline
-allowed-tools: Bash, Read
+allowed-tools: Read, Grep, Bash(bash scripts/check-:*), Bash(npm audit:*), Bash(npx semgrep:*)
 ---
 
 # Security Scan

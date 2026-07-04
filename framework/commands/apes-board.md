@@ -1,6 +1,6 @@
 ---
 description: Kanban-style board view of all tasks and project progress
-allowed-tools: Read, Bash, Grep, Glob
+allowed-tools: Read, Grep, Glob, TaskList, Bash(git branch --show-current)
 ---
 
 # Board

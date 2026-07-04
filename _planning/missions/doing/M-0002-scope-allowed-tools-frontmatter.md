@@ -126,3 +126,34 @@ usage failure against the Task 6 guard, same class as apes-map's cat/wc/tail;
 M-0003 restores Edit in the same commit that migrates the flips. apes-mission's
 Edit/Write drop justified by the body's own rule: "All filesystem changes pass
 through the CLI, which calls `MissionTracker`" (apes-mission.md Notes).
+
+### 2026-07-04 16:52
+
+Task 4 (verification commands + read-only quartet), all nine bodies verified in full.
+Rule-5 trims vs §2.4 group rows: verify loses `npx semgrep` (never invoked there);
+security-scan loses playwright and log-verification (never invoked; notably the scan
+does not log its own outcomes — possible future gap, not this mission);
+test-e2e/-visual/-a11y keep only playwright. Evidence-based extensions (FLAG A/H
+logic): verify gains the npm-run quartet it directly runs as L0–L2 plus
+`codex-review.js` (:255, the L8 single-shot) and TaskUpdate (:312 gate update);
+status gains TaskList (:12,:25), the npm-run quartet (:60–63), and keeps
+`mission-cli list` (genuinely invoked at :80, unlike board's aspirational grant).
+test-e2e keeps Write (test generation is its core function) and drops the stale
+`Task` tool name (v1 artifact, same class M-0001 purged from settings). metrics
+goes rule-5-lean (`Read, Grep, Glob`) — its entire executable body is
+cat/ls/`node -e` pipelines, M-0003 scope; the shared-row mission-cli grant would
+be aspirational. help: earlier gate ruling said "shared board-style row, no
+minimal form," but every shared-row grant would be a declaration-without-usage
+(help executes nothing) — the same class the later codex-review-Edit ruling
+rejected. Applied lean pending explicit resolution at the Task 4 gate.
+
+### 2026-07-04 17:49
+
+Task 4 gate: all trims and extensions approved as presented. **Explicit reversal:**
+the Task 0 ruling "apes-help gets the shared board-style row, no minimal form" is
+superseded — it was a pre-evidence ruling, and body evidence governs (help executes
+nothing; every shared-row grant would fail the Task 6 declarations-without-usage
+guard, same class as the codex-review Edit correction). apes-help and apes-metrics
+land at the lean `Read, Grep, Glob` floor. New Task 6 guard convention defined at
+this gate and ledgered: `Read, Grep, Glob` is the permitted floor for prose-only
+files — never flagged as unused; everything above the floor requires body evidence.

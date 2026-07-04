@@ -1,6 +1,6 @@
 ---
 description: Run the full verification stack
-allowed-tools: Bash, Read, Grep
+allowed-tools: Read, Grep, TaskUpdate, Bash(bash scripts/check-:*), Bash(npm run build:*), Bash(npm run lint:*), Bash(npm run typecheck:*), Bash(npm test:*), Bash(npm audit:*), Bash(npx playwright:*), Bash(node scripts/codex-review.js:*), Bash(node scripts/log-verification.js:*)
 ---
 
 # Verify
