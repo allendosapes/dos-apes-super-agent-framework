@@ -577,7 +577,7 @@ Slash commands must be in `.claude/commands/`. If you installed globally, they'r
 
 ### Hooks not firing
 
-Check that `scripts/` directory exists in your project root and scripts are executable. On Windows, hooks route through `scripts/run-hook.cmd` which locates Git Bash automatically. If Git Bash isn't installed, hooks degrade gracefully (skip with a warning rather than failing the session).
+Check that `scripts/` directory exists in your project root and scripts are executable. Claude Code runs hook commands through Git Bash natively on Windows; if your Git Bash is in a nonstandard location, set `CLAUDE_CODE_GIT_BASH_PATH` in your settings `env`. Without Git Bash installed, Claude Code uses the PowerShell tool and the framework's bash hooks (including the permission guard) cannot run — install [Git for Windows](https://git-scm.com/download/win). If your `.claude/settings.json` hook commands reference the retired `scripts\run-hook.cmd` wrapper (installed by earlier Windows versions), re-run the installer — it migrates them back to the plain `bash scripts/*.sh` form; the wrapper silently broke all hooks under native Git Bash execution.
 
 ### Playwright MCP not connecting
 

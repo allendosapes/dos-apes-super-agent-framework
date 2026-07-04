@@ -315,15 +315,20 @@ _Managed by [Dos Apes Super Agent Framework v${VERSION}](https://github.com/alle
   return claudeMd;
 }
 
-// ─── Windows Hook Patching ──────────────────────────────────────────────────
+// ─── Windows Hook Un-patching ───────────────────────────────────────────────
 
 /**
- * On Windows, the bare `bash` command often resolves to WSL's bash, which may
- * be broken or misconfigured. This rewrites hook commands to use
- * `scripts/run-hook.cmd` — a wrapper that finds Git Bash explicitly.
+ * Reverse migration for installs patched by the retired patchHooksForWindows.
+ * Claude Code executes hook commands through Git Bash natively on Windows
+ * (docs /en/hooks: "sh -c on macOS and Linux, Git Bash on Windows"), so the
+ * old `scripts\run-hook.cmd …` rewrite is doubly broken there: bash eats the
+ * backslash (`scriptsrun-hook.cmd: command not found`) and the cmd wrapper
+ * targets an execution model that no longer exists. Restore the original
+ * `bash scripts/*.sh` / inline forms. Returns true if anything changed.
  */
-function patchHooksForWindows(settings) {
-  if (!settings.hooks) return;
+function unpatchWindowsHooks(settings) {
+  if (!settings.hooks) return false;
+  let changed = false;
 
   for (const hookGroups of Object.values(settings.hooks)) {
     if (!Array.isArray(hookGroups)) continue;
@@ -331,27 +336,64 @@ function patchHooksForWindows(settings) {
       if (!group.hooks || !Array.isArray(group.hooks)) continue;
       for (const hook of group.hooks) {
         if (hook.type !== "command" || typeof hook.command !== "string") continue;
-        if (hook.command.includes("run-hook.cmd")) continue;
 
-        const cmd = hook.command;
-        // Script-file invocation: bash scripts/foo.sh [args]
-        const scriptMatch = cmd.match(/^bash\s+(scripts\/[\w.-]+\.sh(?:\s+.*)?)$/);
+        // Inline form: scripts\run-hook.cmd -c "escaped command"
+        const inlineMatch = hook.command.match(/^scripts\\run-hook\.cmd\s+-c\s+"([\s\S]*)"$/);
+        if (inlineMatch) {
+          hook.command = inlineMatch[1].replace(/\\"/g, '"');
+          changed = true;
+          continue;
+        }
+        // Script form: scripts\run-hook.cmd scripts/foo.sh [args]
+        const scriptMatch = hook.command.match(/^scripts\\run-hook\.cmd\s+(scripts\/[\w.-]+\.sh(?:\s+.*)?)$/);
         if (scriptMatch) {
-          hook.command = `scripts\\run-hook.cmd ${scriptMatch[1]}`;
-        } else {
-          // Inline command: wrap with -c for Git Bash evaluation
-          const escaped = cmd.replace(/"/g, '\\"');
-          hook.command = `scripts\\run-hook.cmd -c "${escaped}"`;
+          hook.command = `bash ${scriptMatch[1]}`;
+          changed = true;
         }
       }
     }
   }
+  return changed;
 }
 
 // ─── Settings.json Customizer ───────────────────────────────────────────────
 
-function customizeSettings(config) {
-  const settingsPath = path.join(FRAMEWORK_DIR, "settings.json");
+/**
+ * Enumerate the shipped command and skill files and emit the Skill permission
+ * rules for them. Commands are user-invocable with arguments, so each gets an
+ * exact + args pair; domain skills are loaded by teammates without arguments,
+ * so each gets an exact rule only. Name globs like Skill(apes-*) are not
+ * supported by the permission syntax — enumeration is the only option.
+ *
+ * Returns [] when neither directory yields a name, so the caller can fall
+ * back to the static Skill rules shipped in settings.json.
+ */
+function generateSkillRules(commandsDir, skillsDir) {
+  const mdNames = (dir) => {
+    let entries;
+    try {
+      entries = fs.readdirSync(dir);
+    } catch (_) {
+      return [];
+    }
+    return entries
+      .filter((f) => f.endsWith(".md") && f.toLowerCase() !== "readme.md")
+      .map((f) => path.basename(f, ".md"))
+      .sort();
+  };
+
+  const rules = [];
+  for (const name of mdNames(commandsDir)) {
+    rules.push(`Skill(${name})`, `Skill(${name} *)`);
+  }
+  for (const name of mdNames(skillsDir)) {
+    rules.push(`Skill(${name})`);
+  }
+  return rules;
+}
+
+function customizeSettings(config, frameworkDir = FRAMEWORK_DIR) {
+  const settingsPath = path.join(frameworkDir, "settings.json");
 
   if (!fs.existsSync(settingsPath)) {
     printWarn("settings.json template not found — using defaults");
@@ -364,10 +406,31 @@ function customizeSettings(config) {
   delete settings.contextFiles;
   delete settings._comment;
 
-  // Windows: route hook commands through Git Bash wrapper
-  if (process.platform === "win32") {
-    patchHooksForWindows(settings);
+  // Regenerate Skill allow rules from the shipped command/skill inventory so
+  // new skills auto-enroll; the static list in settings.json is the fallback
+  // when enumeration comes up empty.
+  if (settings.permissions && Array.isArray(settings.permissions.allow)) {
+    const generated = generateSkillRules(
+      path.join(frameworkDir, "commands"),
+      path.join(frameworkDir, "skills")
+    );
+    if (generated.length > 0) {
+      const nonSkillRules = settings.permissions.allow.filter(
+        (rule) => typeof rule !== "string" || !rule.startsWith("Skill(")
+      );
+      settings.permissions.allow = [...generated, ...nonSkillRules];
+    } else {
+      printWarn("could not enumerate commands/skills — keeping static Skill rules");
+    }
   }
+
+  // Stamp the real package version so the shipped value can't drift
+  if (settings.env && typeof settings.env.DOS_APES_VERSION === "string") {
+    settings.env.DOS_APES_VERSION = VERSION;
+  }
+
+  // Hook commands ship in their original `bash scripts/*.sh` form on every
+  // platform — Claude Code runs them through Git Bash natively on Windows.
 
   // Add cloud CLI permissions based on deploy target
   if (config.deployTarget === "gcp") {
@@ -820,13 +883,12 @@ ${c.bold}Optional:${c.reset}
         }
       }
 
-      // Windows: patch hook commands to use Git Bash wrapper
-      if (process.platform === "win32") {
-        const hasUnpatchedBash = JSON.stringify(existingSettings.hooks || {}).includes('"bash ');
-        if (hasUnpatchedBash) {
-          patchHooksForWindows(existingSettings);
-          migrated = true;
-        }
+      // Un-break installs patched by the retired run-hook.cmd rewrite: Claude
+      // Code runs hooks through Git Bash natively on Windows, where the old
+      // cmd-wrapper form silently fails. Unconditional — the damage lives in
+      // the settings file, not the platform running the installer.
+      if (unpatchWindowsHooks(existingSettings)) {
+        migrated = true;
       }
 
       if (migrated) {
@@ -836,6 +898,16 @@ ${c.bold}Optional:${c.reset}
         printSkip("Settings", ".claude/settings.json already exists — preserved");
       }
     }
+  }
+
+  // ── 5b. Settings README ──
+  // Framework-owned documentation of the permission policy; always refreshed
+  // so the rationale tracks the installed framework version.
+  const settingsReadmeSrc = path.join(FRAMEWORK_DIR, "settings.README.md");
+  if (fs.existsSync(settingsReadmeSrc)) {
+    fs.copyFileSync(settingsReadmeSrc, path.join(claudeDir, "settings.README.md"));
+    printStep("Settings README", ".claude/settings.README.md (permission policy rationale)");
+    totalFiles++;
   }
 
   // ── 6. CLAUDE.md ──
@@ -1108,7 +1180,11 @@ ${c.green}╔══════════════════════�
 
 // ─── Run ────────────────────────────────────────────────────────────────────
 
-main().catch((err) => {
-  console.error(`\n${c.red}  Installation failed:${c.reset}`, err.message);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((err) => {
+    console.error(`\n${c.red}  Installation failed:${c.reset}`, err.message);
+    process.exit(1);
+  });
+}
+
+module.exports = { generateSkillRules, customizeSettings, unpatchWindowsHooks };
