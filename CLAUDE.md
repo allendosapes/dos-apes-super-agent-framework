@@ -91,6 +91,15 @@ Each slash command assembles an appropriate Agent Teams configuration. `/apes-bu
 - settings.json hooks reference scripts via relative paths from project root
 - Commands reference skills via relative paths from .claude/
 
+## Maintainer-Gated Workflow
+
+Work on this repo is gated by the maintainer at every step. When executing missions or multi-task work:
+
+- **Present diffs and stop.** After completing a task (or a gate within a mission), show the resulting diff and stop. Do not roll forward into the next task on your own.
+- **Commit only on explicit approval.** A diff being shown is not approval to commit. Wait for the maintainer to explicitly approve before running `git commit`.
+- **Handoff steps one at a time.** When walking the maintainer through manual steps (e.g. PR creation, merges, publishing), give one step, wait for confirmation it's done, then give the next — not a full list up front.
+- **`main` is PR-only.** Never commit directly to `main`. All changes land via a branch and pull request.
+
 ## What NOT to Do
 
 - Don't add npm dependencies to the CLI — it must remain zero-dep
