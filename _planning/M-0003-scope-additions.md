@@ -110,6 +110,27 @@ as declarations-without-usage. Everything above the floor requires body
 evidence. (Basis: apes-help/apes-metrics reversal — pre-evidence shared-row
 ruling superseded by body evidence.)
 
+### 2026-07-04 — Candidate bugfix mission: L8 enablement default inverted vs docs
+
+`codex-review.js` (`DEFAULT_CONFIG.enabled: true` :73; `readConfig()` returns
+enabled-defaults when the config file is **missing, unparseable, or
+non-object** :125-140; skip only on explicit `enabled === false` :657) and
+`codex-review-loop.js` (same pattern, :62/:568) both treat absent config as
+**enabled** — while apes-codex-review.md, cross-model-review.md, and
+apes-verify.md all document L8 as "opt-in, off by default," and apes-verify's
+bash gate implements true opt-in (`L8_ENABLED=0` unless the file exists and
+is `true`). Net: `/apes-verify` is opt-in; direct script/loop invocation is
+opt-out. Same inverted-default class as M-0001's root cause, plus a
+command-vs-script layer disagreement. Candidate fix: flip the script default
+to `enabled: false` (docs win), or rewrite the three doc sites (behavior
+wins) — decide once, apply to both scripts and the parse-failure fallback.
+Weight of evidence at the pre-L8 gate: the shipped template
+(`framework/templates/codex-review-config.json`) says `enabled: false` and
+the installer prints "(disabled by default)" (`bin/cli.js:1067`) — five
+surfaces say opt-in, only the two scripts' fallback says enabled. The
+inverted default bites exactly when the config is missing or corrupted.
+Found at the M-0002 pre-L8 gate.
+
 ### 2026-07-04 — Candidate follow-up mission: L5 outcomes never logged
 
 `apes-security-scan.md` runs the L5 pipeline (npm audit, check-secrets,

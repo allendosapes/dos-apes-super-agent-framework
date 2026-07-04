@@ -264,3 +264,18 @@ rider, codex-review Edit restoration rider. PR description drafted at
 `_planning/M-0002-pr-description.md` carrying the three required callouts. Tracker at
 32/37 checked; open items are M-0003-filing obligations (§6×2) and process-note
 candidates (§7×3) awaiting the closeout gate.
+
+### 2026-07-04 21:53
+
+Pre-L8 gate. **L8 run provenance (explicit, per gate ruling):** local
+`.dos-apes/codex-review-config.json` written BOM-free via node with
+`enabled: true, model: gpt-5.5` — the run is opt-in by explicit config, not by the
+scripts' default-enabled fallback. The file is deliberately **untracked**
+(gitignored at this gate): it is project-local user state, and a tracked
+`enabled: true` in the framework source repo risks becoming the shipped default —
+the inverted-default class from the opposite direction. Enablement inversion itself
+ledgered as a candidate bugfix mission (five surfaces say opt-in — three doc sites,
+the shipped template's `enabled: false`, the installer's "(disabled by default)"
+line — versus the two scripts' enabled fallback). Loop trigger next:
+`codex-review-loop.js --base main`; triage per cross-model-review.md, frontmatter-
+scope fixes in-loop, body-level highs ledgered and escalated.
