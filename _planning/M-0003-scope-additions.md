@@ -25,7 +25,51 @@ zero-prompt smoke at mission level and are M-0003 remediation scope.
 M-0003's acceptance criteria already name `apes-status.md:80`; fold
 `apes-mission.md:123` in when M-0003 files to doing. Additional site found in
 M-0002 Task 5: `cross-model-review.md:175-176` (`mission-cli show | node -e`
-pipeline) — same remediation class.
+pipeline) — same remediation class. Full site inventory at M-0002 closeout
+(M-0003 AC must absorb all): `apes-mission.md:123`, `apes-status.md:80`,
+`missions.md:298-299`, `apes-metrics.md:25`, `apes-codex-review.md:58,81`
+(draft AC's ":60-64" drifted — the two config-flip `node -e` blocks now sit
+at :58 and :81), `cross-model-review.md:175-176`, plus the scattered
+`… | node -e 'let s=""…'` JSON-extraction one-liners in apes-build/evidence/
+mission/verify pinned in the Task 6 guard under cls "node-e".
+
+### 2026-07-04 — Plain `git checkout` sites → `git switch` migration + candidate ask rule
+
+Handoff item, ledgered at M-0002 closeout. **Count discrepancy flagged, not
+reconciled:** the handoff said nine sites; closeout enumeration finds **11**:
+`apes-build.md:523,796,845,1022,1076,1227` (the :1227 form is `git checkout .`
+— a working-tree discard), `apes-build.md:1249`, `apes-feature.md:227`,
+`apes-fix.md:206`, `apes-refactor.md:180`, `skills/devops.md:233` (rollback
+via `$(git describe …)`). All prompt today (plain checkout deliberately
+unlisted in M-0001). M-0003 decides per site: migrate to `git switch` (+
+candidate ask/allow rule) or leave prompting; the discard forms (`checkout .`)
+should stay prompting or harden to ask.
+
+### 2026-07-04 — Env-prefix, trap, and chain-decomposition sites (M-0003 AC restatement)
+
+Already in M-0003's draft AC; restated here so the ledger is the single
+absorb-list at filing: env-prefix `COVERAGE_THRESHOLD=90 bash scripts/…`
+(`skills/testing.md:176` → argument form) plus the `STAGING_URL=… npx
+playwright` variant found in Task 6 (`skills/devops.md:243`); `trap '…' EXIT`
+(`apes-build.md:362`); chain decompositions with `git reset --hard` staying
+ask (`apes-build.md:895,1242`).
+
+### 2026-07-04 — Deferred read-only utility grants ride M-0003's rewrites (T3 ruling)
+
+Per the M-0002 Task 3 gate ruling: bare `cat`/`ls`/`echo`/`head`/`sed`/
+`grep`-class utility invocations across command bodies stay un-granted;
+M-0003 owns migration-caused frontmatter deltas and adds any needed grants
+in the same commits as the block decompositions that make them meaningful.
+The full accepted surface is pinned in `allowed-tools-guard.test.js`
+(`KNOWN_PROMPTING`, cls "util") — M-0003 shrinks pins and grants together.
+
+### 2026-07-04 — apes-codex-review `Edit` restoration rides the config-flip migration
+
+Per the M-0002 Task 3 gate ruling: `Edit` was dropped from apes-codex-review
+as aspirational (config flips are inline `node -e` today). When M-0003
+migrates the `--enable`/`--disable` flips (now `apes-codex-review.md:58,81`)
+to Edit-based or script-based form, the same commit restores the
+corresponding grant and updates the guard's pins.
 
 ### 2026-07-04 — **FUNCTIONAL BREAK / must-fix M-0003 AC:** command bodies instruct a denied operation (`git push origin --delete`)
 

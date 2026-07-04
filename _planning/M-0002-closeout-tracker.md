@@ -4,16 +4,18 @@ Running list so Task 7 assembles the PR description, evidence packet, and M-0003
 from a record, not from memory. Update at every gate. Suggested repo location:
 `_planning/M-0002-closeout-tracker.md` (committable on the mission branch).
 
-Status: current through **Task 5 approved** (Task 6 design gate pending).
+Status: current through **Task 7 closeout** (Task 6 committed at 577dda5; PR
+description drafted at `_planning/M-0002-pr-description.md`; awaiting the
+closeout gate — mission move to review/ + push + PR).
 
 ---
 
 ## 1. PR-description callouts (explicit, required)
 
-- [ ] **agent-browser policy relaxation** (Task 5, FLAG J) — `Bash(agent-browser:*)` granted on
+- [x] **agent-browser policy relaxation** (Task 5, FLAG J) — `Bash(agent-browser:*)` granted on
   `browser-verification.md` only. Deliberate, skill-scoped relaxation of M-0001's
   "printed suggestion" stance; baseline unchanged. Workpad note exists. **Requires L8 attention.**
-- [ ] **Deny-level functional break, deferred to M-0003** (Task 2, Q4) — `git push origin
+- [x] **Deny-level functional break, deferred to M-0003** (Task 2, Q4) — `git push origin
   --delete` collides with M-0001's remote-branch-deletion deny at one **executable site**
   (`apes-feature.md:249`, fenced cleanup step — carries the guard's mechanical deny pin)
   plus one **prose policy bullet** (`apes-build.md:415`, the autonomy-policy carve-out —
@@ -21,7 +23,7 @@ Status: current through **Task 5 approved** (Task 6 design gate pending).
   Task 6 correction gate; 6920f34 predated the distinction.] Those body steps hard-block until M-0003 rewrites them.
   Independently re-confirms the 3.6.0 ship-together constraint (M-0001+M-0002 without
   M-0003 = broken cleanup path, not just noisy). Must-fix AC queued for M-0003.
-- [ ] **Zero-prompt smoke exception** (AC 4 as amended) — `/apes-mission list` and `/apes-status`
+- [x] **Zero-prompt smoke exception** (AC 4 as amended) — `/apes-mission list` and `/apes-status`
   prompt at the two known `node -e` pipelines (`apes-mission.md:123`, `apes-status.md:80`);
   M-0003 remediation scope. Unqualified zero-prompt holds at 3.6.0 release level only.
 
@@ -64,38 +66,38 @@ Pattern throughout: pre-evidence ruling or §2.4 row, overturned by full body re
 
 ## 4. Task 6 design inputs (settle at design gate, before code)
 
-- [ ] "Covering declaration" = frontmatter grant ∪ shipped `settings.json` allow-list.
-- [ ] Ask-level body sites = covered-by-policy, never flagged (orchestration's `git tag`
+- [x] "Covering declaration" = frontmatter grant ∪ shipped `settings.json` allow-list.
+- [x] Ask-level body sites = covered-by-policy, never flagged (orchestration's `git tag`
   examples prompt by design).
-- [ ] Deny-level sites = expected-failure whitelist entries citing ledger lines
+- [x] Deny-level sites = expected-failure whitelist entries citing ledger lines
   (the two `push --delete` sites), removed by M-0003.
-- [ ] `Read, Grep, Glob` floor never flagged as unused (prose-only files' minimal form).
-- [ ] Extraction handles all three formatting classes; **pinned fixtures:**
+- [x] `Read, Grep, Glob` floor never flagged as unused (prose-only files' minimal form).
+- [x] Extraction handles all three formatting classes; **pinned fixtures:**
   (1) indented fence inside numbered list (Task 2's column-0 parser bug),
   (2) unfenced indentation-style code (browser-verification, found Task 5).
-- [ ] Test ships in repo test layout, excluded from tarball per M-0001 `.npmignore` rules;
+- [x] Test ships in repo test layout, excluded from tarball per M-0001 `.npmignore` rules;
   runs under `npm test` (rides L0, constitutes L1).
 
 ## 5. Ledger cross-check (all must exist in `_planning/M-0003-scope-additions.md` at closeout)
 
 M-0003 scope:
-- [ ] FLAG C — `.claude/scripts/check-*.sh` fallback: live-or-dead determination.
-- [ ] `node -e` pipelines: `apes-mission.md:123`, `apes-status.md:80`, `missions.md:298-299`,
+- [x] FLAG C — `.claude/scripts/check-*.sh` fallback: live-or-dead determination.
+- [x] `node -e` pipelines: `apes-mission.md:123`, `apes-status.md:80`, `missions.md:298-299`,
   `apes-metrics.md:25`, `apes-codex-review.md:60-64`, **new: `cross-model-review.md:175`** (Task 5).
-- [ ] `push origin --delete` deny conflict — marked functional break, must-fix AC.
-- [ ] Nine `git checkout` sites → `git switch` migration + candidate ask rule (from handoff).
-- [ ] Env-prefix (`skills/testing.md:176`), `trap` (`apes-build.md:362`),
+- [x] `push origin --delete` deny conflict — marked functional break, must-fix AC.
+- [x] Nine `git checkout` sites → `git switch` migration + candidate ask rule (from handoff).
+- [x] Env-prefix (`skills/testing.md:176`), `trap` (`apes-build.md:362`),
   chain decompositions (`apes-build.md:895,1242` — reset stays ask).
-- [ ] Read-only utility grants deferred with their block decompositions (T3 ruling):
+- [x] Read-only utility grants deferred with their block decompositions (T3 ruling):
   M-0003 adds grants alongside rewrites it makes meaningful.
-- [ ] apes-codex-review Edit restoration rides the config-flip migration commit.
+- [x] apes-codex-review Edit restoration rides the config-flip migration commit.
 
 Non-M-0003 section (extract at closeout):
-- [ ] Mission-ID-reuse process note → CLAUDE.md convention line and/or MissionTracker guard.
-- [ ] L5 evidence gap — security-scan never logs outcomes to the verification log
+- [x] Mission-ID-reuse process note → CLAUDE.md convention line and/or MissionTracker guard.
+- [x] L5 evidence gap — security-scan never logs outcomes to the verification log
   (candidate follow-up mission).
-- [ ] Column-0 fence-parser bug — recorded as Task 6 fixture requirement (see §4).
-- [ ] R/Grep/Glob floor convention — Task 6 design input (see §4).
+- [x] Column-0 fence-parser bug — recorded as Task 6 fixture requirement (see §4).
+- [x] R/Grep/Glob floor convention — Task 6 design input (see §4).
 
 ## 6. M-0003 handoff obligations (Task 7 output)
 
@@ -103,7 +105,7 @@ Non-M-0003 section (extract at closeout):
   `apes-mission.md:123` (its draft AC lists only `apes-status.md:80`).
 - [ ] M-0003 playbook drafted **after** ledger finalization (two confirmed AC deltas already;
   don't draft against a moving target).
-- [ ] Note for M-0004: its fingerprint table keys off M-0001's final policy **plus** M-0002's
+- [x] Note for M-0004 (carried in PR description handoff section): its fingerprint table keys off M-0001's final policy **plus** M-0002's
   frontmatter state — confirm whether the 33 scoped files affect its migration scope.
 
 ## 7. Process notes (for CLAUDE.md / MEMORY.md candidates)

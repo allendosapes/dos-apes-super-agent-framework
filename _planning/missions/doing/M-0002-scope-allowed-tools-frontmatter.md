@@ -247,3 +247,20 @@ migration only if the deny-audit lands in 3.6.0. (The 18:35 entry's "M-0003/M-00
 routing stands as written — workpad is append-only history; this entry supersedes it.)
 Body-side fixes remain M-0003 sweep candidates. Correction-gate details are in the
 19:50 entry. Task 6 commit proceeds; Task 7 closeout next, tracker as checklist.
+
+### 2026-07-04 20:37
+
+Task 7 closeout. **Verification record (required_levels: [L0, L1], evidence here per
+the log-verification dogfooding caveat):** L0 = `npm test` green post-577dda5 — parser
+31, tracker 51, codex suites 48, forbidden-commands guard 54, allowed-tools guard 108,
+CLI 24 (incl. the new fixtures-don't-ship packaging assertion). L1 = the allowed-tools
+guard itself: 33 files, three layers, pins 1 deny / 77 prompt / 2 prose / 2 task-tool,
+zero stale. Ledger finalized as M-0003's absorb-list — closeout additions: full
+`node -e` site inventory (codex-review sites re-anchored to :58,:81 — the draft AC's
+":60-64" had drifted), plain-checkout→switch migration (**11 sites enumerated vs the
+handoff's nine — discrepancy flagged, not reconciled**; includes the `git checkout .`
+discard at apes-build:1227), env-prefix/trap/chain restatement, deferred-utility-grants
+rider, codex-review Edit restoration rider. PR description drafted at
+`_planning/M-0002-pr-description.md` carrying the three required callouts. Tracker at
+32/37 checked; open items are M-0003-filing obligations (§6×2) and process-note
+candidates (§7×3) awaiting the closeout gate.
