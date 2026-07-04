@@ -1,6 +1,6 @@
 ---
 description: Codebase garbage collection — find and fix inconsistencies, stale docs, dead code, architectural drift
-allowed-tools: Read, Edit, Write, Bash, Grep, Glob
+allowed-tools: Read, Edit, Write, Grep, Glob, TaskList
 ---
 
 # Garbage Collection

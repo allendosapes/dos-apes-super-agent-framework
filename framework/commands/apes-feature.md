@@ -1,6 +1,6 @@
 ---
 description: Add a new feature to existing codebase
-allowed-tools: Read, Edit, Write, Bash, Grep, Glob
+allowed-tools: Read, Edit, Write, Grep, Glob, TaskCreate, Bash(git checkout -b:*), Bash(git merge:*), Bash(npm run build:*), Bash(npm run lint:*), Bash(npm run typecheck:*), Bash(npm test:*)
 ---
 
 # Add Feature: $ARGUMENTS

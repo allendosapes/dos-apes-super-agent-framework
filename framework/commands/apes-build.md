@@ -1,6 +1,6 @@
 ---
 description: Full autonomous build from PRD to shipped product
-allowed-tools: Read, Edit, Write, Bash, Grep, Glob
+allowed-tools: Read, Edit, Write, Grep, Glob, TaskCreate, TaskUpdate, TaskList, Bash(git checkout -b:*), Bash(git merge:*), Bash(npm run build:*), Bash(npm run lint:*), Bash(npm run typecheck:*), Bash(npm test:*)
 ---
 
 # Build Product

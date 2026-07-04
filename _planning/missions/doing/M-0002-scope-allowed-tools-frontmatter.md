@@ -72,3 +72,32 @@ mission-cli grant); keeping them would fail the accepted Task 6 drift-guard's
 declarations-without-usage check. Final apes-map grants: `find`, `ls`, `head` + Read,
 Grep, Glob. Consequence for Tasks 2–5: the table's "body invokes" column is a
 hypothesis to re-verify per file, not ground truth.
+
+### 2026-07-04 16:22
+
+Task 2 re-verification found the Task 0 extraction bug: fenced blocks indented inside
+numbered lists were skipped (fence regex anchored at column 0), so apes-feature's and
+apes-refactor's git/npm workflows were missing from the table. All five build-family
+bodies re-read in full. Corrections vs the table: apes-build's `npm run dev` is
+template content (generated CLAUDE.md block at :687), not an invocation — not granted;
+apes-fix directly invokes only `npm test` (build/typecheck/lint appear in a GATE task
+description); apes-refactor invokes `npm run test:coverage` (:30), the one grant that
+truly exceeds the M-0001 baseline. New body-vs-policy conflict found and ledgered:
+`git push origin --delete` at apes-feature.md:249 / apes-build.md:415 hits an M-0001
+deny rule. Task-tools usage found across all five bodies (TaskCreate/TaskUpdate/
+TaskList) — held back from frontmatter pending FLAG-H-style ruling.
+
+### 2026-07-04 16:25
+
+Task 2 gate decisions applied. Q1: Task tools added per FLAG H — build gets
+TaskCreate/TaskUpdate/TaskList; feature/fix/refactor get TaskCreate; gc gets TaskList
+(line 45 "via TaskList" judged an invocation: the sweep's own executor calls it, unlike
+the architecture.md hook-executed check-structure reference). Q2: fix stays lean
+(`npm test` only). Q3: `Bash(npm run lint:*)` prefix-covers `lint:fix` — accepted as
+deliberate overmatch under M-0001's documented overmatch policy (backstops must not
+undermatch; here the prefix stays inside the lint-script family). Q4: deny-conflict
+ledger entry upgraded to functional break + must-fix M-0003 AC. Root cause of the
+Task 0 table gaps (column-0 fence parser, see 16:22 entry) is now a required
+regression fixture for Task 6's extraction heuristic, ledgered in the non-M-0003
+section. Timestamp note: the 16:22 entry was originally mis-stamped 16:29 (written
+without checking the clock); corrected for monotonic order.

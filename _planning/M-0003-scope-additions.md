@@ -25,7 +25,28 @@ zero-prompt smoke at mission level and are M-0003 remediation scope.
 M-0003's acceptance criteria already name `apes-status.md:80`; fold
 `apes-mission.md:123` in when M-0003 files to doing.
 
+### 2026-07-04 — **FUNCTIONAL BREAK / must-fix M-0003 AC:** command bodies instruct a denied operation (`git push origin --delete`)
+
+`apes-feature.md:249` runs `git push origin --delete feature/[name]` as routine branch
+cleanup, and `apes-build.md:415` carves out an exception for it ("except cleaning up
+merged feature branches") — both conflict with M-0001's deny rule
+`Bash(git push origin --delete *)` (remote branch deletion is human-only). Deny-level
+means these sites **hard-block, not prompt** — the shipped `/apes-feature` cleanup step
+fails outright, and the guard hook backstops any respelling. The deny stands. This is a
+**must-fix acceptance criterion for M-0003**: rewrite the cleanup steps to local-delete
+only (or a human-handoff step). Re-confirms the 3.6.0 ship-together constraint: the
+release-level zero-friction claim cannot hold while shipped bodies collide with the
+shipped policy. Found during M-0002 Task 2 body re-verification.
+
 ## Non-M-0003 process notes (extract at closeout)
+
+### 2026-07-04 — Task 6 requirement: indented-fence regression fixture
+
+The M-0002 Task 0 scoping-table gaps were caused by a fence parser anchored at column 0
+— fenced code blocks indented inside numbered lists (e.g. apes-feature.md's git
+workflow steps) were silently skipped. Task 6's drift-guard extraction heuristic MUST
+parse indented fences, and its test fixtures MUST include an indented-fence case so the
+bug class cannot recur.
 
 ### 2026-07-04 — Process: mission IDs must not be reused
 
