@@ -1,9 +1,9 @@
 ---
-id: M-XXXY  # renumber on filing
+id: M-0002
 title: Scope allowed-tools frontmatter across all commands and skills
 priority: 1
 labels: [security, dx, skills]
-depends_on: [M-XXXX]  # least-privilege permissions policy
+depends_on: [M-0001]  # least-privilege permissions policy
 verification:
   required_levels: [L0, L1]
 ---
@@ -28,7 +28,7 @@ changes only frontmatter). Directory-layout migration to `SKILL.md` form (P2 mis
 
 - [ ] No command or skill declares bare `Bash` in `allowed-tools`.
 - [ ] Each frontmatter grants only tools/scopes exceeding the global baseline shipped by
-      M-XXXX, per the split table in analysis report §2.4:
+      M-0001, per the split table in analysis report §2.4:
       build/feature/fix/refactor get branch-create + merge + npm run/test (no push, no tags);
       mission/evidence get their named `node scripts/*.js` entry points + `git commit`;
       codex-review gets the three codex script entry points only;
