@@ -57,3 +57,7 @@ test-cli.ps1
 
 # npm pack artifacts
 *.tgz
+
+# codex L8 run artifacts (reviews, feedback packets, result.json)
+.dos-apes/codex-reviews/
+.dos-apes/codex-capabilities.json

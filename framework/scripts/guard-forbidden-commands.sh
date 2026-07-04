@@ -52,8 +52,12 @@ B_PRE='(^|[;&|[:space:]("'"'"'`])'
 B_POST='([[:space:]]|$|[;&|)"'"'"'])'
 
 # ── npm registry-mutating lifecycle commands ────────────────────────────────
-# Flags may sit between `npm` and the verb (npm --force unpublish).
-if printf '%s' "$NORM" | grep -Eq "${B_PRE}npm([[:space:]]+-[^[:space:]]+)*[[:space:]]+(publish|version|dist-tag|unpublish|deprecate)${B_POST}"; then
+# Flags may sit between `npm` and the verb, either as single tokens
+# (npm --force unpublish, npm --registry=X publish) or as flag/value pairs
+# (npm --registry https://X publish, npm -w packages/foo publish). Each
+# pre-verb group must START with a `-` flag, so subcommands never match:
+# `npm run publish` / `npm run version` stay user scripts, not registry ops.
+if printf '%s' "$NORM" | grep -Eq "${B_PRE}npm([[:space:]]+-[^[:space:]]+([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+(publish|version|dist-tag|unpublish|deprecate)${B_POST}"; then
   block "npm publish/version/dist-tag/unpublish/deprecate mutates the npm registry"
 fi
 

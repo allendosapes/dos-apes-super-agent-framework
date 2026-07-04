@@ -75,6 +75,16 @@ group("npm registry mutation — blocked", () => {
   test("npm unpublish", () => assertBlocked("npm unpublish pkg@1.0.0 --force"));
   test("npm deprecate", () => assertBlocked('npm deprecate pkg@1.0.0 "bad release"'));
   test("flags between npm and verb", () => assertBlocked("npm --registry=https://registry.npmjs.org publish"));
+  // L8 finding (iteration 1, high/security): flags whose VALUE is a separate
+  // token used to slip past the pre-verb matcher — and prefix deny rules
+  // cannot express "flags then verb" at all, so the hook is the only layer
+  // that can catch these spellings.
+  test("separated-value flag: npm --registry <url> publish", () =>
+    assertBlocked("npm --registry https://registry.npmjs.org publish"));
+  test("separated-value flag: npm -w <pkg> publish", () =>
+    assertBlocked("npm -w packages/foo publish"));
+  test("multiple flag/value pairs before the verb", () =>
+    assertBlocked("npm --registry https://registry.npmjs.org --workspace packages/foo version patch"));
   test("compound chain: git commit -m x && npm publish", () =>
     assertBlocked("git commit -m x && npm publish"));
   test("compound chain with semicolon", () => assertBlocked("npm test; npm publish"));
@@ -98,6 +108,10 @@ group("npm — allowed", () => {
   test("npm run version (user script)", () => assertAllowed("npm run version"));
   test("npm run publish-docs (verb prefix in script name)", () =>
     assertAllowed("npm run publish-docs"));
+  test("npm run publish (subcommand, not a flag — user script)", () =>
+    assertAllowed("npm run publish"));
+  test("flag/value pair before a benign subcommand", () =>
+    assertAllowed("npm --loglevel notice test"));
   test("npm pack --dry-run", () => assertAllowed("npm pack --dry-run"));
 });
 
