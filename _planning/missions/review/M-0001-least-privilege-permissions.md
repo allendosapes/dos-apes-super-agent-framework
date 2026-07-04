@@ -590,3 +590,57 @@ pattern-based rather than one more name:
   cleanup; guard-integrity mission (PowerShell-tool gap + exit-127 fail-open);
   L8-infra dynamic diff fence; bare-form ask entries (L8 medium above);
   P3 dogfooding (mission-aware L8 on this repo's `_planning/` layout).
+
+### Task 8 (2026-07-04, wrap-up — mission complete)
+
+**Change summary.** The shipped permission policy is inverted no more: the v1-era
+"comprehensive pre-approved permissions" allowlist (commit `5fb19a1`) is replaced by a
+least-privilege deny→ask→allow policy in which registry mutation and force pushes are
+human-only (deny + deterministic hook backstop), consequential-but-legitimate operations
+prompt (ask), and the allow list covers exactly the framework's own machinery — Skill
+rules generated at install time from the shipped inventory, scoped script entry points,
+enumerated quality-loop `npm run` names, and read-only utilities. Along the way the
+smoke test exposed and fixed a dormant defect: `patchHooksForWindows` targeted a dead
+execution model and had silently disabled every hook in Windows installs.
+
+**Files touched** (branch diff vs main, 20 files, +1831/−201):
+- Policy: `framework/settings.json` (permissions rewrite + guard hook registration),
+  `framework/settings.README.md` (new, installed beside the policy)
+- Installer: `bin/cli.js` (Skill-rule generation, version stamping, settings-README
+  copy, patchHooksForWindows → unpatchWindowsHooks reverse migration),
+  `bin/cli.test.js` (new, 23 tests incl. packaging drift-guard)
+- Guard: `framework/scripts/guard-forbidden-commands.sh` (new) + `.test.js` (54 cases)
+- Retired: `framework/scripts/run-hook.cmd` (+ its test suite)
+- Packaging: `package.json` (files whitelist, test chain), three `*.test.js`
+  `.npmignore` files, `.gitignore` (L8 run artifacts)
+- L8 hardening: `framework/templates/codex-review-prompt.md` (fence)
+- Dogfooding scaffolding (repo-only, unshipped): `scripts/codex-{review,check}.js`,
+  `scripts/log-verification.js`
+- Docs: `README.md` (hooks troubleshooting)
+- Mission records: this file (todo → doing + workpad), `_planning/M-0001-smoke-checklist.md`
+
+**Verification evidence locations.**
+- L0–L2: `npm test` — 207 tests across 7 suites (lib 31+51, codex 14+30+4, guard 54,
+  cli 23); L1 static checks logged in the Task 5 workpad entry.
+- Fresh-install smoke: `_planning/M-0001-smoke-checklist.md` (rev2 — automated 19/19
+  via the real hook chain + manual passed in full); reproducible scripts in session
+  scratchpad `m0001-smoke-v2/verify-install.js` (and v1 in `m0001-smoke/`).
+- L8: `.dos-apes/codex-reviews/` (local, gitignored) holds the review JSONs; terminal
+  payloads quoted in the Task 7 workpad entry; frontmatter codex block is the durable
+  record (last_verdict=accepted, unresolved_findings=0, 2026-07-04T02:37:59Z).
+
+**L8 verdict**: `accepted` (verdict `accept`, confidence 0.82, 0 loop-eligible
+findings) on round 3. Round 1: 1 high — separated-value npm flags bypassed the guard
+matcher (fixed, `c5abffa`). Round 2: 2 highs — blanket `Bash(npm run *)` script escape
+hatch (fixed) and diff-fence injection in the reviewer's own prompt template (hardened;
+dynamic-fence redesign deferred to L8-infra follow-up) (`fd7fa54`). 1 medium reported
+unfixed per instruction: bare-form ask entries.
+
+**Follow-up record check (wrap-up item 2)**: the npm-run script-name enumeration in
+settings.json is a **hand-maintained list with no generator** — unlike Skill rules
+(generated) it can drift as framework content adopts new script names, silently
+reintroducing prompts (annoying) or tempting a future blanket rule (dangerous).
+**Added to the deny-audit follow-up item**: deny-audit follow-up now covers (a) layer
+attribution for the npm blocks, (b) bare-form ask entries (L8 medium), (c) npm-run
+enumeration drift — consider a drift check against framework content grep, mirroring
+the Skill-rule drift guard.

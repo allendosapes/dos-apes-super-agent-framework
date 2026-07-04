@@ -4,6 +4,76 @@ All notable changes to the Dos Apes Super Agent Framework are documented in
 this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+M-0001 through M-0004 ship together as one minor release; the version number
+is assigned at publish. Entries below are M-0001 (least-privilege permissions).
+
+### Security
+
+- **M-0001 — Shipped permission policy was inverted (root cause: commit
+  `5fb19a1`, v1-era "comprehensive pre-approved permissions").** The template
+  pre-approved `rm *`, `git push *`, `npm *` (including `npm publish`),
+  `bash *`, `node *`, and `xargs *` while the framework's own skills prompted
+  on every first use. Replaced with a least-privilege deny→ask→allow policy:
+  npm registry mutation (`publish`, `version`, `dist-tag`, `unpublish`,
+  `deprecate`), force pushes, and remote branch deletion are **denied**
+  (human-only per SECURITY.md); `git push`, branch/tag deletion,
+  `git reset --hard`, `rm`, and `npm audit fix` **ask**; the allow list
+  covers exactly the framework machinery and read-only utilities.
+  *Pattern:* a rule that pre-approves the dangerous case to save one prompt
+  is the wrong trade; encode human-only operations as deny + hook, not trust.
+- **New PreToolUse guard hook (`scripts/guard-forbidden-commands.sh`)** —
+  deterministic backstop scanning the full Bash command string, including
+  compound chains, for spellings prefix rules cannot express: flag-last force
+  pushes (`git push origin main --force`), `--force-with-lease`, `+refspec`,
+  refspec deletion (`git push origin :branch`), recursive-force `rm`
+  respellings aimed at `/`, `~`, `..`, and npm registry mutation with flags —
+  including separated-value forms (`npm --registry <url> publish`), an L8
+  review catch. Blocks with exit 2, plain-text stderr, fail-closed ERR trap.
+  54 fixture tests.
+- **`Bash(npm run *)` removed from allow (L8 catch)** — package scripts are
+  arbitrary code invisible to the permission layer, so a script named
+  `publish` running `npm publish` bypassed the whole policy. Only enumerated
+  quality-loop script names are allowed; `npm run publish` prompts.
+- **Deny rules protect secrets and the policy itself** — `Read(.env)`,
+  `Read(.env.*)`, `Edit/Write(.claude/settings.json)`.
+- **L8 review-prompt diff fence hardened (L8 self-catch)** — the reviewer
+  flagged injection in its own prompt template: a changed markdown file could
+  close the 3-backtick diff fence and inject reviewer instructions. Now a
+  10-backtick fence with explicit untrusted-data framing.
+
+### Added
+
+- **Install-time `Skill(...)` rule generation** in the CLI: allow rules for
+  every shipped command (exact + args pair) and domain skill (exact) are
+  enumerated from the installed file set — new skills auto-enroll, no
+  hand-maintained list. Static rules in the template remain as fallback,
+  kept honest by a drift-guard test.
+- **`.claude/settings.README.md`** installed beside the policy: allow/ask/deny
+  rationale, tag-mutation-as-ask with its paired-promotion precondition, the
+  guard's documented quoted-text false positive and rephrase workaround, and
+  the `CLAUDE_CODE_GIT_BASH_PATH` note.
+- `DOS_APES_VERSION` env is stamped from `package.json` at install time
+  (was hardcoded `2.0.0` against package 3.5.1).
+
+### Fixed
+
+- **All hooks were silently inert in Windows installs (root cause:
+  `patchHooksForWindows` targeted a dead execution model).** Claude Code runs
+  hook commands through Git Bash natively on Windows; the installer's rewrite
+  to a `scripts\run-hook.cmd` cmd-wrapper made bash eat the backslash and
+  fail non-blocking — surfaced by this mission's fresh-install smoke test.
+  Hooks now ship in their original `bash scripts/*.sh` form on every
+  platform; re-running the installer migrates previously-broken settings
+  back (`unpatchWindowsHooks`); `run-hook.cmd` is retired.
+  *Pattern:* wrappers that duplicate platform discovery the product already
+  does become silent failure points when the product moves.
+- **Test files no longer ship in the npm tarball.** Subdirectory `.npmignore`
+  files (`*.test.js`) prune even explicitly `files`-listed entries (verified
+  against npm docs and empirically); a packaging drift-guard test asserts no
+  test files, no `_planning/` content, and all production files present.
+
 ## [3.5.1] — 2026-05-19
 
 The **L8 hardening release**. Patch-level bug fixes covering five defects in
