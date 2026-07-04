@@ -61,3 +61,5 @@ test-cli.ps1
 # codex L8 run artifacts (reviews, feedback packets, result.json)
 .dos-apes/codex-reviews/
 .dos-apes/codex-capabilities.json
+.dos-apes/codex-review-prompt.md
+.dos-apes/codex-review-schema.json

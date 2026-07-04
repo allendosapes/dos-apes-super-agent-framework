@@ -15,7 +15,11 @@ settings scope cannot be overridden by an allow at any other scope.
   scoped script entry points (`node scripts/mission-cli.js …`), read-only git,
   branch *creation*, commits, and common read-only utilities. No blanket
   `npm *`, `bash *`, `node *`, or `git push *` — a rule that pre-approves the
-  dangerous case to save one prompt is the wrong trade.
+  dangerous case to save one prompt is the wrong trade. `npm run` is allowed
+  only for enumerated quality-loop script names (`build`, `typecheck`, `lint`,
+  `test:*`, …), never `npm run *`: package scripts are arbitrary code the
+  permission layer and guard cannot see into, so a script named `publish`
+  or `deploy` must prompt, not pass.
 - **ask** marks operations that are legitimate but consequential: `git push`,
   branch/tag deletion, `git reset --hard`, `rm`, `npm audit fix`. You see a
   prompt, you decide. The ask list is deliberately short — anything unmatched

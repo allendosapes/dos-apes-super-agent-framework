@@ -267,6 +267,10 @@ group("customizeSettings", () => {
     assert.ok(out.permissions.allow.includes("Bash(git checkout -b *)"));
     assert.ok(out.permissions.deny.includes("Bash(npm publish)"));
     assert.ok(out.permissions.ask.includes("Bash(git push *)"));
+    // L8 iter-2 regression: no blanket npm run — package scripts are
+    // arbitrary code, so `npm run publish` must prompt, not pass
+    assert.ok(!out.permissions.allow.includes("Bash(npm run *)"));
+    assert.ok(out.permissions.allow.includes("Bash(npm run build)"));
     // Version stamped from package.json
     assert.strictEqual(out.env.DOS_APES_VERSION, PKG_VERSION);
   });
