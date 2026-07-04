@@ -198,3 +198,52 @@ shared-row ruling; (2) evidence-packets' row loses log-verification.js on the sa
 basis. File coverage complete: 18/18 commands + 15/15 skills scoped. Both fence-
 format fixture requirements (indented-fence, unfenced-indented) confirmed present
 in the ledger's Task 6 section. Next: Task 6 guard design gate before any code.
+
+### 2026-07-04 18:35
+
+Task 6 implemented per the approved design: `framework/scripts/allowed-tools-guard.test.js`
++ two pinned fixtures under `framework/scripts/fixtures/allowed-tools-guard/`. Wired
+into `test:lib` (rides L0, constitutes L1). cli.test.js packaging group extended:
+asserts no `fixtures/` path ships. Matcher replicates Claude Code semantics with the
+bare-form quirk (header-commented with docs citation). Result: **104 guard checks
+pass; full `npm test` green (all suites)**. Pin inventory: 1 expected-deny
+(apes-feature:249 push --delete, cites ledger), 77 known-prompting (node-e/util/env/
+fallback/policy/bare-form classes), 2 prose-justified (evidence-packets generator,
+test-e2e playwright). Note: apes-build:415's push --delete is a prose policy bullet,
+not extractable code — only the apes-feature site carries a mechanical deny pin; the
+ledger entry covers both. **New policy finding:** the faithful matcher surfaced
+bare-form gaps (bare `git status`/`git stash`/`git tag <name>`/argument-less
+check-structure.sh unmatched by their space-star rules; bare `git tag` also bypasses
+the `-a` ask rule) — ledgered for M-0003/M-0004. L1 for this mission is hereby
+mechanized and passing.
+
+### 2026-07-04 19:50
+
+Task 6 correction gate. Three corrections applied: (1) Layer B's Task-tool check was
+unfalsifiable — it scanned the full file, so the frontmatter declaration matched
+itself; now runs both directions against a body-only slice, with synthetic negative
+self-checks in the abort gate. **Its first falsifiable run caught drift introduced by
+this mission's own Task 5 evidence defect (FLAG H):** the Task 5 "TOOL extraction"
+grep had the same whole-file flaw, so product's TaskCreate/TaskUpdate and
+orchestration's TaskList "disk evidence" was partly self-matching. Ruling: product/
+TaskUpdate **trimmed** (weakest-citation pin would violate the pin table's
+every-entry-cites contract; restore only with real evidence, same commit);
+product/TaskCreate (:127) and orchestration/TaskList (:272) kept as cited prose
+pins. (2) Layer C precedence reordered to deny → frontmatter → allow → ask
+(frontmatter grants silence ask prompts — the M-0002 premise), documented in the
+header. (3) Fence nesting verified corpus-wide: none nested, none unclosed, no
+powershell/cmd blocks — header LIMITATION note instead of a third fixture; the
+`npm run deploy` pin is satisfied by the real deployment step at apes-build:1109,
+not the :687 template. Tracker §1 deny wording corrected (one executable site
+feature:249, one prose bullet build:415 — 6920f34 predated the distinction).
+Guard green post-trim: 108 passed (pins: 1 deny, 77 prompt, 2 prose, 2 task-tool).
+
+### 2026-07-04 20:35
+
+Guard file review complete; corrections approved as uploaded. Re-ledger ruling applied
+to the bare-form entry: policy-side exact-form pairs go to the **deny-audit follow-up
+thread**, not M-0004 — M-0004 inherits policy, it doesn't author it; pairs ride its
+migration only if the deny-audit lands in 3.6.0. (The 18:35 entry's "M-0003/M-0004"
+routing stands as written — workpad is append-only history; this entry supersedes it.)
+Body-side fixes remain M-0003 sweep candidates. Correction-gate details are in the
+19:50 entry. Task 6 commit proceeds; Task 7 closeout next, tracker as checklist.

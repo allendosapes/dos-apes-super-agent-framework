@@ -13,9 +13,12 @@ Status: current through **Task 5 approved** (Task 6 design gate pending).
 - [ ] **agent-browser policy relaxation** (Task 5, FLAG J) — `Bash(agent-browser:*)` granted on
   `browser-verification.md` only. Deliberate, skill-scoped relaxation of M-0001's
   "printed suggestion" stance; baseline unchanged. Workpad note exists. **Requires L8 attention.**
-- [ ] **Deny-level functional break, deferred to M-0003** (Task 2, Q4) — `apes-feature.md:249`
-  and `apes-build.md:415` invoke `git push origin --delete`, colliding with M-0001's
-  remote-branch-deletion deny. Those body steps hard-block until M-0003 rewrites them.
+- [ ] **Deny-level functional break, deferred to M-0003** (Task 2, Q4) — `git push origin
+  --delete` collides with M-0001's remote-branch-deletion deny at one **executable site**
+  (`apes-feature.md:249`, fenced cleanup step — carries the guard's mechanical deny pin)
+  plus one **prose policy bullet** (`apes-build.md:415`, the autonomy-policy carve-out —
+  not extractable code; covered by the ledger entry only). [Wording corrected at the
+  Task 6 correction gate; 6920f34 predated the distinction.] Those body steps hard-block until M-0003 rewrites them.
   Independently re-confirms the 3.6.0 ship-together constraint (M-0001+M-0002 without
   M-0003 = broken cleanup path, not just noisy). Must-fix AC queued for M-0003.
 - [ ] **Zero-prompt smoke exception** (AC 4 as amended) — `/apes-mission list` and `/apes-status`
@@ -46,7 +49,13 @@ Pattern throughout: pre-evidence ruling or §2.4 row, overturned by full body re
 - [x] T5 — evidence-packets dropped `log-verification.js` (body assigns the call to the
   check-script; line 86 names the gap an orchestration bug).
 - [x] T2/T4/T5 — Task tools added on evidence: build (all three), feature/fix/refactor
-  (TaskCreate), status/board (TaskList), product/orchestration kept (FLAG H).
+  (TaskCreate), status/board (TaskList). **FLAG H revised at the Task 6 correction gate:**
+  the guard's first falsifiable run caught drift introduced by this mission's own Task 5
+  evidence defect — the whole-file token scan matched frontmatter declarations against
+  themselves. Final state: orchestration keeps all three (TaskCreate/TaskUpdate tokens in
+  body; TaskList prose-pinned, :272); product keeps TaskCreate (prose-pinned, :127) and
+  TaskList (token :169) but **TaskUpdate is trimmed** — its only basis was the
+  self-matching scan; restore only with a real citation in the same commit as the evidence.
   gc pending the line-45 reference-vs-invocation verification result — record outcome here:
   **invocation** — SWEEP 1's "phase status matches actual task completion (via TaskList)" is
   performed by the sweep's own executor calling TaskList, unlike architecture.md's

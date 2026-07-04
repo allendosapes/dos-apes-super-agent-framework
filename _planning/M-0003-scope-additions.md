@@ -40,6 +40,22 @@ only (or a human-handoff step). Re-confirms the 3.6.0 ship-together constraint: 
 release-level zero-friction claim cannot hold while shipped bodies collide with the
 shipped policy. Found during M-0002 Task 2 body re-verification.
 
+### 2026-07-04 — Bare-form gaps surfaced by the Task 6 faithful matcher
+
+The guard's rule matcher replicates the space-star quirk (`Bash(x *)` does not
+match bare `x`), and immediately surfaced real prompting sites the M-0001
+policy pairs don't cover: bare `git status` (apes-build:1092,
+apes-feature:236, apes-refactor:188), bare `git stash` (apes-fix:64),
+argument-less `bash scripts/check-structure.sh` (apes-gc:89), and bare
+`git tag <name>` (orchestration examples — which also bypasses the
+`git tag -a *` ask rule and lands on the default prompt). The npm rules got
+exact+star pairs in M-0001; the git rules mostly didn't. Body-side fixes
+(add args / rewrite) are M-0003 sweep candidates. Policy-side exact-form
+pairs go to the **deny-audit follow-up thread** — M-0004 inherits policy, it
+doesn't author it; the pairs ride M-0004's migration only if the deny-audit
+lands in 3.6.0. Pinned in the guard as cls "bare-form" until resolved.
+[Re-ledger ruling at the Task 6 correction gate.]
+
 ## Non-M-0003 process notes (extract at closeout)
 
 ### 2026-07-04 — Task 6 design input: `Read, Grep, Glob` floor convention

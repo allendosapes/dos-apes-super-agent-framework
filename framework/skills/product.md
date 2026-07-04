@@ -3,7 +3,7 @@ name: product
 description: Product management patterns — PRD parsing, acceptance criteria,
   epic decomposition, backlog structuring, and scope management. Load when
   breaking down requirements, writing stories, or planning delivery phases.
-allowed-tools: Read, Grep, Glob, TaskCreate, TaskUpdate, TaskList
+allowed-tools: Read, Grep, Glob, TaskCreate, TaskList
 ---
 
 # Product Management Skill
