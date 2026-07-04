@@ -23,7 +23,9 @@ and prompts — accepted (M-0002 Task 0, FLAG C).
 amended acceptance criterion 4: these two pipelines are excluded from the
 zero-prompt smoke at mission level and are M-0003 remediation scope.
 M-0003's acceptance criteria already name `apes-status.md:80`; fold
-`apes-mission.md:123` in when M-0003 files to doing.
+`apes-mission.md:123` in when M-0003 files to doing. Additional site found in
+M-0002 Task 5: `cross-model-review.md:175-176` (`mission-cli show | node -e`
+pipeline) — same remediation class.
 
 ### 2026-07-04 — **FUNCTIONAL BREAK / must-fix M-0003 AC:** command bodies instruct a denied operation (`git push origin --delete`)
 
@@ -64,7 +66,10 @@ The M-0002 Task 0 scoping-table gaps were caused by a fence parser anchored at c
 — fenced code blocks indented inside numbered lists (e.g. apes-feature.md's git
 workflow steps) were silently skipped. Task 6's drift-guard extraction heuristic MUST
 parse indented fences, and its test fixtures MUST include an indented-fence case so the
-bug class cannot recur.
+bug class cannot recur. **Extended in Task 5:** a third formatting class exists —
+unfenced indentation-style code blocks (`browser-verification.md`, e.g. the
+`agent-browser` command list at :14-19 and `npx playwright` at :107-110). The guard's
+fixtures must include an unfenced-indented case as well.
 
 ### 2026-07-04 — Process: mission IDs must not be reused
 

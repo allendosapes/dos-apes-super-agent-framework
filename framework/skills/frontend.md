@@ -1,7 +1,7 @@
 ---
 name: frontend
 description: React components, hooks, state management, accessibility, responsive design, data-testid conventions, Figma integration. Load when building UI components or frontend features.
-allowed-tools: Read, Edit, Write, Bash, Grep
+allowed-tools: Read, Grep, Glob
 ---
 
 # Frontend Skill

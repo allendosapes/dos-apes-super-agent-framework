@@ -1,7 +1,7 @@
 ---
 name: evidence-packets
 description: Format, generation, and review of mission evidence packets — the proof-of-work artifact a reviewer reads before a mission can transition to done.
-allowed-tools: Read, Edit, Bash, Grep, Glob
+allowed-tools: Read, Grep, Glob, Bash(node scripts/evidence-packet.js:*)
 ---
 
 # Evidence Packets Skill

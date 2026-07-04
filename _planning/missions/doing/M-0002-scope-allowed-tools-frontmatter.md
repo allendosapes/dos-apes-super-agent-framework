@@ -157,3 +157,44 @@ guard, same class as the codex-review Edit correction). apes-help and apes-metri
 land at the lean `Read, Grep, Glob` floor. New Task 6 guard convention defined at
 this gate and ledgered: `Read, Grep, Glob` is the permitted floor for prose-only
 files — never flagged as unused; everything above the floor requires body evidence.
+
+### 2026-07-04 17:58
+
+Task 5 (all fifteen skills). Extraction re-run with fence parser fixed for indented
+fences; that pass exposed a third formatting class — browser-verification.md uses
+**unfenced indentation-style code**, invisible to both parsers. A repo-wide sweep for
+that pattern found no other skill hiding commands the same way (only observability's
+known curls). Task 6 fixture requirement extended accordingly (ledger updated).
+
+Grants: six domain skills at the `Read, Grep, Glob` floor (review.md and product.md
+already correct — untouched). orchestration drops bare Bash only (its `git tag`
+examples hit ask by design). worktrees/missions/evidence-packets/testing scoped to
+their named scripts. observability and devops read-only per FLAG I (curl prompts by
+design; devops keeps `npx playwright` per the approved smoke-test add-on; its
+`npm run build` invocation is baseline-covered, un-granted).
+
+**Deliberate skill-scoped policy relaxation (FLAG J):** browser-verification gains
+`Bash(agent-browser:*)` — the narrowest relaxation of M-0001's "printed suggestion"
+stance; baseline stays clean. Requires explicit callout in the PR description and
+L8 attention.
+
+**Deviations found by re-verification (flagged at gate):** evidence-packets loses
+`log-verification.js` from the approved row — reference-only (line 86 frames the
+call as the check-script's job; the loader is instructed to run the *generator*,
+which stays). cross-model-review loses all three codex scripts from its Task 0
+approved row — the loader consumes findings files and fixes code (Edit evidenced,
+`mission-cli show` :175 evidenced) but never runs the review scripts; the loop
+driver and /apes-codex-review own those. Reference ≠ invocation, per the
+architecture/check-structure precedent. New M-0003 pipeline site ledgered:
+cross-model-review.md:175-176 (`mission-cli show | node -e`).
+
+### 2026-07-04 18:12
+
+Task 5 gate: approved as presented, both deviations included. **Evidence-based
+reversals ratified:** (1) cross-model-review's Task 0-approved row (three codex
+scripts) superseded by the full read — reference ≠ invocation governs, per the
+gc/architecture precedent, the same way body evidence superseded the apes-help
+shared-row ruling; (2) evidence-packets' row loses log-verification.js on the same
+basis. File coverage complete: 18/18 commands + 15/15 skills scoped. Both fence-
+format fixture requirements (indented-fence, unfenced-indented) confirmed present
+in the ledger's Task 6 section. Next: Task 6 guard design gate before any code.

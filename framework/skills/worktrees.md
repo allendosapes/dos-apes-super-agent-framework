@@ -1,7 +1,7 @@
 ---
 name: worktrees
 description: Mission worktree lifecycle, recovery, and cleanup. Load when creating, syncing, removing, or auditing the .worktrees/ directory used by missions.
-allowed-tools: Read, Edit, Bash, Grep
+allowed-tools: Read, Grep, Glob, Bash(node scripts/mission-worktree.js:*)
 ---
 
 # Worktrees Skill

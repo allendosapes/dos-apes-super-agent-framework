@@ -1,7 +1,7 @@
 ---
 name: missions
 description: Mission file format, lifecycle, and state-transition protocol. Load when creating, reading, transitioning, or reviewing mission files under .planning/missions/.
-allowed-tools: Read, Edit, Write, Bash, Grep, Glob
+allowed-tools: Read, Grep, Glob, Bash(node scripts/mission-cli.js:*)
 ---
 
 # Missions Skill

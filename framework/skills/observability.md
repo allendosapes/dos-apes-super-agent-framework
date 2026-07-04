@@ -4,7 +4,7 @@ description: Runtime diagnosis, structured logging, performance verification,
   health checks, and error budget awareness. Load when verifying quantitative
   acceptance criteria, diagnosing test failures, or building observability
   into applications.
-allowed-tools: Read, Bash, Grep, Glob
+allowed-tools: Read, Grep, Glob
 ---
 
 # Observability Skill

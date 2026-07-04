@@ -2,6 +2,7 @@
 name: backend
 description: API design, database schema, services, error handling, security patterns.
   Load for backend implementation, API development, and data layer work.
+allowed-tools: Read, Grep, Glob
 ---
 
 # Backend Skill
