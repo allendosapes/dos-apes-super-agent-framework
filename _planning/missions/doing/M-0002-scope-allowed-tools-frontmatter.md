@@ -4,6 +4,10 @@ title: Scope allowed-tools frontmatter across all commands and skills
 priority: 1
 labels: [security, dx, skills]
 depends_on: [M-0001]  # least-privilege permissions policy
+codex:
+  last_verdict: accepted
+  unresolved_findings: 0
+  last_run_at: 2026-07-04T21:56:10Z
 verification:
   required_levels: [L0, L1]
 ---
@@ -279,3 +283,21 @@ the shipped template's `enabled: false`, the installer's "(disabled by default)"
 line — versus the two scripts' enabled fallback). Loop trigger next:
 `codex-review-loop.js --base main`; triage per cross-model-review.md, frontmatter-
 scope fixes in-loop, body-level highs ledgered and escalated.
+
+### 2026-07-04 21:56
+
+**L8 terminal: `accepted` on iteration 1 — zero findings.** Verdict `accept`,
+confidence 0.78, reviewer summary: "The diff scopes command and skill grants and
+adds a focused drift guard without any clearly actionable regressions in the
+changed lines." Review artifact: `.dos-apes/codex-reviews/iteration-1/review.json`
+(mtime 2026-07-04T21:56:10Z); terminal record: `.dos-apes/codex-reviews/result.json`.
+No triage, fixes, or escalations required. Codex block added to this frontmatter
+manually — the loop ran with `mission: null` because active-mission resolution is
+part of the `_planning/` vs `.planning/` dogfooding gap, so the scripts could not
+write it themselves. Two dogfooding notes from the run: (1) repo-root `scripts/`
+never got a `codex-review-loop.js` forwarder (only the M-0001-era trio) — first
+launch failed MODULE_NOT_FOUND; ran via `framework/scripts/` path, which still
+exercises the shimmed `scripts/codex-review.js` per iteration; (2) both notes are
+P3-dogfooding-mission scope, already deferred by the shim header. Next per the
+Task 7 sequence: AC-4 smoke (Allen, interactive, `_planning/M-0002-smoke-checklist.md`),
+then the doing→review move + push + PR.

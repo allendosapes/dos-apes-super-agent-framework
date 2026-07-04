@@ -131,6 +131,24 @@ surfaces say opt-in, only the two scripts' fallback says enabled. The
 inverted default bites exactly when the config is missing or corrupted.
 Found at the M-0002 pre-L8 gate.
 
+### 2026-07-04 — Dogfooding blocker: backlog mission files use flow-style YAML the shipped parser rejects
+
+`framework/lib/mission-parser.js` rejects flow-style sequences **by
+documented design** (YAML-subset parser; header: "no flow style except
+literal `[]`"), but every mission file in this repo's `_planning/missions/`
+uses them (`labels: [security, dx, …]`, `depends_on: [M-0001]`,
+`required_levels: [L0, L1]`) — including M-0001's closed file, and in the
+exact form the shipped template's line 16 shows as the rejected
+counter-example. **Regression check (done at this gate): not a regression** —
+3.5.1's "flow-style fix" was diagnostics/docs only (actionable error + template
+guidance; CHANGELOG:155-172); the parser never accepted non-empty flow
+sequences. Installed projects are safe: `mission-cli create` serializes block
+style and hand-editors get the actionable error. Invisible in this repo only
+because the tracker reads `.planning/`, never `_planning/`. Disposition:
+**dogfooding-alignment content work** — convert this repo's mission files to
+block style before pointing the tracker at them; no parser change warranted.
+Found at the M-0002 L8-record gate while validating a frontmatter edit.
+
 ### 2026-07-04 — Candidate follow-up mission: L5 outcomes never logged
 
 `apes-security-scan.md` runs the L5 pipeline (npm audit, check-secrets,
