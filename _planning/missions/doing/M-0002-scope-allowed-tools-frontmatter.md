@@ -101,3 +101,28 @@ Task 0 table gaps (column-0 fence parser, see 16:22 entry) is now a required
 regression fixture for Task 6's extraction heuristic, ledgered in the non-M-0003
 section. Timestamp note: the 16:22 entry was originally mis-stamped 16:29 (written
 without checking the clock); corrected for monotonic order.
+
+### 2026-07-04 16:40
+
+Task 3 (mission-ops commands) body re-verification, all three read in full.
+apes-mission: every §2.4 group-B grant is evidenced, including
+`evidence-packet.js generate` (:212, the doing→review precondition); Edit/Write
+dropped — all writes route through mission-cli. apes-evidence: group-B row applied
+minus `mission-worktree.js` (never invoked by this body — rule-5 trim); gains its
+first-ever allowed-tools line. apes-codex-review: three codex scripts per row; Edit
+retained per approved row (config flips currently via inline `node -e`, M-0003
+scope — Edit is the natural post-M-0003 mechanism); `codex --version` / `codex login`
+prerequisites are baseline-covered. Held for gate: per-body read-only utilities not
+in approved rows (`ls` apes-mission:164, `cat` apes-evidence:49,70 + codex-review
+--status ×3) — recommend leaving un-granted; they sit inside compound/`node -e`
+blocks that prompt regardless until M-0003.
+
+Gate rulings: utilities stay un-granted — M-0003 owns migration-caused frontmatter
+deltas and adds grants alongside its rewrites (distinct from apes-map's `ls`, a
+standalone invocation the grant actually silences). **Deviation from §2.4's
+codex-review row: Edit dropped.** Granting it today would be aspirational (the
+config flips it would serve are still inline `node -e`) — a declarations-without-
+usage failure against the Task 6 guard, same class as apes-map's cat/wc/tail;
+M-0003 restores Edit in the same commit that migrates the flips. apes-mission's
+Edit/Write drop justified by the body's own rule: "All filesystem changes pass
+through the CLI, which calls `MissionTracker`" (apes-mission.md Notes).

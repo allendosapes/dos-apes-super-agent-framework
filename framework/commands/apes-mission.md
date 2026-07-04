@@ -1,6 +1,6 @@
 ---
 description: Create, list, show, transition, and update missions (the atomic unit of work)
-allowed-tools: Read, Edit, Write, Bash, Grep, Glob
+allowed-tools: Read, Grep, Glob, Bash(node scripts/mission-cli.js:*), Bash(node scripts/evidence-packet.js:*), Bash(node scripts/mission-worktree.js:*), Bash(git commit:*)
 ---
 
 # Mission Command
