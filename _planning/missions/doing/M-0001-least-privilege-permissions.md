@@ -6,6 +6,9 @@ labels: [security, dx, permissions]
 depends_on: []
 codex:
   required: true  # security-critical change; L8 must reach a real verdict, no skipped terminal
+  last_verdict: accepted
+  unresolved_findings: 0
+  last_run_at: 2026-07-04T02:37:59Z
 verification:
   required_levels: [L0, L1, L2, L8]
 ---
@@ -543,8 +546,47 @@ pattern-based rather than one more name:
   output is next available.
 - **AC #9: SATISFIED.** Full checklist results in `_planning/M-0001-smoke-checklist.md`.
 
-- **Still owed by this mission**:
-  L8 codex review over the full mission branch diff (Task 7 — codex.required true,
-  real terminal verdict, skipped not acceptable; fix high/critical, report low/medium).
-  Flagged follow-ups, out of mission scope: guard-main-branch.sh stderr-JSON cleanup;
-  guard-integrity mission (PowerShell-tool gap + exit-127 fail-open, Task 6b residuals).
+### Task 7 (2026-07-04, L8 codex review — TERMINAL VERDICT: ACCEPTED)
+
+- **Loop mechanics on this repo**: the loop resolves scripts at
+  `<root>/scripts/` and missions at `.planning/missions` (installed layout); this repo
+  uses `framework/scripts/` and `_planning/`. Bridged with committed repo-only
+  pass-through shims (`scripts/codex-{review,check}.js`, `scripts/log-verification.js`
+  — one body, basename dispatch, never shipped) plus local `.dos-apes/` prompt+schema
+  copies (gitignored; refresh from `framework/templates/` before a run). Ran WITHOUT
+  `--mission` (the `_planning/` root is invisible to it — P3 dogfooding mission);
+  mission codex block updated manually per the loop's documented terminal mapping.
+- **Iteration history** (gpt-5.5, high reasoning, read-only sandbox, base=main,
+  --no-fix with in-session fixes between runs):
+  1. `findings-reported`, 1 HIGH (security): separated-value npm flags
+     (`npm --registry <url> publish`, `npm -w <pkg> publish`) bypassed the guard's
+     pre-verb matcher — and prefix deny rules cannot express "flags then verb" at all.
+     **Fixed** (`c5abffa`): flag-only or flag+value-token pre-verb groups, each starting
+     with `-` so `npm run publish`/`npm run version` stay user scripts; +5 fixtures,
+     guard suite 54.
+  2. `findings-reported`, 2 HIGH (security): (a) `Bash(npm run *)` pre-approved
+     arbitrary package scripts — `"publish": "npm publish"` bypassed deny+guard, child
+     processes being invisible to both. **Fixed** (`fd7fa54`): enumerated quality-loop
+     script names only (build, dev, preview, typecheck, lint, lint:fix, format,
+     test:watch, test:e2e, test:integration — the set evidenced by framework content);
+     `npm run publish` now prompts; regression assertion + README rationale.
+     (b) review-prompt diff fence injection (3-backtick fence any changed markdown
+     could close). **Hardened** (`fd7fa54`): 10-backtick fence + untrusted-data framing
+     in the shipped template. Template pre-exists this branch (v3.2.0), so the full
+     dynamic-fence redesign in codex-review.js is routed to the L8-infra follow-up.
+  3. **`accepted`, verdict `accept`, confidence 0.82, 0 loop-eligible findings.**
+- **Reported unfixed (maintainer instruction: low/medium report-only), 1 MEDIUM
+  (security)**: ask rules carry only wildcard forms (`Bash(git push *)` etc.), so the
+  valid bare forms (`git push`, `git reset --hard`, `npm audit fix`) are unmatched —
+  they prompt today, but a broad user-level allow (`Bash(git *)`, `Bash(npm *)`) would
+  pre-approve them, contradicting the README's ask-survives-broad-allows claim.
+  Suggested fix on record: add exact ask entries alongside the wildcards. Candidate for
+  the deny-audit follow-up alongside the layer-attribution open note.
+- **Mission verification block: fully satisfied** — L0/L1/L2 (Task 5) + L8 terminal
+  `accepted`, no skipped terminal, codex.required honored. Frontmatter codex block
+  updated: last_verdict=accepted, unresolved_findings=0, last_run_at above.
+
+- **Follow-ups on record, out of mission scope**: guard-main-branch.sh stderr-JSON
+  cleanup; guard-integrity mission (PowerShell-tool gap + exit-127 fail-open);
+  L8-infra dynamic diff fence; bare-form ask entries (L8 medium above);
+  P3 dogfooding (mission-aware L8 on this repo's `_planning/` layout).
