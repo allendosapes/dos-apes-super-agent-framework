@@ -1,6 +1,6 @@
 ---
 description: Analyze existing codebase and create understanding documents
-allowed-tools: Read, Grep, Glob, Bash(find:*), Bash(cat:*), Bash(wc:*), Bash(head:*), Bash(tail:*)
+allowed-tools: Read, Grep, Glob, Bash(find:*), Bash(ls:*), Bash(head:*)
 ---
 
 # Map Codebase

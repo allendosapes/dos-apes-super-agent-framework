@@ -36,13 +36,39 @@ changes only frontmatter). Directory-layout migration to `SKILL.md` form (P2 mis
       board/metrics/status/help get read-only + `mission-cli list`;
       domain knowledge skills (backend, frontend, product, review, design-integration,
       architecture) get read-only sets — they are documents, not executors.
-- [ ] `apes-map` frontmatter unchanged (already correct); used as the reference pattern in
-      the diff description.
+- [ ] `apes-map` reconciled with final M-0001 policy (reference patterns are not
+      grandfathered); used as the reference pattern in the diff description.
 - [ ] Fresh install smoke check: `/apes-mission list` and `/apes-status` run end-to-end with
-      zero permission prompts; `/apes-build` on a sample mission prompts only at the
-      intended ask points (push, reset, tag ops).
+      zero permission prompts, **except** the two known `node -e` pipelines
+      (`apes-mission.md:123`, `apes-status.md:80`), which are M-0003 remediation scope
+      (see `_planning/M-0003-scope-additions.md`); `/apes-build` on a sample mission
+      prompts only at the intended ask points (push, reset, tag ops). The unqualified
+      zero-prompt criterion holds at the 3.6.0 release level, not per-mission.
 
 ## References
 
 Analysis report §2.4 table. Note the trust-dialog caveat: frontmatter grants activate only
 after workspace trust — first-run UX still includes exactly one trust prompt by design.
+
+## Workpad
+
+### 2026-07-04 16:07
+
+Task 0 accepted; flag decisions recorded in the Task 0 review (see PR discussion).
+Verification note: **L1 is mechanized by the O1 drift-guard test** (frontmatter parse +
+`allowed-tools` syntax validation + declaration/usage cross-check), committed under the
+repo's test layout and running via `npm test` — not by a linter (none exists in this
+zero-dep repo). The test also rides L0 (`npm test`). Known caveat, no action:
+`scripts/log-verification.js` no-ops in this repo (`_planning/` vs `.planning/` — P3
+dogfooding gap); verification evidence goes in workpad/PR text per M-0001 precedent.
+
+### 2026-07-04 16:17
+
+Task 1 correction: Task 0's scoping table wrongly listed `cat`, `wc`, `tail` as invoked
+by apes-map's body (the row transcribed the existing grant list, not the body
+extraction). Re-verified by grep: all three appear only on the frontmatter line. Trimmed
+per rule 5 (declare only what the body invokes — same logic as board's dropped
+mission-cli grant); keeping them would fail the accepted Task 6 drift-guard's
+declarations-without-usage check. Final apes-map grants: `find`, `ls`, `head` + Read,
+Grep, Glob. Consequence for Tasks 2–5: the table's "body invokes" column is a
+hypothesis to re-verify per file, not ground truth.
