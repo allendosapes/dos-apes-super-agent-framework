@@ -149,6 +149,19 @@ because the tracker reads `.planning/`, never `_planning/`. Disposition:
 block style before pointing the tracker at them; no parser change warranted.
 Found at the M-0002 L8-record gate while validating a frontmatter edit.
 
+### 2026-07-05 — Install-chain investigation candidate: `npx <local .tgz>` silent no-op
+
+During the M-0002 AC-4 smoke (Windows 11, Git Bash, npm/npx of Node 22.22.3):
+`npx --yes <path-to-.tgz> --local --greenfield --yes` exited 0 with **no
+output and nothing installed**, in both POSIX (`/c/Users/…`) and Windows
+(`C:\Users\…`) path forms. Running the packed bin directly
+(`node <unpacked>/package/bin/cli.js …`) worked perfectly. Not a policy
+issue — but the README's primary install instruction is `npx dos-apes…`,
+so if this reproduces for registry installs (not just local tgz paths),
+real users get a silent failed install. Investigate: npx local-tarball
+handling on Windows vs registry-spec installs; add an installer smoke to
+CI if reproducible. Found at the M-0002 smoke gate (Finding #0).
+
 ### 2026-07-04 — Candidate follow-up mission: L5 outcomes never logged
 
 `apes-security-scan.md` runs the L5 pipeline (npm audit, check-secrets,

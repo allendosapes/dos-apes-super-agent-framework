@@ -26,6 +26,9 @@ closeout gate — mission move to review/ + push + PR).
 - [x] **Zero-prompt smoke exception** (AC 4 as amended) — `/apes-mission list` and `/apes-status`
   prompt at the two known `node -e` pipelines (`apes-mission.md:123`, `apes-status.md:80`);
   M-0003 remediation scope. Unqualified zero-prompt holds at 3.6.0 release level only.
+  **Evidence (smoke PASS, 2026-07-05):** direct driver proved mission-cli list silent +
+  `node -e` tail denied via compound decomposition; Smoke F proved frontmatter grants are
+  live policy (`find|head` covered by frontmatter alone). Workpad 00:22 entry has buckets.
 
 ## 2. Mission-file amendments made (cite in PR + evidence)
 

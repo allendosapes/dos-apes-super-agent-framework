@@ -301,3 +301,24 @@ exercises the shimmed `scripts/codex-review.js` per iteration; (2) both notes ar
 P3-dogfooding-mission scope, already deferred by the shim header. Next per the
 Task 7 sequence: AC-4 smoke (Allen, interactive, `_planning/M-0002-smoke-checklist.md`),
 then the doing→review move + push + PR.
+
+### 2026-07-05 00:22
+
+**AC-4 smoke: PASS (Allen's verdict).** Driver: real `claude -p` sessions in a
+scratch install built from the packed tarball (direct-bin install after npx
+local-tgz silently no-opped — Finding #0, ledgered). Trusted-workspace runs only
+(the first, untrusted run discarded all 137 allow entries and was voided —
+the trust caveat demonstrated live). Bucket (a): AC-4's narrow claim proven
+exactly by the direct driver — `node scripts/mission-cli.js list` silent, the
+`| node -e` tail DENIED with the compound-decomposition string ("The following
+part requires approval: node -e …"); organic runs never fired the excused sites
+(models route around friction — A took the no-filter path, B used
+Read/Glob/TaskList instead of the cat/renderer pipelines). Bucket (b): no
+findings — B's two `cd …&&…` denials hit the intended harness compound rule
+over M-0003 util-class surface; `npm run deploy` denial is the Smoke C pass
+condition (build ran silent). Bucket (c): empty — nothing pinned executed
+silently. **Headline (Smoke F): `find … | head -20` executed with BOTH halves
+covered by frontmatter alone (neither in settings.json) — per-command
+skill-scoped grants are live policy end-to-end; Task 1's `Bash(ls:*)` addition
+also validated (ls ran; its exit 2 was a command error post-permission).**
+Raw artifacts: `%TEMP%\m0002-smoke\smoke{A,B,C,E,F}.jsonl`. Next: doing→review.

@@ -16,6 +16,19 @@ git init
 npx C:\Users\allen\projects\dos-apes-super-agent-3.5.1.tgz --local --greenfield --yes
 ```
 
+> **Known-unreliable on this machine (found during the actual run):** the npx
+> local-tgz form exits 0 with no output and installs nothing, in both path
+> forms (ledgered as an install-chain investigation candidate). **Validated
+> fallback — direct bin from the unpacked tarball** (still tests the packed
+> surface):
+>
+> ```powershell
+> mkdir $env:TEMP\m0002-pkg
+> tar -xzf C:\Users\allen\projects\dos-apes-super-agent-3.5.1.tgz -C $env:TEMP\m0002-pkg
+> cd $env:TEMP\m0002-smoke
+> node $env:TEMP\m0002-pkg\package\bin\cli.js --local --greenfield --yes
+> ```
+
 Expected install: `.claude/commands` (18), `.claude/skills` (15+README),
 `.claude/settings.json`, `scripts/`, `lib/`, `.planning/` scaffold, CLAUDE.md.
 
