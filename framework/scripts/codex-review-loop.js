@@ -12,14 +12,15 @@
 //   3. If continuing: write a feedback packet, spawn Claude Code to fix,
 //      detect "no progress" by comparing HEAD before and after.
 //
-// Six terminal states (written to stdout as JSON and to
-// .dos-apes/codex-reviews/result.json):
+// Six terminal states (written to stdout as JSON and — when .dos-apes/
+// already exists — to .dos-apes/codex-reviews/result.json):
 //   - accepted          clean review on iteration N
 //   - partial-success   only low/medium findings, accepted as final
 //   - findings-reported --no-fix was set; no fix attempted
 //   - exhausted         hit iteration cap with unresolved high/critical
 //   - no-progress       Claude Code couldn't make a fix
-//   - skipped           Codex unavailable (config disabled, CLI missing, etc.)
+//   - skipped           L8 not opted in (config absent/unparseable/invalid/
+//                       disabled — see codex-config.js) or Codex unavailable
 //
 // Exit codes:
 //   0  loop terminated cleanly in one of the six states above
@@ -33,6 +34,7 @@ const path = require("path");
 const { execFileSync, spawnSync } = require("child_process");
 
 const { MissionTracker } = require("../lib/mission-tracker.js");
+const { loadCodexConfig } = require("./codex-config.js");
 
 // ─── Paths ──────────────────────────────────────────────────────────────────
 
@@ -58,11 +60,26 @@ const REVIEWS_DIR = path.join(DOS_APES_DIR, "codex-reviews");
 const RESULT_PATH = path.join(REVIEWS_DIR, "result.json");
 const REVIEW_SCRIPT = path.join(PROJECT_ROOT, "scripts", "codex-review.js");
 
+// No `enabled` key here by design (M-0005): enablement comes only from a
+// strict enabled === true on the parsed config — see codex-config.js.
 const DEFAULT_CONFIG = {
-  enabled: true,
   diff_base: "main",
   max_iterations: 3,
   loop_on_severity: ["high", "critical"],
+};
+
+// Skip messages keyed by codex-config.js disabled-reasons. Each names the
+// config state so a codex.required RequiredSkipError surfaces the real cause
+// (a config problem, not a Codex outage).
+const SKIP_MESSAGE_BY_REASON = {
+  "config-absent":
+    ".dos-apes/codex-review-config.json absent — L8 is opt-in and off by default (config-absent)",
+  "config-unparseable":
+    ".dos-apes/codex-review-config.json is not parseable JSON — L8 stays disabled (config-unparseable)",
+  "config-invalid":
+    ".dos-apes/codex-review-config.json is not a JSON object — L8 stays disabled (config-invalid)",
+  "disabled":
+    "L8 disabled in .dos-apes/codex-review-config.json",
 };
 
 const SEVERITY_RANK = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -113,6 +130,10 @@ function warn(msg) {
 }
 
 function writeResult(payload) {
+  // Never create .dos-apes/ as a side effect of a terminal write (M-0005):
+  // a config-absent skip must not create the directory whose absence caused
+  // it. When .dos-apes/ exists, creating codex-reviews/ inside it is fine.
+  if (!fs.existsSync(DOS_APES_DIR)) return;
   try {
     fs.mkdirSync(REVIEWS_DIR, { recursive: true });
     fs.writeFileSync(RESULT_PATH, JSON.stringify(payload, null, 2));
@@ -137,20 +158,6 @@ function terminal(payload) {
   }
   process.stdout.write(JSON.stringify(payload) + "\n");
   process.exit(0);
-}
-
-// ─── Config ─────────────────────────────────────────────────────────────────
-
-function readConfig() {
-  if (!fs.existsSync(CONFIG_PATH)) return { ...DEFAULT_CONFIG };
-  try {
-    const parsed = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf8"));
-    if (parsed === null || typeof parsed !== "object") return { ...DEFAULT_CONFIG };
-    return { ...DEFAULT_CONFIG, ...parsed };
-  } catch (err) {
-    warn(`config parse failed: ${err.message} — using defaults`);
-    return { ...DEFAULT_CONFIG };
-  }
 }
 
 // ─── codex-review.js invocation ─────────────────────────────────────────────
@@ -465,7 +472,7 @@ class RequiredSkipError extends Error {
   constructor(missionId, reason) {
     super(
       `mission ${missionId} has codex.required: true — refusing to terminate with state 'skipped' ` +
-      `(reason: ${reason || "unspecified"})`
+      `(reason: ${reason || "unspecified"}) — enable L8 or remove codex.required`
     );
     this.name = "RequiredSkipError";
     this.code = "REQUIRED_SKIP";
@@ -563,15 +570,20 @@ function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) { printHelp(); process.exit(0); }
 
-  const config = readConfig();
+  // Opt-in gate — must stay ahead of the invokeReview call below.
+  const { enabled, reason, config } = loadCodexConfig({
+    configPath: CONFIG_PATH,
+    defaults: DEFAULT_CONFIG,
+    warn,
+  });
 
-  if (config.enabled === false) {
+  if (!enabled) {
     return terminal({
       state: "skipped",
       iteration: 0,
       max_iterations: 0,
       mission: args.mission || null,
-      message: "L8 disabled in .dos-apes/codex-review-config.json",
+      message: SKIP_MESSAGE_BY_REASON[reason] || `L8 not enabled (${reason})`,
     });
   }
 

@@ -190,3 +190,25 @@ same ID (legacy inventory renamed to `M-0002-mission-tracker-inventory.md`
 to disambiguate). Candidate fixes: a convention line in CLAUDE.md, and/or a
 future MissionTracker guard that refuses `next-id` values ever seen in git
 history. Neither is scheduled yet.
+
+### 2026-07-05 — M-0005 fallout: skip-cause enumerations missing the three new config reasons
+
+M-0005 flipped the L8 config-load default to opt-in and introduced three new
+skip reasons alongside `disabled`: `config-absent`, `config-unparseable`,
+`config-invalid` (envelope `reason` in codex-review.js; state-naming `message`
+in codex-review-loop.js). Task 3's rider grep confirmed all envelope *parsers*
+are reason-agnostic passthroughs (apes-verify.md:266 `skipped:*` wildcard;
+apes-codex-review.md:128; cross-model-review.md:25) — no code consumer breaks.
+But three prose sites enumerate skip causes and are now incomplete:
+
+- `framework/commands/apes-verify.md:354` — legend: "⏭ skipped — disabled,
+  Codex unavailable, or not configured"
+- `framework/skills/cross-model-review.md:230` — terminal-state table:
+  "Codex unavailable / disabled / no diff to review"
+- `framework/skills/missions.md:273` — codex block verdict table: "Codex was
+  unavailable, disabled, or the diff was empty"
+
+None is wrong (the new reasons are all subspecies of "not configured /
+disabled"), but none names the new reason strings a user will actually see.
+Fold into M-0003's body pass over command/skill files; per M-0005 AC-5 these
+were deliberately not edited in the M-0005 mission itself.

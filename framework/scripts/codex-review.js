@@ -6,7 +6,9 @@
 //   node scripts/codex-review.js --base <ref> [--mission <id>] [--out <path>]
 //
 // Behavior (in order):
-//   1. Read .dos-apes/codex-review-config.json. If enabled:false, skip.
+//   1. Load .dos-apes/codex-review-config.json via codex-config.js. L8 is
+//      opt-in: skip unless the config is a parsed object with enabled:true
+//      (absent/unparseable/invalid config all skip — absence is not consent).
 //   2. Verify Codex readiness (cache-first, falls back to scripts/codex-check.js).
 //      Failures here skip rather than fail (fail-open).
 //   3. Compute diff vs --base (overrides config.diff_base, default 'main').
@@ -39,6 +41,7 @@ const { execFileSync, spawnSync } = require("child_process");
 
 const { MissionTracker } = require("../lib/mission-tracker.js");
 const parser = require("../lib/mission-parser.js");
+const { loadCodexConfig } = require("./codex-config.js");
 
 // ─── Paths ──────────────────────────────────────────────────────────────────
 
@@ -70,8 +73,9 @@ const LOG_VERIFICATION = path.join(PROJECT_ROOT, "scripts", "log-verification.js
 const IS_WINDOWS = process.platform === "win32";
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
+// No `enabled` key here by design (M-0005): enablement comes only from a
+// strict enabled === true on the parsed config — see codex-config.js.
 const DEFAULT_CONFIG = {
-  enabled: true,
   model: "gpt-5.5",
   reasoning_effort: "high",
   sandbox: "read-only",
@@ -118,25 +122,6 @@ function emit(payload, exitCode) {
 
 function warn(msg) {
   process.stderr.write(`codex-review: ${msg}\n`);
-}
-
-// ─── Config ─────────────────────────────────────────────────────────────────
-
-function readConfig() {
-  if (!fs.existsSync(CONFIG_PATH)) {
-    return { ...DEFAULT_CONFIG };
-  }
-  let parsed;
-  try {
-    parsed = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf8"));
-  } catch (err) {
-    warn(`config parse failed: ${err.message} — using defaults`);
-    return { ...DEFAULT_CONFIG };
-  }
-  if (parsed === null || typeof parsed !== "object") {
-    return { ...DEFAULT_CONFIG };
-  }
-  return { ...DEFAULT_CONFIG, ...parsed };
 }
 
 // ─── Codex readiness ────────────────────────────────────────────────────────
@@ -652,10 +637,15 @@ function main() {
     process.exit(0);
   }
 
-  const config = readConfig();
+  // Opt-in gate — must stay ahead of the checkCodexReady capability gate.
+  const { enabled, reason, config } = loadCodexConfig({
+    configPath: CONFIG_PATH,
+    defaults: DEFAULT_CONFIG,
+    warn,
+  });
 
-  if (config.enabled === false) {
-    return emit({ skipped: true, reason: "disabled" }, 0);
+  if (!enabled) {
+    return emit({ skipped: true, reason }, 0);
   }
 
   const ready = checkCodexReady(config);
