@@ -1,5 +1,6 @@
 ---
 description: Show all Dos Apes commands and usage
+allowed-tools: Read, Grep, Glob
 ---
 
 ```

@@ -558,7 +558,7 @@ refactor — both call sites are clearly marked with a comment.
 
 #### 3. `mission-schema.js` is a narrower P3 subset of the inventory plan
 
-The inventory (`_planning/M-0002-inventory.md` § 9) called for thirteen
+The inventory (`_planning/M-0002-mission-tracker-inventory.md` § 9) called for thirteen
 constants and helpers in `mission-schema.js`. The library that actually
 shipped exports five: `CURRENT_SCHEMA_VERSION`, `STATES`, `LEVEL_IDS`,
 `validateFrontmatter`, `migrateFrontmatter`. The other constants

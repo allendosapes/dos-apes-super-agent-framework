@@ -1,5 +1,6 @@
 ---
 description: Generate the evidence packet for a mission (proof-of-work bundle for review)
+allowed-tools: Read, Grep, Glob, Bash(node scripts/mission-cli.js:*), Bash(node scripts/evidence-packet.js:*), Bash(git commit:*)
 ---
 
 # Evidence Packet

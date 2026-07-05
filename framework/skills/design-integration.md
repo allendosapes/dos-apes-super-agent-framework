@@ -1,6 +1,7 @@
 ---
 name: design-integration
 description: Figma-to-code validation loop. Load when implementing UI from designs.
+allowed-tools: Read, Grep, Glob
 ---
 
 # Design Integration Skill

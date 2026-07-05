@@ -63,3 +63,7 @@ test-cli.ps1
 .dos-apes/codex-capabilities.json
 .dos-apes/codex-review-prompt.md
 .dos-apes/codex-review-schema.json
+# project-local user state (enabled/model/gates) — never tracked in the
+# framework source repo: a committed enabled:true risks becoming the shipped
+# default (inverted-default class; see M-0003-scope-additions.md ledger)
+.dos-apes/codex-review-config.json

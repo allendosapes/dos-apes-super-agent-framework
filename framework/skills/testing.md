@@ -1,7 +1,7 @@
 ---
 name: testing
 description: Testing patterns, TDD, coverage enforcement, E2E with Playwright, visual regression, accessibility testing. Load when writing tests, configuring test runners, or verifying quality.
-allowed-tools: Read, Edit, Write, Bash, Grep
+allowed-tools: Read, Grep, Glob, Bash(bash scripts/check-:*), Bash(node scripts/log-verification.js:*), Bash(npx playwright:*)
 ---
 
 # Testing Skill

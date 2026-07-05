@@ -2,6 +2,7 @@
 name: architecture
 description: System design, ADRs, phase decomposition, tech stack decisions.
   Load for architecture planning, system design, and technical decision-making.
+allowed-tools: Read, Grep, Glob
 ---
 
 # Architecture Skill

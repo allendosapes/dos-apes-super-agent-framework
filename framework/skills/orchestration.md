@@ -4,7 +4,7 @@ description: Agent Teams orchestration patterns — role definitions, handoff
   contracts, parallel execution, capability gap detection, and state management.
   Load when leading a multi-agent build, coordinating teammates, or planning
   execution waves.
-allowed-tools: Read, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList
+allowed-tools: Read, Grep, Glob, TaskCreate, TaskUpdate, TaskList
 ---
 
 # Orchestration Skill

@@ -1,6 +1,6 @@
 ---
 description: External-model code review (L8) via Codex CLI. Single-shot review or full review-fix-review loop.
-allowed-tools: Bash, Read, Edit, Write, Grep, Glob
+allowed-tools: Read, Grep, Glob, Bash(node scripts/codex-check.js:*), Bash(node scripts/codex-review.js:*), Bash(node scripts/codex-review-loop.js:*)
 ---
 
 # /apes-codex-review

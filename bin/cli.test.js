@@ -371,6 +371,11 @@ group("packaging (npm pack --dry-run --json)", () => {
     assert.deepStrictEqual(leaked, []);
   });
 
+  test("no fixtures/ path ships (allowed-tools guard fixtures are repo-only)", () => {
+    const leaked = shipped.filter((p) => p.includes("fixtures/"));
+    assert.deepStrictEqual(leaked, [], `fixtures leaked into the tarball: ${leaked.join(", ")}`);
+  });
+
   test("cli, guard script, hook runner, and settings ship", () => {
     for (const required of [
       "bin/cli.js",

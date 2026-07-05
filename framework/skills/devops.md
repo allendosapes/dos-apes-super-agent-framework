@@ -3,7 +3,7 @@ name: devops
 description: Deployment pipelines, environment management, platform-specific
   configuration, CI/CD integration, and secrets management. Load when tasks
   involve deployment, infrastructure setup, or environment configuration.
-allowed-tools: Read, Edit, Write, Bash, Grep, Glob
+allowed-tools: Read, Grep, Glob, Bash(npx playwright:*)
 ---
 
 # DevOps Skill

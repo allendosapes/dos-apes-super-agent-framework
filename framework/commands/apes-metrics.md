@@ -1,6 +1,6 @@
 ---
 description: Show session and project metrics
-allowed-tools: Bash, Read
+allowed-tools: Read, Grep, Glob
 ---
 
 # Metrics Dashboard

@@ -1,6 +1,6 @@
 ---
 description: Refactor existing code while preserving behavior
-allowed-tools: Read, Edit, Write, Bash, Grep, Glob
+allowed-tools: Read, Edit, Write, Grep, Glob, TaskCreate, Bash(git checkout -b:*), Bash(git merge:*), Bash(npm run build:*), Bash(npm run lint:*), Bash(npm run typecheck:*), Bash(npm run test:coverage:*), Bash(npm test:*)
 ---
 
 # Refactor: $ARGUMENTS

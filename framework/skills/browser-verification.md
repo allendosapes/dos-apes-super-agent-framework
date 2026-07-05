@@ -1,6 +1,7 @@
 ---
 name: browser-verification
 description: Automated browser testing with agent-browser and Playwright. Load for E2E, visual regression, and accessibility verification tasks.
+allowed-tools: Read, Grep, Glob, Bash(npx playwright:*), Bash(agent-browser:*)
 ---
 
 # Browser Verification Skill

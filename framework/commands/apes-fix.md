@@ -1,6 +1,6 @@
 ---
 description: Diagnose and fix a bug in the codebase
-allowed-tools: Read, Edit, Write, Bash, Grep, Glob
+allowed-tools: Read, Edit, Write, Grep, Glob, TaskCreate, Bash(git checkout -b:*), Bash(git merge:*), Bash(npm test:*)
 ---
 
 # Fix Bug: $ARGUMENTS

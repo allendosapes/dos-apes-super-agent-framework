@@ -1,5 +1,6 @@
 ---
 description: Show current project status and position
+allowed-tools: Read, Grep, Glob, TaskList, Bash(node scripts/mission-cli.js list:*), Bash(git branch --show-current), Bash(npm run build:*), Bash(npm run lint:*), Bash(npm run typecheck:*), Bash(npm test:*)
 ---
 
 # Status

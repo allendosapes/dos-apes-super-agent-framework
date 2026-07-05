@@ -1,6 +1,6 @@
 ---
 description: Visual regression testing via Playwright screenshots
-allowed-tools: Bash, Read
+allowed-tools: Read, Grep, Bash(npx playwright:*)
 ---
 
 # Visual Regression Test

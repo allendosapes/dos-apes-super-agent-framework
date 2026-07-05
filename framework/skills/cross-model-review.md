@@ -1,7 +1,7 @@
 ---
 name: cross-model-review
 description: How to consume a structured external-model review (Codex L8) and address its findings inside a feedback loop. Load when the codex-review.js output is on disk, when /apes-codex-review is invoked, or when iterating on findings.
-allowed-tools: Read, Edit, Write, Bash, Grep, Glob
+allowed-tools: Read, Edit, Grep, Glob, Bash(node scripts/mission-cli.js:*)
 ---
 
 # Cross-Model Review Skill

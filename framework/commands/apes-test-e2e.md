@@ -1,6 +1,6 @@
 ---
 description: Generate and run E2E tests from user stories
-allowed-tools: Read, Write, Bash, Task
+allowed-tools: Read, Write, Grep, Bash(npx playwright:*)
 ---
 
 # E2E Test Generation
