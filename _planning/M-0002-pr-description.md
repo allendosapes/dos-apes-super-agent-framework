@@ -58,9 +58,9 @@ the contract and constitutes the mission's L1.
 
 ## Verification
 
-- **L0:** `npm test` green — parser 31, tracker 51, codex suites 48,
-  forbidden-commands guard 54, **allowed-tools guard 108**, CLI 24
-  (includes the new `no fixtures/ ships` packaging assertion).
+- **L0:** `npm test` green **re-run at push HEAD** — parser 31, tracker 51,
+  codex suites 48, forbidden-commands guard 54, **allowed-tools guard 108**,
+  CLI 24 (includes the new `no fixtures/ ships` packaging assertion).
 - **L1:** the allowed-tools guard itself — 33 files, all three layers, pin
   inventory 1 expected-deny / 77 known-prompting / 2 prose / 2 task-tool
   prose, zero stale pins.
@@ -72,8 +72,13 @@ the contract and constitutes the mission's L1.
   (bare `git tag` also bypasses the `-a` ask rule). Body fixes → M-0003;
   policy pairs → deny-audit follow-up thread (M-0004 inherits policy, does
   not author it).
-- Plain `git checkout` → `git switch` migration: **11 sites enumerated**
-  (handoff said nine — discrepancy flagged, not reconciled).
+- Plain `git checkout` → `git switch` migration: **11 sites** (resolves the
+  handoff's count of nine).
+- **L8 enablement default inverted vs docs** (candidate bugfix mission):
+  both codex scripts treat missing/unparseable config as `enabled: true`,
+  while five surfaces — three doc sites, the shipped template's
+  `enabled: false`, the installer's "(disabled by default)" line — document
+  opt-in. `/apes-verify` is opt-in; direct script invocation is opt-out.
 - Full `node -e` site inventory, env-prefix/trap/chain sites, deferred
   utility grants, and the apes-codex-review `Edit` restoration rider.
 
@@ -92,5 +97,3 @@ with rationale in the mission workpad and `_planning/M-0002-closeout-tracker.md`
 - **M-0004**: its fingerprint table keys off M-0001's final policy **plus**
   the 33 files scoped here — confirm whether frontmatter state affects its
   migration scope before drafting.
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
