@@ -101,3 +101,47 @@ only).
 
 2026-07-04 session handoff, "Two candidate bugfix missions" §1; M-0001 root
 cause `5fb19a1`; README L8 contract section.
+
+## Workpad
+
+### 2026-07-05 14:30
+
+**Tasks 1–5 executed (gated, one STOP per task).**
+
+- **T1 recon:** repo-root `scripts/codex-review.js` / `codex-check.js` are
+  dogfooding shims forwarding to `framework/scripts/` — fix target is
+  framework/ only. Seven config states driven by observation in a non-git
+  scratch sandbox (capability-gate stub as discriminator): absent, garbage,
+  BOM'd-`enabled:false`, bare `true`, `[]`, explicit false, explicit true —
+  all but explicit-false behaved as enabled. Sharpest: the BOM inverted an
+  explicit `enabled: false` to on. Extra: `[]` passes the `typeof` guard
+  (`typeof [] === "object"`); loop's `terminal()` wrote `result.json` even
+  on skip. Three doc sites cited (README:347-349, apes-codex-review.md:10,
+  cross-model-review.md:15); apes-verify:242-248 is the true opt-in gate.
+- **T2 fix (rulings):** shared `codex-config.js` helper (`loadCodexConfig`);
+  **no `enabled` key in any DEFAULT_CONFIG** — strict `enabled === true` on
+  a parsed plain object is the only enable path (ruling 1); explicit
+  `Array.isArray` in the invalid guard; `writeResult` writes only when
+  `.dos-apes/` already exists (ruling 2); loop skip messages name the config
+  state; `RequiredSkipError` carries the remedy wording.
+- **T3 tests:** `codex-config.test.js` — both scripts × 8 states (matrix
+  grew from 5 after recon: array + missing-key + BOM split out), envelope +
+  warning + exit assertions, three exec-boundary spies (check stub, review
+  stub, poison `codex` on PATH), BOM fixture as deliberate bytes with
+  self-check, writeResult guard both directions. Riders: `readConfig` zero
+  hits; envelope parsers are reason-agnostic (3 incomplete prose sites
+  ledgered to M-0003). **Packaging fix:** `files` is a per-file whitelist —
+  `codex-config.js` added or installed scripts would MODULE_NOT_FOUND.
+- **T4 (AC-4):** codex.required × 4 disabled states observed — exit 1,
+  refusal names config state verbatim (payload.message passes through
+  unmodified) + "enable L8 or remove codex.required"; control (required:
+  false) skips clean at exit 0. Zero code changes; one test added (20 total).
+- **T5 (AC-5/AC-6):** three doc sites re-read post-fix — zero edits needed,
+  docs were the contract. Skip-cause prose enumerations ledgered as M-0005
+  fallout in `_planning/M-0003-scope-additions.md`. Incident write-up at
+  `_planning/incidents/2026-07-05-l8-inverted-default.md` (inverted-default
+  class, 2nd occurrence after M-0001/`5fb19a1`; follow-ups: whitelist
+  integrity check candidate mission; narrated-approval near-miss).
+- **Commit trail:** reconciled on `mission/M-0005-l8-inverted-default` —
+  `73a1b13` mission file, `57e1d38` fix, `01c48ed` tests, `c1c883a` filename
+  normalization (`-final` suffix dropped).
