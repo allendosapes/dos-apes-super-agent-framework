@@ -119,6 +119,12 @@ These rules are learned from real incidents in this codebase. Each is short, beh
 
 4. **Local main ahead of origin is a branching trap.** Before creating any branch that will eventually merge back via PR + squash, run `git fetch origin && git status -uno` and resolve any divergence first. Unpushed local commits get folded into the next squash-merge against origin, conflating their scope with the new branch's: the resulting commit on origin gets labelled with the new branch's title but contains a diff that mixes both missions. Decision matrix — ahead → push first, behind → pull first, diverged → stop and resolve manually. The check costs ~1 second; the cost of skipping it is a permanent git-history artifact (npm tarballs and CHANGELOG entries can still be correct, but the audit trail conflates two missions into one commit). See `_planning/incidents/2026-05-03-local-main-ahead-of-origin.md`.
 
+5. **"Body invokes" columns in analysis tables are hypotheses — full-read re-verification per file is mandatory before acting on them.** Three extraction defects were found in one mission (M-0002): a fence parser anchored at column 0 silently skipped fenced blocks indented inside list items; browser-verification.md's commands live in *unfenced* indentation-style code invisible to fence parsers; and a whole-file token scan matched frontmatter declarations against themselves, manufacturing its own evidence. If a table says a file does X, the table is a lead, not a fact.
+
+6. **Reference ≠ invocation.** Prose that *describes* a script or tool — or names a different executor (a hook, a loop driver, another command) — is not evidence that the reading agent runs it. Grants, permissions, and capability claims attach only to sites where the file's own executor is instructed to act. Litmus: "who runs this?" — if the answer isn't "the agent executing this file," it's a reference.
+
+7. **Never grant ahead of body evidence.** A declared-but-unused grant is drift by definition and fails `allowed-tools-guard.test.js` (declarations-without-usage). Aspirational grants — "the mechanism this will migrate to" — are rejected; the grant lands in the same commit as the change that creates the evidence. Judgment-call exceptions live as cited pins in the guard, never as uncited frontmatter.
+
 ## Verification Pyramid (8 levels)
 
 The framework teaches projects this verification stack:
