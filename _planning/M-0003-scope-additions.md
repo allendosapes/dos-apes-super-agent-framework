@@ -212,3 +212,11 @@ None is wrong (the new reasons are all subspecies of "not configured /
 disabled"), but none names the new reason strings a user will actually see.
 Fold into M-0003's body pass over command/skill files; per M-0005 AC-5 these
 were deliberately not edited in the M-0005 mission itself.
+
+### 2026-07-08 — Parked fast-follow: PreToolUse auto-approve hook for verified read-only chains
+
+Hooks can return `permissionDecision: allow` — the only deterministic fix for
+chains that must remain allow-listed as a unit (permission rules match single
+commands; no rule can cover a `&&`/`|` chain as a whole). Salvaged from the
+superseded `M-0003-compound-command-hygiene` stub's Scope/Out section before
+its deletion. Parked, not scheduled.
