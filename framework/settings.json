@@ -244,6 +244,7 @@
       "Bash(git push *)",
       "Bash(git branch -d *)",
       "Bash(git branch -D *)",
+      "Bash(git switch main)",
       "Bash(git tag -a *)",
       "Bash(git tag -d *)",
       "Bash(git reset --hard *)",

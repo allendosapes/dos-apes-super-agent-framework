@@ -236,3 +236,19 @@ the existing graceful-skip path), or resolve Git Bash explicitly (e.g. via
 `where.exe git` → sibling `bin\bash.exe`). Parked as a test-harness-portability
 candidate — not scheduled, not M-0003. Git Bash is M-0003's known-good runner
 (AC-9 ruling at the Task 2 recon gate). Found at M-0003 Task 2 recon.
+
+### 2026-07-09 — Parked guard-correctness candidate: precedence model contradicts the product (allow-before-ask vs ask-before-allow)
+
+`allowed-tools-guard.test.js` models rule precedence as deny → frontmatter
+grant → settings allow → settings ask. The product's real precedence is
+deny → ask → allow, category-based, with specificity explicitly irrelevant:
+"a matching ask rule prompts even when a more specific allow rule also
+matches the same call" (permissions.md), confirmed empirically at the M-0003
+Task 3a gate by a headless three-probe test (`--settings` injection; with
+both `Bash(git switch -c *)` allow and `Bash(git switch *)` ask present,
+`git switch -c` was blocked — ask shadows allow). Latent guard-correctness
+bug: any future rule set with a real ask/allow overlap on one command family
+would make the guard categorize a prompting site as allowed. Not triggered
+by M-0003's rules — the one ask authored (`Bash(git switch main)`) is
+exact-match with no overlapping allow. A KNOWN DIVERGENCE note now sits in
+the guard's semantics header pointing here. Parked, not scheduled.

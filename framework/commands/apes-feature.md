@@ -224,7 +224,7 @@ IF still failing after 3 attempts:
 7. **Merge to Main**
 
    ```bash
-   git checkout main
+   git switch main
    git pull origin main 2>/dev/null || true
    git merge --squash feature/[name]
    git commit -m "feat: [feature description]"

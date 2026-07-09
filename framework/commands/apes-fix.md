@@ -203,7 +203,7 @@ Fixes #[issue number if applicable]"
 ### Step 7: Merge and Push
 
 ```bash
-git checkout main
+git switch main
 git pull origin main 2>/dev/null || true
 git merge --squash fix/[descriptive-name]
 git commit -m "fix: [description]"

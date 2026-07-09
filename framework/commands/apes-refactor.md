@@ -177,7 +177,7 @@ Manually verify key user flows still work as expected.
 ### Step 6: Merge and Push
 
 ```bash
-git checkout main
+git switch main
 git pull origin main 2>/dev/null || true
 git merge --squash refactor/[descriptive-name]
 git commit -m "refactor: [refactor description]"
