@@ -220,3 +220,19 @@ chains that must remain allow-listed as a unit (permission rules match single
 commands; no rule can cover a `&&`/`|` chain as a whole). Salvaged from the
 superseded `M-0003-compound-command-hygiene` stub's Scope/Out section before
 its deletion. Parked, not scheduled.
+
+### 2026-07-09 — Parked test-harness-portability candidate: PowerShell `npm test` runs guard scripts via WSL bash
+
+PowerShell's `bash` resolves to `C:\WINDOWS\system32\bash.exe` (the WSL
+launcher), so `guard-forbidden-commands.test.js`'s `spawnSync("bash",
+[SCRIPT])` hands the repo's Windows-pathed hook script to WSL's `/bin/bash`,
+which can't execute it — backslash-stripping yields `C:Usersallen…`, "No such
+file or directory", exit 127 before any test runs, failing the suite before
+the allowed-tools guard ever executes. The availability probe at test.js:19-23
+can't catch it: WSL bash *is* found and answers `--version` fine; the failure
+is path translation, not availability. Fix is ~6 lines: extend the probe to
+detect a non-MSYS bash (`bash -c 'echo $OSTYPE'` → `linux-gnu` on win32 ⇒ take
+the existing graceful-skip path), or resolve Git Bash explicitly (e.g. via
+`where.exe git` → sibling `bin\bash.exe`). Parked as a test-harness-portability
+candidate — not scheduled, not M-0003. Git Bash is M-0003's known-good runner
+(AC-9 ruling at the Task 2 recon gate). Found at M-0003 Task 2 recon.

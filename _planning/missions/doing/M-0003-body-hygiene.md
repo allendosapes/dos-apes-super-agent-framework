@@ -214,3 +214,38 @@ end state; AC-9 runs the in-use dry-run last, after the static gates pass.
 report §2.1-B (four prompting idioms with file:line) and §2.3 (hygiene list) —
 provenance for the substitution and bare-form classes, carried from the
 superseded `M-0003-compound-command-hygiene` stub.
+
+## Workpad
+
+### 2026-07-09 14:50
+
+Task 2 recon (AC-2) complete at 61a0116 — read-only, full report at
+m0003-task2-recon.md (uploaded at the gate). Corrected anchor map, key deltas:
+
+1. apes-status node-e drifted :80→:81 (fence opens :80, command at :81).
+2. apes-build:1227 `git checkout .` discard is guard-invisible prose inside a
+   fence (F-1) — AC-3's "pin as known-prompting" cannot be satisfied as
+   written; site needs restructure (companion :1226 hides a bare-`git status`
+   chain the same way).
+3. apes-build:895/:1242 are standalone `[ask]` sites, not chains (F-3) — the
+   ledger's decomposition item is stale and dropped.
+4. `Bash(git switch -c *)` allow already exists in settings.json (F-2) —
+   ask-vs-allow precedence must be verified in the product before authoring
+   the `Bash(git switch *)` ask rule, or `-c` sites may gain prompts.
+5. `.claude/scripts/check-*.sh` fallback ruled DEAD — no installer version
+   ever wrote that path (git -S history empty). Three sites
+   (apes-verify:127-128, :184-185 guarded; apes-security-scan:40 unguarded);
+   removal drops the guard's two `fallback` pins in the same commit.
+6. Six uncovered-and-guard-invisible `$(...)` inners the ledger lacked:
+   `basename` ×5 (apes-build:826,865-867; apes-verify:153 — rewrite candidate
+   `${PWD##*/}`), `seq` ×1 (observability:136, benign illustrative prose).
+7. Bare `git tag` is three sites (orchestration:284,285,286), not one.
+8. Restoring `Edit` to apes-codex-review requires an `EDIT_WRITE_EXPECTED`
+   row in the guard in the same commit, or layer B fails.
+9. PowerShell `npm test` runner parked (WSL-bash path failure, exit 127; see
+   ledger closeout entry 2026-07-09). Git Bash is AC-9's known-good runner.
+
+All other anchors confirmed exactly as cited; `$(...)` inventory complete at
+29 sites (9 → AC-4, 11 benign under live allows, 6 → AC-6 util class, 6 → the
+new class-D blind spots above). No mixed chains at HEAD outside the prose
+site in delta 2.
