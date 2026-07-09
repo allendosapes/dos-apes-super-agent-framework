@@ -412,7 +412,7 @@ The build command is designed for autonomous execution. Only pause for human inp
 
 - **`[APPROVAL]` tasks** — Phase boundary reviews, architecture decisions
 - **Force push** — `git push --force` or `git push --force-with-lease` to any branch
-- **Delete remote branches** — `git push origin --delete` (except cleaning up merged feature branches)
+- **Delete remote branches** — never delete a remote branch yourself, including merged feature branches (denied by policy, no exceptions); ask the human to do it
 - **Deployment** — `npm run deploy`, running deploy scripts, touching production
 - **Database migrations** — Schema changes, data migrations in production
 - **Environment/secrets** — Modifying `.env` files, credentials, API keys

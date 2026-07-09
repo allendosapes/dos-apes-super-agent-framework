@@ -246,8 +246,11 @@ IF still failing after 3 attempts:
    ```bash
    git push origin main
    git branch -d feature/[name]
-   git push origin --delete feature/[name]
    ```
+
+   Delete the local branch only. Remote branch deletion is human-only (the
+   permission policy denies it with no exceptions): tell the maintainer the
+   merged branch's name and ask them to delete it on the remote when ready.
 
 ## Completion Criteria
 

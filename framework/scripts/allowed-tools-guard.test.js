@@ -137,12 +137,10 @@ const EDIT_WRITE_EXPECTED = {
   "skills/cross-model-review.md": ["Edit"],      // fix protocol edits cited files
 };
 
-// Layer C: sites that match a DENY rule on purpose-visible drift. Each cites
-// the ledger; M-0003 removes the entry together with the body rewrite.
-// (_planning/M-0003-scope-additions.md — "FUNCTIONAL BREAK / must-fix M-0003 AC")
-const EXPECTED_DENY = [
-  { file: "commands/apes-feature.md", prefix: "git push origin --delete" },
-];
+// Layer C: sites that match a DENY rule on purpose-visible drift. Each entry
+// must cite the ledger. Empty since M-0003 Task 1 removed the last site
+// (apes-feature.md remote-branch deletion); repopulate only with a cite.
+const EXPECTED_DENY = [];
 
 // Layer C: today's accepted prompt surface, frozen. Key = file + command
 // prefix, i.e. the freeze is per (file, command-family), NOT per site: a new
