@@ -158,8 +158,7 @@ const EXPECTED_DENY = [];
 // Task 6 gates).
 // Classes: node-e = inline node -e (M-0003 AC); util = bare read-only utility
 // (T3 ruling: grants ride M-0003 rewrites); env = env-prefix invocation
-// (testing.md:176 class); fallback = .claude/scripts/ fallback (FLAG C,
-// live-or-dead pending); policy = must-prompt by M-0001 design; bare-form =
+// (testing.md:176 class); policy = must-prompt by M-0001 design; bare-form =
 // argument-less command unmatched by its own space-star baseline rule (the
 // deny-audit quirk — e.g. `Bash(git status *)` covers `git status --short`
 // but not bare `git status`); ledgered for the M-0003/M-0004 policy sweep.
@@ -212,7 +211,6 @@ const KNOWN_PROMPTING = [
   { file: "commands/apes-refactor.md", prefix: "head", cls: "util" },
   { file: "commands/apes-refactor.md", prefix: "wc", cls: "util" },
   { file: "commands/apes-refactor.md", prefix: "git status", cls: "bare-form" }, // :188 bare (conflict-resolution step)
-  { file: "commands/apes-security-scan.md", prefix: "bash .claude/scripts/", cls: "fallback" },
   { file: "commands/apes-status.md", prefix: "node -e", cls: "node-e" },
   { file: "commands/apes-status.md", prefix: "cat", cls: "util" },
   { file: "commands/apes-status.md", prefix: "echo", cls: "util" },
@@ -225,7 +223,6 @@ const KNOWN_PROMPTING = [
   { file: "commands/apes-verify.md", prefix: "sed", cls: "util" },
   { file: "commands/apes-verify.md", prefix: "tail", cls: "util" },
   { file: "commands/apes-verify.md", prefix: "wc", cls: "util" },
-  { file: "commands/apes-verify.md", prefix: "bash .claude/scripts/", cls: "fallback" },
   // ── skills ──
   { file: "skills/cross-model-review.md", prefix: "node -e", cls: "node-e" },
   { file: "skills/devops.md", prefix: "curl", cls: "policy" },   // FLAG I: exfil surface prompts by design

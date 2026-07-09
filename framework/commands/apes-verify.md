@@ -124,12 +124,6 @@ if [ -f "scripts/check-coverage.sh" ]; then
   else
     echo "⚠️ Coverage below threshold"
   fi
-elif [ -f ".claude/scripts/check-coverage.sh" ]; then
-  if bash .claude/scripts/check-coverage.sh 2>&1; then
-    echo "✅ Coverage meets threshold"
-  else
-    echo "⚠️ Coverage below threshold"
-  fi
 else
   echo "⚠️ Coverage script not found — skipping"
 fi
@@ -181,8 +175,6 @@ fi
 echo "  Secret detection..."
 if [ -f "scripts/check-secrets.sh" ]; then
   bash scripts/check-secrets.sh 2>&1
-elif [ -f ".claude/scripts/check-secrets.sh" ]; then
-  bash .claude/scripts/check-secrets.sh 2>&1
 else
   echo "  ⚠️ Secret detection script not found — skipping"
 fi
