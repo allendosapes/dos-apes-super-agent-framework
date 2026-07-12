@@ -230,7 +230,7 @@ post-merge-verify.yml (existing)
 
 ```bash
 # Re-deploy the previous known-good version
-git checkout $(git describe --tags --abbrev=0 HEAD~1)  # Previous tag
+git switch --detach $(git describe --tags --abbrev=0 HEAD~1)  # Previous tag
 # Re-run the deploy pipeline
 ```
 

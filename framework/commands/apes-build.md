@@ -398,7 +398,7 @@ The build command is designed for autonomous execution. Only pause for human inp
 ### Proceed Autonomously (NEVER prompt)
 
 - **Build/Test/Lint:** `npm run build`, `npm test`, `npm run lint`, `npm run typecheck`, `npm run format`
-- **Git branching:** `git checkout -b`, `git checkout main`, `git branch -d` (local branches)
+- **Git branching:** `git checkout -b`, `git switch main`, `git branch -d` (local branches)
 - **Git commits:** `git add`, `git commit` (on feature branches and main after squash merge)
 - **Git tags:** `git tag -a` for task and release tags
 - **Git push:** `git push origin main`, `git push origin --tags`, `git push origin feature/*`
@@ -412,7 +412,7 @@ The build command is designed for autonomous execution. Only pause for human inp
 
 - **`[APPROVAL]` tasks** — Phase boundary reviews, architecture decisions
 - **Force push** — `git push --force` or `git push --force-with-lease` to any branch
-- **Delete remote branches** — `git push origin --delete` (except cleaning up merged feature branches)
+- **Delete remote branches** — never delete a remote branch yourself, including merged feature branches (denied by policy, no exceptions); ask the human to do it
 - **Deployment** — `npm run deploy`, running deploy scripts, touching production
 - **Database migrations** — Schema changes, data migrations in production
 - **Environment/secrets** — Modifying `.env` files, credentials, API keys
@@ -520,7 +520,7 @@ When in doubt about whether to proceed: if the action is **reversible and local*
      Then determine where to resume:
 
      IF a feat/phase-N branch exists (not yet merged to main):
-       git checkout feat/phase-N-slug
+       git switch feat/phase-N-slug
        Find first task with status pending or in_progress
        → Jump to PHASE 3: EXECUTE, continue from that task
 
@@ -793,7 +793,7 @@ Each phase should include browser verification appropriate to the phase's scope:
 
 ```bash
 # Create feature branch for this phase
-git checkout main
+git switch main
 git pull origin main 2>/dev/null || true
 git checkout -b feat/phase-${PHASE_NUM}-${PHASE_SLUG}
 ```
@@ -842,7 +842,7 @@ After all teammates complete, merge back to the phase branch and clean up:
 
 ```bash
 # Switch to the phase branch
-git checkout feat/phase-${PHASE_NUM}-${PHASE_SLUG}
+git switch feat/phase-${PHASE_NUM}-${PHASE_SLUG}
 
 # Merge each completed task branch
 git merge task/${TASK_ID_A}-${SLUG_A} --no-edit
@@ -1019,7 +1019,7 @@ After all phase tasks pass verification:
 
 ```bash
 # Switch to main and merge the phase branch
-git checkout main
+git switch main
 git merge --squash feat/phase-${PHASE_NUM}-${PHASE_SLUG}
 git commit -m "feat: Phase ${PHASE_NUM} complete - ${PHASE_DESCRIPTION}"
 git branch -d feat/phase-${PHASE_NUM}-${PHASE_SLUG}
@@ -1073,7 +1073,7 @@ npm audit
 
 ```bash
 # Ensure we're on main with all phases merged
-git checkout main
+git switch main
 
 # Push to remote
 git push origin main
@@ -1218,15 +1218,21 @@ Options:
 
 If the session ends unexpectedly (timeout, crash, network):
 
-```
-All completed tasks are committed with git tags.
-Work-in-progress on the current task may be uncommitted.
+```bash
+# All completed tasks are committed with git tags.
+# Work-in-progress on the current task may be uncommitted.
 
-To recover:
-1. Check state: git status && git tag -l "phase-*"
-2. If dirty working tree: git stash (preserve WIP) or git checkout . (discard)
-3. Resume: /apes-build --prd [same-prd] --ralph
-   (Resume detection picks up from last tagged task)
+# 1. Check state
+git status --short
+git tag -l "phase-*"
+
+# 2. If dirty working tree — preserve WIP:
+git stash push
+# …or discard it (destructive; deliberately prompts for confirmation):
+git checkout .
+
+# 3. Resume (resume detection picks up from the last tagged task)
+/apes-build --prd [same-prd] --ralph
 ```
 
 ### Recovery Commands
@@ -1246,7 +1252,7 @@ git reset --hard phase-2/task-3-complete
 /apes-build --prd [same-prd] --ralph --fresh
 
 # Nuclear option: restart a single phase
-git checkout main
+git switch main
 git branch -D feat/phase-2-core-features
 git tag -d $(git tag -l "phase-2/*")
 /apes-build --prd [same-prd] --ralph

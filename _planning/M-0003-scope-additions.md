@@ -212,3 +212,43 @@ None is wrong (the new reasons are all subspecies of "not configured /
 disabled"), but none names the new reason strings a user will actually see.
 Fold into M-0003's body pass over command/skill files; per M-0005 AC-5 these
 were deliberately not edited in the M-0005 mission itself.
+
+### 2026-07-08 — Parked fast-follow: PreToolUse auto-approve hook for verified read-only chains
+
+Hooks can return `permissionDecision: allow` — the only deterministic fix for
+chains that must remain allow-listed as a unit (permission rules match single
+commands; no rule can cover a `&&`/`|` chain as a whole). Salvaged from the
+superseded `M-0003-compound-command-hygiene` stub's Scope/Out section before
+its deletion. Parked, not scheduled.
+
+### 2026-07-09 — Parked test-harness-portability candidate: PowerShell `npm test` runs guard scripts via WSL bash
+
+PowerShell's `bash` resolves to `C:\WINDOWS\system32\bash.exe` (the WSL
+launcher), so `guard-forbidden-commands.test.js`'s `spawnSync("bash",
+[SCRIPT])` hands the repo's Windows-pathed hook script to WSL's `/bin/bash`,
+which can't execute it — backslash-stripping yields `C:Usersallen…`, "No such
+file or directory", exit 127 before any test runs, failing the suite before
+the allowed-tools guard ever executes. The availability probe at test.js:19-23
+can't catch it: WSL bash *is* found and answers `--version` fine; the failure
+is path translation, not availability. Fix is ~6 lines: extend the probe to
+detect a non-MSYS bash (`bash -c 'echo $OSTYPE'` → `linux-gnu` on win32 ⇒ take
+the existing graceful-skip path), or resolve Git Bash explicitly (e.g. via
+`where.exe git` → sibling `bin\bash.exe`). Parked as a test-harness-portability
+candidate — not scheduled, not M-0003. Git Bash is M-0003's known-good runner
+(AC-9 ruling at the Task 2 recon gate). Found at M-0003 Task 2 recon.
+
+### 2026-07-09 — Parked guard-correctness candidate: precedence model contradicts the product (allow-before-ask vs ask-before-allow)
+
+`allowed-tools-guard.test.js` models rule precedence as deny → frontmatter
+grant → settings allow → settings ask. The product's real precedence is
+deny → ask → allow, category-based, with specificity explicitly irrelevant:
+"a matching ask rule prompts even when a more specific allow rule also
+matches the same call" (permissions.md), confirmed empirically at the M-0003
+Task 3a gate by a headless three-probe test (`--settings` injection; with
+both `Bash(git switch -c *)` allow and `Bash(git switch *)` ask present,
+`git switch -c` was blocked — ask shadows allow). Latent guard-correctness
+bug: any future rule set with a real ask/allow overlap on one command family
+would make the guard categorize a prompting site as allowed. Not triggered
+by M-0003's rules — the one ask authored (`Bash(git switch main)`) is
+exact-match with no overlapping allow. A KNOWN DIVERGENCE note now sits in
+the guard's semantics header pointing here. Parked, not scheduled.

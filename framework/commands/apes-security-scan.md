@@ -34,12 +34,6 @@ npm audit fix
 bash scripts/check-secrets.sh
 ```
 
-Or if installed in .claude/:
-
-```bash
-bash .claude/scripts/check-secrets.sh
-```
-
 ### 3. Static Security Analysis (if installed)
 
 ```bash
