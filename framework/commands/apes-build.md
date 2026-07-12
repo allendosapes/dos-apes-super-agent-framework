@@ -398,7 +398,7 @@ The build command is designed for autonomous execution. Only pause for human inp
 ### Proceed Autonomously (NEVER prompt)
 
 - **Build/Test/Lint:** `npm run build`, `npm test`, `npm run lint`, `npm run typecheck`, `npm run format`
-- **Git branching:** `git checkout -b`, `git switch main`, `git branch -d` (local branches)
+- **Git branching:** `git checkout -b`, `git branch -d` (local branches)
 - **Git commits:** `git add`, `git commit` (on feature branches and main after squash merge)
 - **Git tags:** `git tag -a` for task and release tags
 - **Git push:** `git push origin main`, `git push origin --tags`, `git push origin feature/*`
@@ -411,6 +411,7 @@ The build command is designed for autonomous execution. Only pause for human inp
 ### Pause and Ask Human (ALWAYS prompt)
 
 - **`[APPROVAL]` tasks** — Phase boundary reviews, architecture decisions
+- **Switching to `main`** — `git switch main` is gated by an ask rule; the permission prompt is expected, not an error — wait for approval before proceeding to the squash merge
 - **Force push** — `git push --force` or `git push --force-with-lease` to any branch
 - **Delete remote branches** — never delete a remote branch yourself, including merged feature branches (denied by policy, no exceptions); ask the human to do it
 - **Deployment** — `npm run deploy`, running deploy scripts, touching production

@@ -252,3 +252,15 @@ would make the guard categorize a prompting site as allowed. Not triggered
 by M-0003's rules — the one ask authored (`Bash(git switch main)`) is
 exact-match with no overlapping allow. A KNOWN DIVERGENCE note now sits in
 the guard's semantics header pointing here. Parked, not scheduled.
+
+### 2026-07-12 — OUT OF SCOPE for M-0003: `pipeline-test-scenario.md` template inconsistency (template-hygiene candidate)
+
+`framework/templates/pipeline-test-scenario.md` still narrates the
+pre-migration git idiom in its expected-output examples (`git checkout main`
+at :240 and :373; `git checkout -b feat/…` at :241 and :387) after AC-3
+migrated the command/skill bodies to `git switch`. Templates sit outside
+M-0003's scope (bodies of the 18 command + 15 skill files only): they are
+copied into user projects as illustrative content, are not executed by any
+framework command, and are not read by the drift guard. Ruled OUT OF SCOPE
+for M-0003 at the AC-4 resumption; parked as a template-hygiene candidate
+for future mission intake.

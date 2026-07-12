@@ -249,3 +249,21 @@ All other anchors confirmed exactly as cited; `$(...)` inventory complete at
 29 sites (9 → AC-4, 11 benign under live allows, 6 → AC-6 util class, 6 → the
 new class-D blind spots above). No mixed chains at HEAD outside the prose
 site in delta 2.
+
+### 2026-07-12 — Reconciliation: unplanned checkpoint merge mid-mission
+
+1. Task 3b merged to `main` EARLY via unplanned checkpoint PR #19 (squash
+   commit 95d66bc, 2026-07-12), carrying commits f4a0270 (AC-2 dead-fallback
+   removal) and 42639b1 (AC-3 `git checkout` → `git switch` migration + the
+   one authored ask rule, exact-match `Bash(git switch main)` per the F-2
+   precedence ruling). Task 3b is COMPLETE; do not revisit. The cited SHAs
+   resolve on branch `mission/M-0003-body-hygiene`, retained on origin per
+   the branch-retention policy.
+2. Remaining scope — housekeeping ledger updates, AC-4 (`node -e`
+   conversions, `$(...)` sweep), and closeout — continues on
+   `mission/M-0003-body-hygiene-ac4`, cut from `main` after the checkpoint
+   merge.
+3. The closeout evidence packet will reference TWO PRs: checkpoint PR #19
+   (Task 3b) and the eventual PR from `mission/M-0003-body-hygiene-ac4`
+   (remainder). Both merged mission branches stay on origin until 3.6.0
+   ships.
