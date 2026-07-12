@@ -99,6 +99,7 @@ Work on this repo is gated by the maintainer at every step. When executing missi
 - **Commit only on explicit approval.** A diff being shown is not approval to commit. Wait for the maintainer to explicitly approve before running `git commit`.
 - **Handoff steps one at a time.** When walking the maintainer through manual steps (e.g. PR creation, merges, publishing), give one step, wait for confirmation it's done, then give the next — not a full list up front.
 - **`main` is PR-only.** Never commit directly to `main`. All changes land via a branch and pull request.
+- **Merged mission branches stay on origin until 3.6.0 ships.** A squash-merge collapses the mission's commit trail into one commit on `main`, so the branch is the only place its cited SHAs (workpad entries, incident write-ups) resolve as browsable history. `delete_branch_on_merge` is kept `false` on the repo to enforce this; if a merge deletes a branch anyway, re-push it from the local ref.
 
 ## What NOT to Do
 

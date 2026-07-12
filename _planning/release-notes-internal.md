@@ -45,3 +45,11 @@ convention. M-0006 (Claude Desktop authoring instructions) shipped.
   in-sync with origin before branch creation.
 - Publish: deferred to a fresh session per dual-publish convention. Tag
   will point at HEAD-of-main at publish time.
+
+## 3.6.0 — branch-retention sunset (pending)
+
+On publish, the retained mission branches — `mission/M-0001-least-privilege-permissions`,
+`mission/M-0002-allowed-tools-frontmatter`, `mission/M-0005-l8-inverted-default` — may be
+deleted from origin and `delete_branch_on_merge` reconsidered. They exist only to keep their
+workpad/incident-cited SHAs browsable until this release ships (see CLAUDE.md, Maintainer-Gated
+Workflow). Delete them only after 3.6.0 is published, not before.
