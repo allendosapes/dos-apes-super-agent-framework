@@ -1,14 +1,19 @@
 ---
-id: M-XXYA  # renumber on filing
+id: M-0006
 title: Installer permission migration for existing installs (--update-permissions)
 priority: 1
 labels: [installer, dx]
-depends_on: [M-XXXX]  # least-privilege permissions policy
+depends_on: [M-0001]  # least-privilege permissions policy (done)
 codex:
   required: true  # touches user-owned settings files; adversarial review must complete
 verification:
   required_levels: [L0, L1, L2, L8]
 ---
+
+> **Release gating:** Gates latest-tag promotion; does not block the 3.6.0
+> beta publish. (Refiled from the M-0004 placeholder stub at M-0003
+> closeout; the M-0004 ID belongs to the worktree-guard mission per the
+> committed M-0003 ledger dispositions.)
 
 ## Context
 

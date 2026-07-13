@@ -301,3 +301,11 @@ site in delta 2.
    back-compatible.
 5. Mission doing → review. The done transition rides the next branch's
    first commit after closeout PR approval.
+
+### 2026-07-13 — review → done
+
+Closeout PR #20 approval served as the mission review (squash-merged to
+main as defe991, branch retained per policy). Transition rides
+mission/M-0004-worktree-guard-and-move-fixes' first commit, as recorded
+at closeout. Evidence packet remains at
+`_planning/missions/review/M-0003/evidence/`.
