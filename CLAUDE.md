@@ -33,11 +33,11 @@ npm publish
 ```
 dos-apes/
 ├── bin/cli.js              # CLI entry point (npx dos-apes)
-├── package.json            # npm package config (v2.0.0)
+├── package.json            # npm package config
 ├── framework/
-│   ├── commands/           # 13 slash commands (.md files)
-│   ├── skills/             # 7 domain skills + README
-│   ├── scripts/            # 10 hook scripts (.sh files)
+│   ├── commands/           # 18 slash commands (.md files)
+│   ├── skills/             # 15 domain skills + README
+│   ├── scripts/            # hook scripts (.sh), helpers + guards (.js)
 │   ├── ci/                 # 3 GitHub Actions workflows
 │   ├── templates/          # CLAUDE-TEMPLATE, PRD, ADR, multi-repo-config
 │   └── settings.json       # Hooks, permissions, MCP config
@@ -126,6 +126,12 @@ These rules are learned from real incidents in this codebase. Each is short, beh
 
 7. **Never grant ahead of body evidence.** A declared-but-unused grant is drift by definition and fails `allowed-tools-guard.test.js` (declarations-without-usage). Aspirational grants — "the mechanism this will migrate to" — are rejected; the grant lands in the same commit as the change that creates the evidence. Judgment-call exceptions live as cited pins in the guard, never as uncited frontmatter.
 
+8. **Hooks that check session-cwd state instead of target-path state are a defect class.** A hook that interrogates the session's cwd (its branch, its dirty state) silently mis-fires for tool calls whose target lives in another checkout: guard-main-branch.sh blocked the framework's own worktree flow because the primary checkout sat on `main` while writes targeted `.worktrees/<id>` on a mission branch (found by M-0003's AC-9 live-fire dry-run; fixed in M-0004 AC-1). Resolve state from the path the tool call names (`git -C <target-dir>`), never from where the session happens to sit.
+
+9. **`git mv` stages the rename only — content edits need their own `git add`, and committed contents get verified post-commit.** An `RM` pair in `git status --short` means the rename is staged but the modification is NOT; committing then ships the old content under the new path (a `rename ... (100%)` line in the commit summary is the tell). After any commit that mixes renames with edits, verify with `git show HEAD:<new-path>` that the edit actually landed. The check costs seconds; the M-0003 closeout commit shipped without its workpad entry this way.
+
+10. **Test and dry-run projects must be scaffolded OUTSIDE `~/.claude`.** Claude Code's sensitive-path protection for the `.claude` subtree overrides permission allow rules there and pollutes denial evidence — the M-0003/M-0004 "mkdir allow-rule anomaly" was exactly this, root-caused by the 2026-07-13 repro (M-0004 ledger; closed as environmental, framework exonerated).
+
 ## Verification Pyramid (8 levels)
 
 The framework teaches projects this verification stack:
@@ -151,3 +157,5 @@ L0–L2.5 enforced by hooks. L3–L5 by scripts. L6–L7 require Playwright MCP.
 - `bin/`, `framework/commands/`, `framework/skills/`, `framework/scripts/`, `framework/ci/`, `framework/templates/`, `framework/settings.json`, `assets/`, `README.md`, `LICENSE`
 
 Test with `npm pack --dry-run` to verify included files before publishing.
+
+Whitelist completeness is mechanically enforced, not just prose: cli.test.js's reverse packaging assertion ("every scripts/*.js|sh invoked by shipped command/skill bodies ships", M-0004 AC-8) fails the suite when a body-invoked script is missing from `files`.

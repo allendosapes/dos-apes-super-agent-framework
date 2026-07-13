@@ -49,3 +49,19 @@ whitelist addition plus a reverse packaging assertion. RESOLUTION
 whitelist entries added, reverse assertion landed in cli.test.js's
 packaging group (proven red against the pre-fix whitelist, exactly the
 six helpers; green post-fix).
+
+### 2026-07-13 — mkdir allow-rule denial anomaly: CLOSED (environmental, root-caused, framework exonerated, no action)
+
+Repro attempted 2026-07-13 (M-0004 Prompt 3 Task B, one bounded headless
+attempt, same `--settings`-injection shape as the original AC-9 run).
+Both `mkdir tmp-probe` and `mkdir -p tmp-probe2/nested` denied despite
+the live `Bash(mkdir *)` allow. Denial text verbatim: "Claude requested
+permissions to edit C:\Users\allen\.claude\jobs\977580c4\tmp\ac9-sample\
+tmp-probe which is a sensitive file." Root cause: the AC-9 sample
+project lives under `~/.claude/jobs/...`, and Claude Code's built-in
+sensitive-path protection for the `.claude` subtree overrides permission
+allow rules for fs-mutating commands there. Not an allow-rule defect;
+`framework/settings.json` exonerated. NO FIX (nothing framework-side to
+fix). Methodology consequence: the AC-6 dry-run sample project MUST be
+scaffolded OUTSIDE `~/.claude` so environmental denials don't pollute
+the denial log.
