@@ -295,6 +295,34 @@ class MissionTracker {
     return { allowed: true, reason: "ok" };
   }
 
+  // Any tracked content at or under p (file or directory)? Untracked
+  // sources make `git mv` refuse ("not under version control" for files,
+  // "source directory is empty" for directories of untracked files — the
+  // M-0003 closeout failure); those move via plain rename instead.
+  _isTrackedPath(gitRoot, p) {
+    try {
+      const out = execFileSync("git", ["-C", gitRoot, "ls-files", "--", p], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      return out.trim().length > 0;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // M-0004 AC-3. Ordering + rollback guarantees ("atomic-in-effect"):
+  //   1. FSM check, post-move frontmatter validation, destination and
+  //      collision pre-checks all run BEFORE any filesystem effect — a
+  //      failure there moves nothing (the M-0004 Task 0 fixture: git mv
+  //      used to precede validation, stranding a moved file with a stale
+  //      `state:` field).
+  //   2. Moves execute per-path (git mv for tracked, rename for untracked;
+  //      a pre-existing destination dir is tolerated by entry-merge), each
+  //      completed step recorded.
+  //   3. Any failure during moves or the final frontmatter write rolls the
+  //      completed steps back in reverse. If the rollback itself fails,
+  //      the error reports the exact partial state path-by-path.
   moveMissionState(id, targetState) {
     const check = this.canTransition(id, targetState);
     if (!check.allowed) {
@@ -304,39 +332,102 @@ class MissionTracker {
     const fileBase = path.basename(m.path);
     const destFile = path.join(this.root, targetState, fileBase);
     const destDir = path.join(this.root, targetState);
-    fs.mkdirSync(destDir, { recursive: true });
 
-    // Companion per-mission directory (e.g. for verification.jsonl) lives
-    // alongside the .md file. Move it too if present.
+    // Pre-validate the post-move frontmatter: zero filesystem effects on
+    // failure (same message shape _writeFile would produce at write time).
+    const newFm = { ...m.frontmatter, state: targetState, updated: todayIso() };
+    const validation = schema.validateFrontmatter(newFm);
+    if (!validation.valid) {
+      throw new Error(
+        `mission-tracker: refusing to write invalid frontmatter to ${destFile}:\n  - ` +
+        validation.errors.join("\n  - ") +
+        `\n  (nothing moved — validation runs before any filesystem effect)`
+      );
+    }
+    if (fs.existsSync(destFile)) {
+      throw new Error(`moveMissionState: destination already exists: ${destFile} — nothing moved`);
+    }
+
     const companionSrc = path.join(this.root, m.state, id);
     const companionDst = path.join(this.root, targetState, id);
     const hasCompanion = fs.existsSync(companionSrc);
-
     const gitRoot = this._gitRoot();
-    if (gitRoot) {
-      try {
-        execFileSync("git", ["-C", gitRoot, "mv", m.path, destFile], {
-          stdio: ["ignore", "pipe", "pipe"],
-        });
-        if (hasCompanion) {
-          execFileSync("git", ["-C", gitRoot, "mv", companionSrc, companionDst], {
-            stdio: ["ignore", "pipe", "pipe"],
-          });
+
+    // Plan the companion strategy up front. A pre-existing destination dir
+    // (the evidence generator pre-creates review/<id>/) is tolerated by
+    // merging entries into it; entry collisions abort before any move.
+    let mergeEntries = null; // null = whole-dir move; array = per-entry merge
+    if (hasCompanion && fs.existsSync(companionDst)) {
+      mergeEntries = fs.readdirSync(companionSrc);
+      for (const e of mergeEntries) {
+        if (fs.existsSync(path.join(companionDst, e))) {
+          throw new Error(
+            `moveMissionState: companion entry collides with pre-existing destination: ` +
+            `${path.join(companionDst, e)} — nothing moved`
+          );
         }
-      } catch (err) {
-        const stderr = err.stderr ? String(err.stderr).trim() : err.message;
-        throw new Error(`moveMissionState: git mv failed: ${stderr}`);
       }
-    } else {
-      fs.renameSync(m.path, destFile);
-      if (hasCompanion) fs.renameSync(companionSrc, companionDst);
     }
 
-    // Update frontmatter so it matches the new directory. Atomic-on-disk:
-    // by the time this method returns, the .md file is in the new location
-    // AND its `state` field reflects that.
-    const newFm = { ...m.frontmatter, state: targetState, updated: todayIso() };
-    this._writeFile(destFile, { frontmatter: newFm, body: m.body });
+    fs.mkdirSync(destDir, { recursive: true });
+
+    const done = []; // completed steps, for reverse rollback
+    const moveOne = (src, dst) => {
+      if (gitRoot && this._isTrackedPath(gitRoot, src)) {
+        execFileSync("git", ["-C", gitRoot, "mv", src, dst], {
+          stdio: ["ignore", "pipe", "pipe"],
+        });
+        done.push({ src, dst, how: "git-mv" });
+      } else {
+        fs.renameSync(src, dst);
+        done.push({ src, dst, how: "rename" });
+      }
+    };
+    const rollback = () => {
+      const problems = [];
+      for (const step of done.reverse()) {
+        try {
+          if (step.how === "rmdir") {
+            fs.mkdirSync(step.src, { recursive: true });
+          } else if (step.how === "git-mv") {
+            execFileSync("git", ["-C", gitRoot, "mv", step.dst, step.src], {
+              stdio: ["ignore", "pipe", "pipe"],
+            });
+          } else {
+            fs.renameSync(step.dst, step.src);
+          }
+        } catch (e) {
+          problems.push(`${step.dst || step.src}: not restored (${e.message.split("\n")[0]})`);
+        }
+      }
+      return problems;
+    };
+
+    try {
+      moveOne(m.path, destFile);
+      if (hasCompanion) {
+        if (mergeEntries === null) {
+          moveOne(companionSrc, companionDst);
+        } else {
+          for (const e of mergeEntries) {
+            moveOne(path.join(companionSrc, e), path.join(companionDst, e));
+          }
+          fs.rmdirSync(companionSrc); // empty after the merge
+          done.push({ src: companionSrc, dst: null, how: "rmdir" });
+        }
+      }
+      this._writeFile(destFile, { frontmatter: newFm, body: m.body });
+    } catch (err) {
+      const msg = err && err.stderr ? String(err.stderr).trim() : (err && err.message) || String(err);
+      const problems = rollback();
+      if (problems.length) {
+        throw new Error(
+          `moveMissionState: failed (${msg}) AND rollback was incomplete — partial state, fix by hand:\n  ` +
+          problems.join("\n  ")
+        );
+      }
+      throw new Error(`moveMissionState: failed — all completed steps rolled back. Cause: ${msg}`);
+    }
     return destFile;
   }
 
