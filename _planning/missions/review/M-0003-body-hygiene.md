@@ -267,3 +267,37 @@ site in delta 2.
    (Task 3b) and the eventual PR from `mission/M-0003-body-hygiene-ac4`
    (remainder). Both merged mission branches stay on origin until 3.6.0
    ships.
+
+### 2026-07-13 — Closeout
+
+1. **Two-PR history.** Checkpoint PR #19 (squash 95d66bc) carried
+   61a0116 (AC-1 deny-break), d79ce57 (recon docs), f4a0270 (AC-2
+   dead-fallback removal), 42639b1 (AC-3 switch migration + the F-2
+   exact-match ask). Closeout PR (this branch,
+   `mission/M-0003-body-hygiene-ac4`): 014c970 (reconciliation +
+   housekeeping), 593375c (AC-4: 18 `node -e` segments → 6 named
+   helpers, Class-D `$()` sweep, pins 72→62), 6802f15 (AC-5/AC-7:
+   9-site bare-form/argument sweep with zero new policy lines, pins
+   62→53, M-0005 skip-cause strings), plus this closeout commit.
+2. **AC-8 (final state):** allowed-tools-guard 108 passed / 0 failed
+   (prompt pins 53; `node-e`, `bare-form`, and `env` classes empty);
+   full `npm test` 336 passed / 0 failed. Git Bash runner, HEAD 6802f15.
+3. **AC-9 (in-use dry-run): satisfied for mission scope.** Headless
+   `/apes-build` completed end-to-end against a sample project; zero
+   mission-attributable unintended prompts (none of the 14 denials maps
+   to a swept site or an M-0003 policy change); the
+   `Bash(git switch main)` ask verified by control probe. The strict
+   zero-prompt criterion failed on 14 denials from pre-existing defects
+   — four candidates ledgered (three ABSORB INTO M-0004, one parked);
+   differential established analytically, not by a pre-M-0003 re-run.
+   Evidence: `ac9-result.json` in this mission's evidence directory.
+4. **Tradeoffs recorded.** (a) `trap '…' EXIT` → instructional
+   per-abort-path cleanup: a deterministic EXIT hook was traded for an
+   explicit, rule-visible `mission-cli clear-active` instruction — relies
+   on flow compliance, gains permission coverage. (b) Two shipped-script
+   interface additions were required for AC-5's argument forms:
+   `check-coverage.sh` first-positional threshold (env var stays as
+   fallback), `check-structure.sh --all` explicit full scan. Both
+   back-compatible.
+5. Mission doing → review. The done transition rides the next branch's
+   first commit after closeout PR approval.
