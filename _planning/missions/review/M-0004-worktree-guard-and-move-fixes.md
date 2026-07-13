@@ -2,7 +2,7 @@
 id: M-0004
 schema_version: 2
 title: Worktree write guard, mission-move companions, CLAUDE.md batch
-state: doing
+state: review
 created: 2026-07-13
 updated: 2026-07-13
 priority: 1
@@ -12,8 +12,6 @@ labels:
   - hooks
   - worktrees
   - missions
-# codex gate: hook + CLI fixes — L1 drift-guard, unit suites, and the
-# AC-6 live-fire re-run are the gates, not adversarial review
 codex:
   required: false
 verification:
@@ -106,3 +104,47 @@ fixed in-mission.
 ## Workpad
 
 <!-- Append timestamped entries; do not delete prior entries. -->
+
+### 2026-07-13 — Closeout
+
+1. **Commits:** 5edd191 (mission open, M-0006 refile, AC-5 M-0003
+   review → done), b5bab43 (AC-1 target-path guard + AC-2 EnterWorktree
+   grant, 10 new regression tests), 691e397 (AC-3 move hardening, 5 new
+   tests incl. the required non-atomicity fixture), fd33401 (AC-8
+   packaging: six helpers whitelisted, reverse assertion proven
+   red-then-green), 86a4f1c (AC-4 CLAUDE.md hazards 8-10 + packaging
+   enforcement note + M-0002 queue retired + mkdir anomaly closed),
+   plus this closeout commit.
+2. **AC-6: PASS with method-limitation accounting** (full disposition in
+   `_planning/M-0004-ledger.md`). Worktree-write 3 → 0 and
+   improvisation-cascade ~6 → 0, live, against the 12-denial adjusted
+   M-0003 baseline (2 environmental mkdir denials excluded).
+3. **Intended-ask-point discovery:** path-form EnterWorktree fires a
+   harness-native confirmation ("moves the session's … write access …
+   and loads project configuration") that no permission allow can or
+   should silence — a new intended-approval class alongside the ask
+   rules, one-click in real interactive installs, unanswerable headless.
+   Three-probe diagnostic, verdict A; apes-build Step 4 now presents the
+   confirmation as expected flow. Two deny-audit parks
+   (acceptance-assert gap, `git -C` invisibility) and one future-intake
+   park (Windows-native paths for EnterWorktree) recorded in the ledger.
+4. **AC-7:** allowed-tools-guard 108/0 (prompt pins 53); full npm test
+   352/0. Git Bash runner.
+5. Mission doing → review executed VIA THE MISSION TOOLING
+   (`moveMissionState`) with this mission's own tracked + untracked
+   evidence companion and pre-existing `review/M-0004/` destination —
+   the exact AC-3 failure shape, as the live verification. Result
+   recorded in the next workpad entry post-move.
+
+### 2026-07-13 — AC-3 live-fire evidence (recorded post-move)
+
+`moveMissionState('M-0004','review')` succeeded on the exact shape that
+broke M-0003's closeout: companion `doing/M-0004/` holding a TRACKED
+`ac6-result.json` (staged, git-mv path) plus an UNTRACKED
+`verification.jsonl` (rename path), merged entry-by-entry into the
+PRE-EXISTING `review/M-0004/` (which already held `evidence/` from the
+packet generator), `doing/M-0004/` removed, mission file moved with
+`state: review` written in the same operation. Zero manual completion,
+zero agent improvisation. Under the pre-AC-3 code this exact call
+failed with "source directory is empty" and stranded a half-moved
+mission (reproduction recorded at the AC-3 gate).

@@ -1,0 +1,17 @@
+ CLAUDE.md                                          |  16 +-
+ _planning/M-0002-process-notes-for-claude-md.md    |  32 ----
+ _planning/M-0004-charter-and-playbook.md           | 141 ++++++++++++++++++
+ _planning/M-0004-ledger.md                         |  67 +++++++++
+ .../doing/M-0004-worktree-guard-and-move-fixes.md  | 108 ++++++++++++++
+ .../{review => done}/M-0003-body-hygiene.md        |   8 +
+ ...md => M-0006-installer-permission-migration.md} |   9 +-
+ bin/cli.test.js                                    |  25 ++++
+ framework/commands/apes-build.md                   |   6 +-
+ framework/lib/mission-tracker.js                   | 137 ++++++++++++++---
+ framework/lib/mission-tracker.test.js              | 104 +++++++++++++
+ framework/scripts/allowed-tools-guard.test.js      |   8 +-
+ framework/scripts/guard-main-branch.sh             |  46 +++++-
+ framework/scripts/guard-main-branch.test.js        | 163 +++++++++++++++++++++
+ framework/settings.json                            |   3 +-
+ package.json                                       |   8 +-
+ 16 files changed, 810 insertions(+), 71 deletions(-)

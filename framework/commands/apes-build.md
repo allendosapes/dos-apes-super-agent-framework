@@ -165,8 +165,11 @@ node scripts/mission-cli.js set-active "$TARGET"
 
 From this point on, all work happens **inside the worktree directory**
 (`.worktrees/${TARGET}`). Enter it with the EnterWorktree tool (pass the
-worktree path) before writing any file — the session then operates on the
-mission branch directly. The build phases below (PHASE 0 through PHASE 5
+worktree path) before writing any file — the tool asks a one-time entry
+confirmation (it moves the session's write access and loads that
+worktree's project configuration); approving it is the expected flow,
+not an error. The session then operates on the mission branch directly.
+The build phases below (PHASE 0 through PHASE 5
 in this file) run against that directory, not the main checkout. The
 mission's frontmatter declares the team composition and required
 verification levels; honor both.
