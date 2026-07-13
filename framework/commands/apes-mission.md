@@ -120,20 +120,7 @@ node scripts/mission-cli.js list --state "$STATE"
 With `--phase X` or `--label X` (client-side filter):
 
 ```bash
-node scripts/mission-cli.js list | node -e '
-let s=""; process.stdin.on("data", d => s += d).on("end", () => {
-  const all = JSON.parse(s).missions;
-  const phase = process.argv[1] || null;
-  const label = process.argv[2] || null;
-  for (const state of ["doing","review","todo","done","canceled"]) {
-    for (const m of (all[state] || [])) {
-      if (phase && m.frontmatter.phase !== phase) continue;
-      if (label && !(m.frontmatter.labels || []).includes(label)) continue;
-      console.log(`${m.id}  ${state}  p${m.frontmatter.priority || 3}  ${m.title}`);
-    }
-  }
-});
-' "$PHASE" "$LABEL"
+node scripts/mission-cli.js list | node scripts/mission-filter.js --phase "$PHASE" --label "$LABEL"
 ```
 
 Within a state, sort by `priority` ascending then `created` ascending. The
@@ -160,7 +147,7 @@ If the mission has a per-mission directory at
 screenshots, evidence packet — so the reader sees the full audit trail:
 
 ```bash
-STATE=$(node scripts/mission-cli.js show "$ID" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).state))')
+STATE=$(node scripts/mission-cli.js show "$ID" | node scripts/json-field.js state)
 ls ".planning/missions/$STATE/$ID/" 2>/dev/null || true
 ```
 
@@ -192,7 +179,7 @@ preconditions. The command body is responsible for those:
 
 - Every entry in `depends_on` must be in `done/`. Use `deps`:
   ```bash
-  UNMET=$(node scripts/mission-cli.js deps "$ID" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).unmet.join(",")))')
+  UNMET=$(node scripts/mission-cli.js deps "$ID" | node scripts/json-field.js unmet)
   if [ -n "$UNMET" ]; then
     echo "blocked by: $UNMET" >&2
     exit 1

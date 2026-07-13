@@ -173,7 +173,7 @@ version 2). Read it via the mission CLI:
 
 ```bash
 node scripts/mission-cli.js show M-0042 \
-  | node -e 'let s=""; process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).frontmatter.codex || null))'
+  | node scripts/json-field.js frontmatter.codex null
 ```
 
 Or in-process via `MissionTracker.getCodexState(id)` — see

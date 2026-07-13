@@ -87,7 +87,7 @@ if [ -n "$MISSION_ARG" ]; then
     2) echo "apes-build: mission $TARGET not found" >&2; exit 1 ;;
     *) echo "apes-build: $STATE_JSON" >&2; exit 1 ;;
   esac
-  CURRENT_STATE=$(echo "$STATE_JSON" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).state))')
+  CURRENT_STATE=$(echo "$STATE_JSON" | node scripts/json-field.js state)
 
   case "$CURRENT_STATE" in
     doing|review)
@@ -103,7 +103,7 @@ if [ -n "$MISSION_ARG" ]; then
   esac
 
   # Unmet dependencies.
-  UNMET=$(node scripts/mission-cli.js deps "$TARGET" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).unmet.join(",")))')
+  UNMET=$(node scripts/mission-cli.js deps "$TARGET" | node scripts/json-field.js unmet)
   if [ -n "$UNMET" ]; then
     echo "apes-build: mission $TARGET blocked by: $UNMET" >&2
     exit 1
@@ -116,14 +116,7 @@ elif [ -n "$PRD_ARG" ] || [ -n "$IDEA_ARG" ]; then
 else
   # No flags — pick the highest-priority unblocked mission in todo/. The
   # lib returns missions sorted by (priority, created) within each state.
-  TARGET=$(node -e '
-    const { execFileSync } = require("child_process");
-    const list = JSON.parse(execFileSync("node", ["scripts/mission-cli.js", "list", "--state", "todo"], { encoding: "utf8" }));
-    for (const m of list.missions) {
-      const deps = JSON.parse(execFileSync("node", ["scripts/mission-cli.js", "deps", m.id], { encoding: "utf8" }));
-      if (deps.unmet.length === 0) { console.log(m.id); break; }
-    }
-  ')
+  TARGET=$(node scripts/mission-next.js)
   if [ -z "$TARGET" ]; then
     echo "apes-build: no unblocked missions in todo/ — create one with /apes-mission new" >&2
     exit 1
@@ -213,7 +206,7 @@ skip silently:
 ```bash
 L8_ENABLED=0
 if [ -f ".dos-apes/codex-review-config.json" ] && [ -f "scripts/codex-review-loop.js" ]; then
-  if node -e "process.exit(JSON.parse(require('fs').readFileSync('.dos-apes/codex-review-config.json','utf8')).enabled === true ? 0 : 1)" 2>/dev/null; then
+  if [ "$(node scripts/json-field.js enabled --json < .dos-apes/codex-review-config.json 2>/dev/null)" = "true" ]; then
     L8_ENABLED=1
   fi
 fi
@@ -264,12 +257,7 @@ output.
 
 ```bash
 if [ "$L8_ENABLED" -eq 1 ]; then
-  CODEX_VERDICT=$(node scripts/mission-cli.js show "$TARGET" | node -e '
-    let s = ""; process.stdin.on("data", d => s += d).on("end", () => {
-      const fm = JSON.parse(s).frontmatter || {};
-      console.log((fm.codex && fm.codex.last_verdict) || "none");
-    });
-  ')
+  CODEX_VERDICT=$(node scripts/mission-cli.js show "$TARGET" | node scripts/json-field.js frontmatter.codex.last_verdict none)
 fi
 ```
 
@@ -824,7 +812,7 @@ When a wave has 2+ independent tasks that touch **different files/directories**,
 
 ```bash
 # Create a worktree for each parallel task, branching off the phase branch
-git worktree add ../$(basename "$PWD")-wt-task-${TASK_ID} \
+git worktree add ../${PWD##*/}-wt-task-${TASK_ID} \
   -b task/${TASK_ID}-${TASK_SLUG} \
   feat/phase-${PHASE_NUM}-${PHASE_SLUG}
 
@@ -863,9 +851,9 @@ fi
 # open app, navigate major routes, screenshot evidence
 
 # Clean up worktrees and task branches
-git worktree remove ../$(basename "$PWD")-wt-task-${TASK_ID_A}
-git worktree remove ../$(basename "$PWD")-wt-task-${TASK_ID_B}
-git worktree remove ../$(basename "$PWD")-wt-task-${TASK_ID_C}
+git worktree remove ../${PWD##*/}-wt-task-${TASK_ID_A}
+git worktree remove ../${PWD##*/}-wt-task-${TASK_ID_B}
+git worktree remove ../${PWD##*/}-wt-task-${TASK_ID_C}
 git branch -d task/${TASK_ID_A}-${SLUG_A} task/${TASK_ID_B}-${SLUG_B} task/${TASK_ID_C}-${SLUG_C}
 ```
 

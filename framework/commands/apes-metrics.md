@@ -22,16 +22,7 @@ Read metrics from .planning/metrics/ and summarize:
 CURRENT=$(cat .planning/.current-metrics.txt 2>/dev/null)
 if [ -n "$CURRENT" ] && [ -f "$CURRENT" ]; then
   echo "Current Session:"
-  cat "$CURRENT" | node -e "
-    const m = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-    console.log('  Started:    ' + m.session_start);
-    console.log('  Branch:     ' + m.branch);
-    console.log('  Tasks Done: ' + m.tasks_completed);
-    console.log('  Tasks Failed: ' + m.tasks_failed);
-    console.log('  Files Modified: ' + m.files_modified);
-    console.log('  Verifications: ' + m.verification_runs);
-    console.log('  Review Issues: ' + m.auto_review_issues);
-  "
+  node scripts/metrics-summary.js "$CURRENT"
 else
   echo "No active session metrics."
 fi

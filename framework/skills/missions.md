@@ -296,7 +296,7 @@ Or via the CLI:
 
 ```bash
 node scripts/mission-cli.js show M-0042 \
-  | node -e 'let s=""; process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).frontmatter.codex || null))'
+  | node scripts/json-field.js frontmatter.codex null
 ```
 
 ### Where the block surfaces

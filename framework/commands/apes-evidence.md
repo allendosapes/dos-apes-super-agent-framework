@@ -21,7 +21,7 @@ to the active mission via `mission-cli`:
 ```bash
 MISSION_ID="${ARGUMENTS:-}"
 if [ -z "$MISSION_ID" ]; then
-  MISSION_ID=$(node scripts/mission-cli.js active | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const a=JSON.parse(s).active;if(a)process.stdout.write(a)})')
+  MISSION_ID=$(node scripts/mission-cli.js active | node scripts/json-field.js active)
 fi
 if [ -z "$MISSION_ID" ]; then
   echo "Usage: /apes-evidence M-NNNN  (or use /apes-mission to set the active mission)"
@@ -68,6 +68,7 @@ If the generator refused:
   `scripts/check-secrets.sh`, or whichever maps to the level).
 - Confirm the new log entry in the mission's verification log shows `pass`:
   ```bash
-  cat "$(node scripts/mission-cli.js show "$MISSION_ID" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const m=JSON.parse(s);process.stdout.write(`.planning/missions/${m.state}/${m.frontmatter.id}/verification.jsonl`)})')"
+  EV_STATE=$(node scripts/mission-cli.js show "$MISSION_ID" | node scripts/json-field.js state)
+  cat ".planning/missions/$EV_STATE/$MISSION_ID/verification.jsonl"
   ```
 - Re-run `/apes-evidence <M-NNNN>`.

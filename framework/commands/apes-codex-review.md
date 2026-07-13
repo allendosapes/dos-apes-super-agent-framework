@@ -1,6 +1,6 @@
 ---
 description: External-model code review (L8) via Codex CLI. Single-shot review or full review-fix-review loop.
-allowed-tools: Read, Grep, Glob, Bash(node scripts/codex-check.js:*), Bash(node scripts/codex-review.js:*), Bash(node scripts/codex-review-loop.js:*)
+allowed-tools: Read, Edit, Grep, Glob, Bash(node scripts/codex-check.js:*), Bash(node scripts/codex-review.js:*), Bash(node scripts/codex-review-loop.js:*)
 ---
 
 # /apes-codex-review
@@ -54,16 +54,7 @@ Extract `--mission <id>` and `--base <ref>` if present and pass them through to 
 
 Flip `enabled: true` in `.dos-apes/codex-review-config.json`. If the file doesn't exist yet, the framework installer should have created it from the template; if it's still missing, copy `framework/templates/codex-review-config.json` into place first.
 
-```bash
-node -e "
-const fs = require('fs');
-const p = '.dos-apes/codex-review-config.json';
-const cfg = JSON.parse(fs.readFileSync(p,'utf8'));
-cfg.enabled = true;
-fs.writeFileSync(p, JSON.stringify(cfg, null, 2));
-console.log('L8 enabled. Run /apes-codex-review --status to verify.');
-"
-```
+Read `.dos-apes/codex-review-config.json`, then use the Edit tool to change the `"enabled"` value to `true` — touch nothing else in the file. Confirm to the user: `L8 enabled. Run /apes-codex-review --status to verify.`
 
 After flipping, run the prerequisite check so the user knows whether they can actually use it:
 
@@ -77,16 +68,7 @@ Expected on success: `{"ok":true,"code":0,"message":"codex ready","model":"gpt-5
 
 ## STEP 3 — `--disable`
 
-```bash
-node -e "
-const fs = require('fs');
-const p = '.dos-apes/codex-review-config.json';
-const cfg = JSON.parse(fs.readFileSync(p,'utf8'));
-cfg.enabled = false;
-fs.writeFileSync(p, JSON.stringify(cfg, null, 2));
-console.log('L8 disabled. /apes-codex-review will now skip.');
-"
-```
+Read `.dos-apes/codex-review-config.json`, then use the Edit tool to change the `"enabled"` value to `false` — touch nothing else in the file. Confirm to the user: `L8 disabled. /apes-codex-review will now skip.`
 
 ---
 
