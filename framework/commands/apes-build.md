@@ -1,6 +1,6 @@
 ---
 description: Full autonomous build from PRD to shipped product
-allowed-tools: Read, Edit, Write, Grep, Glob, TaskCreate, TaskUpdate, TaskList, Bash(git checkout -b:*), Bash(git merge:*), Bash(npm run build:*), Bash(npm run lint:*), Bash(npm run typecheck:*), Bash(npm test:*)
+allowed-tools: Read, Edit, Write, Grep, Glob, EnterWorktree, TaskCreate, TaskUpdate, TaskList, Bash(git checkout -b:*), Bash(git merge:*), Bash(npm run build:*), Bash(npm run lint:*), Bash(npm run typecheck:*), Bash(npm test:*)
 ---
 
 # Build Product
@@ -164,7 +164,9 @@ node scripts/mission-cli.js set-active "$TARGET"
 ```
 
 From this point on, all work happens **inside the worktree directory**
-(`.worktrees/${TARGET}`). The build phases below (PHASE 0 through PHASE 5
+(`.worktrees/${TARGET}`). Enter it with the EnterWorktree tool (pass the
+worktree path) before writing any file — the session then operates on the
+mission branch directly. The build phases below (PHASE 0 through PHASE 5
 in this file) run against that directory, not the main checkout. The
 mission's frontmatter declares the team composition and required
 verification levels; honor both.

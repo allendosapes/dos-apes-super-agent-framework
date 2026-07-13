@@ -76,14 +76,16 @@ const INVENTORY = process.argv.includes("--inventory");
 const NATIVE_TOOLS = new Set([
   "Read", "Edit", "Write", "Grep", "Glob",
   "TaskCreate", "TaskUpdate", "TaskList",
+  "EnterWorktree", // M-0004 AC-2: worktree-entry grant (token-evidence class, like the Task tools)
 ]);
 // Never flagged as unused (Task 4 gate ruling: permitted floor for prose-only files).
 const FLOOR = new Set(["Read", "Grep", "Glob"]);
 // v1-era tool names; also bare Bash (the thing this mission removed everywhere).
 const FORBIDDEN_ENTRIES = new Set(["Task", "TodoWrite", "Bash"]);
-// Task tools get literal-token usage evidence; Edit/Write have no mechanical
-// signal and are pinned per file instead (see EDIT_WRITE_EXPECTED).
-const TASK_TOOLS = new Set(["TaskCreate", "TaskUpdate", "TaskList"]);
+// Task tools and EnterWorktree get literal-token usage evidence (the tool
+// name appears in bodies that instruct its use); Edit/Write have no
+// mechanical signal and are pinned per file instead (see EDIT_WRITE_EXPECTED).
+const TASK_TOOLS = new Set(["TaskCreate", "TaskUpdate", "TaskList", "EnterWorktree"]);
 
 // First tokens that make a line/segment count as an invocation.
 const EXEC = new Set([
