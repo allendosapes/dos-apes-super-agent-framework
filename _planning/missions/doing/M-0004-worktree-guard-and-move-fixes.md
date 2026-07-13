@@ -75,6 +75,14 @@ Charter + execution playbook: `_planning/M-0004-charter-and-playbook.md`.
       fix).
 - [ ] **AC-7:** Final state — allowed-tools guard test and full npm test
       green at final HEAD.
+- [ ] **AC-8 (blocking, absorbed 2026-07-13):** Packaging completeness —
+      the six M-0003 AC-4 helper scripts added to package.json's `files`
+      whitelist, plus a REVERSE packaging assertion in cli.test.js's
+      packaging group: every `scripts/*.js|sh` invoked by shipped
+      command/skill bodies (and present in `framework/scripts/`) must
+      ship. Proven red against the pre-fix whitelist (exactly the six
+      helpers), then green post-fix. (M-0004 ledger 2026-07-13, ABSORBED
+      per CPO ruling.)
 
 ## Out of scope
 

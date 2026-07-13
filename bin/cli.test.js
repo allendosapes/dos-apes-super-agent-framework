@@ -394,6 +394,31 @@ group("packaging (npm pack --dry-run --json)", () => {
     const missing = explicit.filter((f) => !shipped.includes(f));
     assert.deepStrictEqual(missing, [], `whitelisted files missing from tarball: ${missing.join(", ")}`);
   });
+
+  test("every scripts/*.js|sh invoked by shipped command/skill bodies ships (reverse whitelist check — M-0004 AC-8)", () => {
+    // Bodies reference helpers as `scripts/<name>.<ext>` (the installer
+    // copies framework/scripts/ -> scripts/), so every such reference that
+    // exists in framework/scripts/ must ship — a body invoking a helper
+    // the whitelist omits breaks every fresh install at runtime (the
+    // M-0003 AC-4 helper gap; M-0004 ledger 2026-07-13). References to
+    // scripts that do NOT exist in framework/scripts/ are user-project
+    // illustrations and are skipped.
+    const invoked = new Set();
+    for (const dir of ["framework/commands", "framework/skills"]) {
+      for (const f of fs.readdirSync(path.join(REPO_ROOT, dir))) {
+        if (!f.endsWith(".md")) continue;
+        const text = fs.readFileSync(path.join(REPO_ROOT, dir, f), "utf8");
+        for (const m of text.matchAll(/scripts\/([a-z0-9.-]+\.(?:js|sh))\b/g)) {
+          if (fs.existsSync(path.join(REPO_ROOT, "framework", "scripts", m[1]))) {
+            invoked.add(`framework/scripts/${m[1]}`);
+          }
+        }
+      }
+    }
+    const missing = [...invoked].filter((p) => !shipped.includes(p)).sort();
+    assert.deepStrictEqual(missing, [],
+      `body-invoked scripts missing from the tarball (files whitelist gap): ${missing.join(", ")}`);
+  });
 });
 
 // ─── Summary ─────────────────────────────────────────────────────────────────

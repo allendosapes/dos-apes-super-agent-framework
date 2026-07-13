@@ -32,7 +32,7 @@ leaving a moved file with stale state — becomes a REQUIRED reproduction
 fixture in the AC-3 task, alongside the untracked-companions and
 pre-existing-destination shapes.
 
-### 2026-07-13 — M-0003 AC-4 helper scripts missing from the npm `files` whitelist — awaiting ruling (3.6.0-blocking if unfixed)
+### 2026-07-13 — M-0003 AC-4 helper scripts missing from the npm `files` whitelist — ABSORBED INTO M-0004 as AC-8 per CPO ruling (3.6.0-blocking)
 
 `package.json:41-61` enumerates `framework/scripts/` entries individually;
 the six AC-4 helpers (`json-field.js`, `mission-next.js`,
@@ -44,7 +44,8 @@ breaks at runtime). Invisible to `npm test`: cli.test.js's packaging group
 asserts the whitelist SHIPS, not that all production files are
 WHITELISTED (no reverse check). Found during M-0004 AC-1/AC-2 while
 editing `package.json`'s test chain. Candidate fix is a six-line
-whitelist addition plus, optionally, a reverse packaging assertion
-(non-test `framework/scripts/*.js|sh` ⊆ files). Not fixed in-mission —
-awaiting CPO ruling on whether it folds into M-0004 or rides a
-pre-publish hotfix.
+whitelist addition plus a reverse packaging assertion. RESOLUTION
+(2026-07-13, same day): absorbed as M-0004 AC-8 per CPO ruling — six
+whitelist entries added, reverse assertion landed in cli.test.js's
+packaging group (proven red against the pre-fix whitelist, exactly the
+six helpers; green post-fix).
