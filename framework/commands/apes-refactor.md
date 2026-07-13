@@ -185,7 +185,7 @@ git commit -m "refactor: [refactor description]"
 
 If merge conflicts occur:
 ```bash
-git status
+git status --short
 # Resolve conflicts, then:
 git add [resolved-files]
 git commit -m "refactor: [refactor description] (resolved conflicts)"

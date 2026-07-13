@@ -170,10 +170,12 @@ describe("UserCard", () => {
 
 ### Configuration
 
-Coverage threshold defaults to 80%. Override via environment variable:
+Coverage threshold defaults to 80%. Override by passing the threshold as
+the first argument (the `COVERAGE_THRESHOLD` env var remains the fallback
+for hook contexts):
 
 ```bash
-COVERAGE_THRESHOLD=90 bash scripts/check-coverage.sh
+bash scripts/check-coverage.sh 90
 ```
 
 ### Coverage Metrics

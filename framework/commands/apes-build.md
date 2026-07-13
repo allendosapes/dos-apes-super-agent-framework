@@ -344,14 +344,15 @@ target. Stop when:
 ### Error paths and cleanup
 
 Every failure that aborts the run MUST clean up `.planning/active-mission`
-so the next session is not falsely anchored to a half-baked mission:
+so the next session is not falsely anchored to a half-baked mission. On
+every abort path, before exiting, run:
 
 ```bash
-trap 'node scripts/mission-cli.js clear-active >/dev/null 2>&1 || true' EXIT
+node scripts/mission-cli.js clear-active >/dev/null 2>&1 || true
 ```
 
-(Or its equivalent in the agent's flow control — the contract is
-"active-mission is removed on any abort.")
+(The contract is "active-mission is removed on any abort" — the Cleanup
+column below states it per failure condition.)
 
 Specific failure messages, all exit non-zero:
 
@@ -1078,7 +1079,7 @@ If a merge conflict occurs at any phase:
 
 ```bash
 # 1. Identify conflicting files
-git status
+git status --short
 
 # 2. Open and resolve conflicts (prefer the feature branch changes)
 # 3. Stage resolved files

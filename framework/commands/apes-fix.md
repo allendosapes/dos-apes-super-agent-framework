@@ -61,7 +61,7 @@ git log --oneline -10 -- [suspected files]
 
 ```bash
 git status --short
-git stash  # if needed
+git stash push  # if needed
 ```
 
 ## Diagnosis Phase

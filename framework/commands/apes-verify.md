@@ -337,7 +337,9 @@ Overall: PASS / FAIL
 L8 (Adversarial Review) status legend:
   ✅ accept       — reviewer signed off
   ⚠️ findings     — non-blocking; address via /apes-codex-review --loop
-  ⏭  skipped      — disabled, Codex unavailable, or not configured
+  ⏭  skipped      — disabled, Codex unavailable, or config missing/defective
+                    (reason: disabled, config-absent, config-unparseable,
+                    config-invalid)
 ```
 
 If FAIL, do not proceed with commits or merges. **L8 never contributes to FAIL** — it fails open by design.

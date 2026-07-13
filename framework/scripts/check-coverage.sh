@@ -1,7 +1,8 @@
 #!/bin/bash
 # Coverage enforcement gate (verification level L2.5)
-# Thresholds configurable via env vars, defaults to 80%
-THRESHOLD=${COVERAGE_THRESHOLD:-80}
+# Threshold configurable via first argument or COVERAGE_THRESHOLD env var,
+# defaults to 80%
+THRESHOLD=${1:-${COVERAGE_THRESHOLD:-80}}
 
 START_MS=$(node -e "console.log(Date.now())" 2>/dev/null || echo "")
 

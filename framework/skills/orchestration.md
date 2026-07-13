@@ -281,9 +281,9 @@ Agent memory is ephemeral. Conversation context compresses. The only durable sta
 Create tags at significant milestones for safe rollback:
 
 ```bash
-git tag phase-1-complete    # After Phase 1 passes all gates
-git tag phase-2-complete    # After Phase 2 passes all gates
-git tag pre-refactor        # Before risky refactors
+git tag -a phase-1-complete -m "Phase 1 verified"    # After Phase 1 passes all gates
+git tag -a phase-2-complete -m "Phase 2 verified"    # After Phase 2 passes all gates
+git tag -a pre-refactor -m "Checkpoint before risky refactor"    # Before risky refactors
 ```
 
 ### Session Handoff
