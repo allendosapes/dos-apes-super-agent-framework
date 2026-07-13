@@ -270,7 +270,7 @@ loop runs (`codex-review-loop.js`) can produce all six.
 | `findings-reported`  | Findings reported without a fix attempt — single-shot `revise`/`reject`, or loop with `--no-fix`. |
 | `exhausted`          | Loop hit `max_rounds` with high/critical findings still open.                                 |
 | `no-progress`        | Loop fix step ran but HEAD did not advance — Claude couldn't make a fix.                      |
-| `skipped`            | Codex was unavailable, disabled, or the diff was empty.                                       |
+| `skipped`            | Codex was unavailable, disabled, the diff was empty, or the config was missing or defective (`config-absent`, `config-unparseable`, `config-invalid`). |
 
 The full enum is exported as `CODEX_VERDICTS` from
 `framework/lib/mission-schema.js`. Any value not on that list will be
@@ -296,7 +296,7 @@ Or via the CLI:
 
 ```bash
 node scripts/mission-cli.js show M-0042 \
-  | node -e 'let s=""; process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).frontmatter.codex || null))'
+  | node scripts/json-field.js frontmatter.codex null
 ```
 
 ### Where the block surfaces

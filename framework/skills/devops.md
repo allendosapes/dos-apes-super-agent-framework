@@ -239,8 +239,10 @@ For container platforms: keep the previous image tagged, redeploy it.
 ### Environment-Specific Tests
 
 ```bash
-# Staging: run smoke tests against deployed URL
-STAGING_URL=https://staging.example.com npx playwright test tests/smoke/
+# Staging: run smoke tests against the deployed URL. Define a `staging`
+# project in playwright.config.ts whose use.baseURL points at the staging
+# origin — the URL lives in config, not in the invocation.
+npx playwright test tests/smoke/ --project=staging
 ```
 
 ## Startup Verification

@@ -141,6 +141,10 @@ const EDIT_WRITE_EXPECTED = {
   "commands/apes-refactor.md": ["Edit", "Write"],
   "commands/apes-gc.md": ["Edit", "Write"],
   "commands/apes-test-e2e.md": ["Write"],       // generates Playwright specs
+  // T3 ruling executed at M-0003 AC-4: the --enable/--disable config flips
+  // migrated from inline `node -e` to Edit-based form; the grant dropped as
+  // aspirational in M-0002 is restored in the same commit as the evidence.
+  "commands/apes-codex-review.md": ["Edit"],
   "skills/cross-model-review.md": ["Edit"],      // fix protocol edits cited files
 };
 
@@ -167,20 +171,15 @@ const KNOWN_PROMPTING = [
   { file: "commands/apes-board.md", prefix: "head", cls: "util" },
   { file: "commands/apes-board.md", prefix: "sed", cls: "util" },
   { file: "commands/apes-board.md", prefix: "echo", cls: "util" },
-  { file: "commands/apes-build.md", prefix: "node -e", cls: "node-e" },
   { file: "commands/apes-build.md", prefix: "cat", cls: "util" },
   { file: "commands/apes-build.md", prefix: "echo", cls: "util" },
   { file: "commands/apes-build.md", prefix: "grep", cls: "util" },
-  { file: "commands/apes-build.md", prefix: "git status", cls: "bare-form" }, // :1092 bare; `git status *` doesn't cover it
   { file: "commands/apes-build.md", prefix: "git init", cls: "policy" }, // greenfield bootstrap; prompts outside a repo by design
   { file: "commands/apes-build.md", prefix: "git switch feat/", cls: "policy" }, // phase-branch switches; the narrow ask covers only `git switch main` (AC-3 / F-2 ruling)
   { file: "commands/apes-build.md", prefix: "git checkout .", cls: "policy" },   // working-tree discard; deliberately prompting (AC-3; extractable since the Task 3b F-1 restructure)
   { file: "commands/apes-build.md", prefix: "npm run deploy", cls: "policy" }, // deploy must prompt (M-0001 rationale)
-  { file: "commands/apes-build.md", prefix: "trap", cls: "node-e" },           // apes-build:362, M-0003 AC removes the idiom
-  { file: "commands/apes-codex-review.md", prefix: "node -e", cls: "node-e" },
   { file: "commands/apes-codex-review.md", prefix: "cat", cls: "util" },
   { file: "commands/apes-codex-review.md", prefix: "echo", cls: "util" },
-  { file: "commands/apes-evidence.md", prefix: "node -e", cls: "node-e" },
   { file: "commands/apes-evidence.md", prefix: "cat", cls: "util" },
   { file: "commands/apes-evidence.md", prefix: "echo", cls: "util" },
   { file: "commands/apes-feature.md", prefix: "cat", cls: "util" },
@@ -188,58 +187,41 @@ const KNOWN_PROMPTING = [
   { file: "commands/apes-feature.md", prefix: "find", cls: "util" },
   { file: "commands/apes-feature.md", prefix: "grep", cls: "util" },
   { file: "commands/apes-feature.md", prefix: "head", cls: "util" },
-  { file: "commands/apes-feature.md", prefix: "git status", cls: "bare-form" }, // :236 bare (conflict-resolution step)
   { file: "commands/apes-fix.md", prefix: "cat", cls: "util" },
-  { file: "commands/apes-fix.md", prefix: "git stash", cls: "bare-form" },      // :64 bare; `git stash *` doesn't cover it
   { file: "commands/apes-fix.md", prefix: "echo", cls: "util" },
   { file: "commands/apes-fix.md", prefix: "grep", cls: "util" },
   { file: "commands/apes-fix.md", prefix: "head", cls: "util" },
   { file: "commands/apes-gc.md", prefix: "echo", cls: "util" },
   { file: "commands/apes-gc.md", prefix: "find", cls: "util" },
   { file: "commands/apes-gc.md", prefix: "grep", cls: "util" },
-  { file: "commands/apes-gc.md", prefix: "bash scripts/check-structure.sh", cls: "bare-form" }, // :89 argument-less
-  { file: "commands/apes-metrics.md", prefix: "node -e", cls: "node-e" },
   { file: "commands/apes-metrics.md", prefix: "cat", cls: "util" },
   { file: "commands/apes-metrics.md", prefix: "echo", cls: "util" },
   { file: "commands/apes-metrics.md", prefix: "ls", cls: "util" },
   { file: "commands/apes-metrics.md", prefix: "head", cls: "util" },
-  { file: "commands/apes-mission.md", prefix: "node -e", cls: "node-e" },
   { file: "commands/apes-mission.md", prefix: "echo", cls: "util" },
   { file: "commands/apes-mission.md", prefix: "ls", cls: "util" },
   { file: "commands/apes-refactor.md", prefix: "find", cls: "util" },
   { file: "commands/apes-refactor.md", prefix: "grep", cls: "util" },
   { file: "commands/apes-refactor.md", prefix: "head", cls: "util" },
   { file: "commands/apes-refactor.md", prefix: "wc", cls: "util" },
-  { file: "commands/apes-refactor.md", prefix: "git status", cls: "bare-form" }, // :188 bare (conflict-resolution step)
-  { file: "commands/apes-status.md", prefix: "node -e", cls: "node-e" },
   { file: "commands/apes-status.md", prefix: "cat", cls: "util" },
   { file: "commands/apes-status.md", prefix: "echo", cls: "util" },
   { file: "commands/apes-status.md", prefix: "grep", cls: "util" },
   { file: "commands/apes-status.md", prefix: "wc", cls: "util" },
-  { file: "commands/apes-verify.md", prefix: "node -e", cls: "node-e" },
   { file: "commands/apes-verify.md", prefix: "echo", cls: "util" },
   { file: "commands/apes-verify.md", prefix: "find", cls: "util" },
   { file: "commands/apes-verify.md", prefix: "grep", cls: "util" },
-  { file: "commands/apes-verify.md", prefix: "sed", cls: "util" },
   { file: "commands/apes-verify.md", prefix: "tail", cls: "util" },
   { file: "commands/apes-verify.md", prefix: "wc", cls: "util" },
   // ── skills ──
-  { file: "skills/cross-model-review.md", prefix: "node -e", cls: "node-e" },
   { file: "skills/devops.md", prefix: "curl", cls: "policy" },   // FLAG I: exfil surface prompts by design
   { file: "skills/devops.md", prefix: "grep", cls: "util" },
   { file: "skills/devops.md", prefix: "git switch --detach", cls: "policy" }, // rollback to previous tag via $(git describe); detached switch prompts by design
-  { file: "skills/devops.md", prefix: "STAGING_URL=", cls: "env" },    // env-prefixed smoke run; M-0003 class
-  { file: "skills/missions.md", prefix: "node -e", cls: "node-e" },
   { file: "skills/missions.md", prefix: "find", cls: "util" },
   { file: "skills/missions.md", prefix: "ls", cls: "util" },
   { file: "skills/observability.md", prefix: "curl", cls: "policy" }, // FLAG I
   { file: "skills/observability.md", prefix: "grep", cls: "util" },
   { file: "skills/observability.md", prefix: "sed", cls: "util" },
-  // Bare `git tag <name>` matches neither the `git tag -a *` ask rule nor any
-  // allow — it prompts via the default. Real ask-list gap surfaced by the
-  // faithful matcher; noted for the M-0003/M-0004 policy sweep.
-  { file: "skills/orchestration.md", prefix: "git tag", cls: "policy" },
-  { file: "skills/testing.md", prefix: "COVERAGE_THRESHOLD=", cls: "env" }, // testing.md:176, M-0003 AC
 ];
 
 // ── tiny test harness (house style) ─────────────────────────────────────────

@@ -87,7 +87,7 @@ if [ -n "$MISSION_ARG" ]; then
     2) echo "apes-build: mission $TARGET not found" >&2; exit 1 ;;
     *) echo "apes-build: $STATE_JSON" >&2; exit 1 ;;
   esac
-  CURRENT_STATE=$(echo "$STATE_JSON" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).state))')
+  CURRENT_STATE=$(echo "$STATE_JSON" | node scripts/json-field.js state)
 
   case "$CURRENT_STATE" in
     doing|review)
@@ -103,7 +103,7 @@ if [ -n "$MISSION_ARG" ]; then
   esac
 
   # Unmet dependencies.
-  UNMET=$(node scripts/mission-cli.js deps "$TARGET" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).unmet.join(",")))')
+  UNMET=$(node scripts/mission-cli.js deps "$TARGET" | node scripts/json-field.js unmet)
   if [ -n "$UNMET" ]; then
     echo "apes-build: mission $TARGET blocked by: $UNMET" >&2
     exit 1
@@ -116,14 +116,7 @@ elif [ -n "$PRD_ARG" ] || [ -n "$IDEA_ARG" ]; then
 else
   # No flags — pick the highest-priority unblocked mission in todo/. The
   # lib returns missions sorted by (priority, created) within each state.
-  TARGET=$(node -e '
-    const { execFileSync } = require("child_process");
-    const list = JSON.parse(execFileSync("node", ["scripts/mission-cli.js", "list", "--state", "todo"], { encoding: "utf8" }));
-    for (const m of list.missions) {
-      const deps = JSON.parse(execFileSync("node", ["scripts/mission-cli.js", "deps", m.id], { encoding: "utf8" }));
-      if (deps.unmet.length === 0) { console.log(m.id); break; }
-    }
-  ')
+  TARGET=$(node scripts/mission-next.js)
   if [ -z "$TARGET" ]; then
     echo "apes-build: no unblocked missions in todo/ — create one with /apes-mission new" >&2
     exit 1
@@ -213,7 +206,7 @@ skip silently:
 ```bash
 L8_ENABLED=0
 if [ -f ".dos-apes/codex-review-config.json" ] && [ -f "scripts/codex-review-loop.js" ]; then
-  if node -e "process.exit(JSON.parse(require('fs').readFileSync('.dos-apes/codex-review-config.json','utf8')).enabled === true ? 0 : 1)" 2>/dev/null; then
+  if [ "$(node scripts/json-field.js enabled --json < .dos-apes/codex-review-config.json 2>/dev/null)" = "true" ]; then
     L8_ENABLED=1
   fi
 fi
@@ -264,12 +257,7 @@ output.
 
 ```bash
 if [ "$L8_ENABLED" -eq 1 ]; then
-  CODEX_VERDICT=$(node scripts/mission-cli.js show "$TARGET" | node -e '
-    let s = ""; process.stdin.on("data", d => s += d).on("end", () => {
-      const fm = JSON.parse(s).frontmatter || {};
-      console.log((fm.codex && fm.codex.last_verdict) || "none");
-    });
-  ')
+  CODEX_VERDICT=$(node scripts/mission-cli.js show "$TARGET" | node scripts/json-field.js frontmatter.codex.last_verdict none)
 fi
 ```
 
@@ -356,14 +344,15 @@ target. Stop when:
 ### Error paths and cleanup
 
 Every failure that aborts the run MUST clean up `.planning/active-mission`
-so the next session is not falsely anchored to a half-baked mission:
+so the next session is not falsely anchored to a half-baked mission. On
+every abort path, before exiting, run:
 
 ```bash
-trap 'node scripts/mission-cli.js clear-active >/dev/null 2>&1 || true' EXIT
+node scripts/mission-cli.js clear-active >/dev/null 2>&1 || true
 ```
 
-(Or its equivalent in the agent's flow control — the contract is
-"active-mission is removed on any abort.")
+(The contract is "active-mission is removed on any abort" — the Cleanup
+column below states it per failure condition.)
 
 Specific failure messages, all exit non-zero:
 
@@ -398,7 +387,7 @@ The build command is designed for autonomous execution. Only pause for human inp
 ### Proceed Autonomously (NEVER prompt)
 
 - **Build/Test/Lint:** `npm run build`, `npm test`, `npm run lint`, `npm run typecheck`, `npm run format`
-- **Git branching:** `git checkout -b`, `git switch main`, `git branch -d` (local branches)
+- **Git branching:** `git checkout -b`, `git branch -d` (local branches)
 - **Git commits:** `git add`, `git commit` (on feature branches and main after squash merge)
 - **Git tags:** `git tag -a` for task and release tags
 - **Git push:** `git push origin main`, `git push origin --tags`, `git push origin feature/*`
@@ -411,6 +400,7 @@ The build command is designed for autonomous execution. Only pause for human inp
 ### Pause and Ask Human (ALWAYS prompt)
 
 - **`[APPROVAL]` tasks** — Phase boundary reviews, architecture decisions
+- **Switching to `main`** — `git switch main` is gated by an ask rule; the permission prompt is expected, not an error — wait for approval before proceeding to the squash merge
 - **Force push** — `git push --force` or `git push --force-with-lease` to any branch
 - **Delete remote branches** — never delete a remote branch yourself, including merged feature branches (denied by policy, no exceptions); ask the human to do it
 - **Deployment** — `npm run deploy`, running deploy scripts, touching production
@@ -823,7 +813,7 @@ When a wave has 2+ independent tasks that touch **different files/directories**,
 
 ```bash
 # Create a worktree for each parallel task, branching off the phase branch
-git worktree add ../$(basename "$PWD")-wt-task-${TASK_ID} \
+git worktree add ../${PWD##*/}-wt-task-${TASK_ID} \
   -b task/${TASK_ID}-${TASK_SLUG} \
   feat/phase-${PHASE_NUM}-${PHASE_SLUG}
 
@@ -862,9 +852,9 @@ fi
 # open app, navigate major routes, screenshot evidence
 
 # Clean up worktrees and task branches
-git worktree remove ../$(basename "$PWD")-wt-task-${TASK_ID_A}
-git worktree remove ../$(basename "$PWD")-wt-task-${TASK_ID_B}
-git worktree remove ../$(basename "$PWD")-wt-task-${TASK_ID_C}
+git worktree remove ../${PWD##*/}-wt-task-${TASK_ID_A}
+git worktree remove ../${PWD##*/}-wt-task-${TASK_ID_B}
+git worktree remove ../${PWD##*/}-wt-task-${TASK_ID_C}
 git branch -d task/${TASK_ID_A}-${SLUG_A} task/${TASK_ID_B}-${SLUG_B} task/${TASK_ID_C}-${SLUG_C}
 ```
 
@@ -1089,7 +1079,7 @@ If a merge conflict occurs at any phase:
 
 ```bash
 # 1. Identify conflicting files
-git status
+git status --short
 
 # 2. Open and resolve conflicts (prefer the feature branch changes)
 # 3. Stage resolved files

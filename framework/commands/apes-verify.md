@@ -144,7 +144,8 @@ echo "Level 4: UI Integration"
 echo "─────────────────────────────"
 # Check if any components exist but aren't used
 UNUSED=$(find src/components -name "*.tsx" -o -name "*.jsx" 2>/dev/null | while read f; do
-  COMPONENT=$(basename "$f" | sed 's/\.[^.]*$//')
+  COMPONENT="${f##*/}"
+  COMPONENT="${COMPONENT%.*}"
   USAGE=$(grep -rn "$COMPONENT" src/ --include="*.tsx" --include="*.jsx" 2>/dev/null | grep -v "src/components" | grep -v "\.test\." | wc -l)
   if [ "$USAGE" -eq 0 ]; then
     echo "$COMPONENT"
@@ -233,7 +234,7 @@ fi
 
 L8_ENABLED=0
 if [ -f ".dos-apes/codex-review-config.json" ] && [ -f "scripts/codex-review.js" ]; then
-  if node -e "process.exit(JSON.parse(require('fs').readFileSync('.dos-apes/codex-review-config.json','utf8')).enabled === true ? 0 : 1)" 2>/dev/null; then
+  if [ "$(node scripts/json-field.js enabled --json < .dos-apes/codex-review-config.json 2>/dev/null)" = "true" ]; then
     L8_ENABLED=1
   fi
 fi
@@ -251,14 +252,7 @@ if [ "$L8_ENABLED" -eq 1 ]; then
     echo "⚠️ L8 review script error (non-blocking, fails open):"
     echo "$L8_OUT" | tail -5
   else
-    L8_STATE=$(echo "$L8_OUT" | node -e "
-      let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{
-        try {
-          const j=JSON.parse(s.trim().split(/\r?\n/).pop());
-          if (j.skipped) console.log('skipped:'+(j.reason||'unknown'));
-          else console.log('verdict:'+j.verdict+':'+(j.findings?j.findings.length:0));
-        } catch(_){console.log('parse-error');}
-      });" 2>/dev/null)
+    L8_STATE=$(echo "$L8_OUT" | node scripts/codex-envelope.js)
 
     case "$L8_STATE" in
       skipped:*)
@@ -343,7 +337,9 @@ Overall: PASS / FAIL
 L8 (Adversarial Review) status legend:
   ✅ accept       — reviewer signed off
   ⚠️ findings     — non-blocking; address via /apes-codex-review --loop
-  ⏭  skipped      — disabled, Codex unavailable, or not configured
+  ⏭  skipped      — disabled, Codex unavailable, or config missing/defective
+                    (reason: disabled, config-absent, config-unparseable,
+                    config-invalid)
 ```
 
 If FAIL, do not proceed with commits or merges. **L8 never contributes to FAIL** — it fails open by design.

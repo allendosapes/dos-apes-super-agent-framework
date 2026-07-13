@@ -12,8 +12,9 @@ if [ ! -f "$RULES_FILE" ]; then
   exit 0
 fi
 
-# Optional: check a single file, or scan all .ts/.tsx files
+# Optional: check a single file; `--all` (or no argument) scans all .ts/.tsx files
 TARGET_FILE="${1:-}"
+if [ "$TARGET_FILE" = "--all" ]; then TARGET_FILE=""; fi
 
 # ─── Parse Rules ────────────────────────────────────────────────────────────
 

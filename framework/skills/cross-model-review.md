@@ -173,7 +173,7 @@ version 2). Read it via the mission CLI:
 
 ```bash
 node scripts/mission-cli.js show M-0042 \
-  | node -e 'let s=""; process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).frontmatter.codex || null))'
+  | node scripts/json-field.js frontmatter.codex null
 ```
 
 Or in-process via `MissionTracker.getCodexState(id)` — see
@@ -227,7 +227,7 @@ a specific build-flow action.
 | **findings-reported** | `findings-reported` | `--no-fix` was set; loop reports without attempting a fix.           | No — user explicitly opted into report-only. |
 | **exhausted**       | `exhausted`          | Hit `max_iterations` cap with open high/critical findings.           | Yes — list unresolved + final review path. |
 | **no-progress**     | `no-progress`        | Fix step ran but HEAD did not advance.                               | Yes — note + final review path.         |
-| **skipped**         | `skipped`            | Codex unavailable / disabled / no diff to review.                    | No — skip is uninteresting (unless `required: true`, in which case the loop errors instead). |
+| **skipped**         | `skipped`            | Codex unavailable / disabled / no diff to review / config missing or defective (`config-absent`, `config-unparseable`, `config-invalid`). | No — skip is uninteresting (unless `required: true`, in which case the loop errors instead). |
 
 In every case, the original Codex review files
 (`.dos-apes/codex-reviews/*.json`) are preserved as the audit trail.

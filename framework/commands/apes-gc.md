@@ -86,7 +86,7 @@ Severity:
 ```bash
 # Run boundary checker if rules exist
 if [ -f ".planning/ARCHITECTURE_RULES.md" ]; then
-  bash scripts/check-structure.sh
+  bash scripts/check-structure.sh --all
 fi
 ```
 

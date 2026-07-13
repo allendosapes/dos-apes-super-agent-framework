@@ -233,7 +233,7 @@ IF still failing after 3 attempts:
    If merge conflicts occur:
    ```bash
    # Identify conflicts
-   git status
+   git status --short
    # Resolve conflicts, then:
    git add [resolved-files]
    git commit -m "feat: [feature description] (resolved conflicts)"

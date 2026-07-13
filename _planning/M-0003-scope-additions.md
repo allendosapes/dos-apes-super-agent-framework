@@ -100,6 +100,52 @@ doesn't author it; the pairs ride M-0004's migration only if the deny-audit
 lands in 3.6.0. Pinned in the guard as cls "bare-form" until resolved.
 [Re-ledger ruling at the Task 6 correction gate.]
 
+### 2026-07-13 — AC-9 disposition: satisfied for mission scope (in-use dry-run)
+
+Headless `/apes-build --mission` dry-run against a scaffolded sample
+project (Git Bash; `claude -p` with `--settings` injection — the Task 3a
+probe method). The flow completed end-to-end: todo → doing → worktree →
+implementation → L0/L1/L2 logged pass → evidence packet → review. Rulings:
+
+- **Zero mission-attributable unintended prompts.** 14 permission denials
+  fired; none maps to a swept body site or to any M-0003 policy change.
+- **`Bash(git switch main)` exact-match ask verified by control probe**
+  (headless denial fired on the exact command). Not reached inside the
+  build flow itself — merge-to-main is a post-review human step by design.
+- **Strict zero-prompt criterion FAILED**: the 14 denials trace to
+  pre-existing defects (four candidates ledgered in the closeout section,
+  2026-07-13), not to M-0003's sweeps.
+- **Differential established analytically, not by a pre-M-0003 re-run.**
+- Evidence: full denial log at
+  `_planning/missions/review/M-0003/evidence/ac9-result.json`.
+
+### 2026-07-13 — Ledger finalized at M-0003 closeout: all M-0003-scope dispositions complete
+
+- `.claude/scripts/check-*.sh` fallback → ruled DEAD at Task 2 recon;
+  removed in f4a0270 (checkpoint PR #19).
+- `node -e` pipelines → AC-4, 593375c: 18 extracted segments across 9
+  files → 6 named helper scripts under scoped allows; guard `node-e` pin
+  class emptied.
+- `git checkout` → `git switch` → AC-3, 42639b1 (checkpoint PR #19); one
+  authored policy line, exact-match ask `Bash(git switch main)` (F-2).
+- env-prefix / trap / chain sites → AC-5, 6802f15: env pins retired
+  (argument forms; both check scripts gained back-compatible interfaces),
+  trap → instructional per-abort-path cleanup; chain-decomposition item
+  was stale (F-3 recon ruling), dropped.
+- T3 utility-grant rider → the `sed` util pin retired with AC-4's
+  basename rewrite; no standalone grant commit ever landed; remaining
+  `util` pins stay deliberately (interactive classifier auto-approves
+  read-only forms; strict-mode surface deferred with the deny-audit).
+- apes-codex-review `Edit` restoration → AC-4, Edit-based config flips;
+  grant + `EDIT_WRITE_EXPECTED` row in 593375c.
+- deny-break (`git push origin --delete`) → AC-1, 61a0116 (checkpoint
+  PR #19); guard `EXPECTED_DENY` empty since.
+- bare-form gaps → AC-5 body-side fixes in 6802f15 (guard `bare-form`
+  class emptied); policy-side exact-form pairs remain deferred to the
+  deny-audit thread — M-0004 inherits.
+
+Non-M-0003 items below remain parked with their evidence.
+
 ## Non-M-0003 process notes (extract at closeout)
 
 ### 2026-07-04 — Task 6 design input: `Read, Grep, Glob` floor convention
@@ -252,3 +298,62 @@ would make the guard categorize a prompting site as allowed. Not triggered
 by M-0003's rules — the one ask authored (`Bash(git switch main)`) is
 exact-match with no overlapping allow. A KNOWN DIVERGENCE note now sits in
 the guard's semantics header pointing here. Parked, not scheduled.
+
+### 2026-07-12 — OUT OF SCOPE for M-0003: `pipeline-test-scenario.md` template inconsistency (template-hygiene candidate)
+
+`framework/templates/pipeline-test-scenario.md` still narrates the
+pre-migration git idiom in its expected-output examples (`git checkout main`
+at :240 and :373; `git checkout -b feat/…` at :241 and :387) after AC-3
+migrated the command/skill bodies to `git switch`. Templates sit outside
+M-0003's scope (bodies of the 18 command + 15 skill files only): they are
+copied into user projects as illustrative content, are not executed by any
+framework command, and are not read by the drift guard. Ruled OUT OF SCOPE
+for M-0003 at the AC-4 resumption; parked as a template-hygiene candidate
+for future mission intake.
+
+### 2026-07-13 — AC-9 candidate: guard-main-branch.sh cwd-branch check blocks worktree writes — ABSORB INTO M-0004 (3.6.0-blocking)
+
+`framework/scripts/guard-main-branch.sh:3-7` blocks ALL Edit/Write when
+`git branch --show-current` in the **session cwd** returns main/master —
+including writes into `.worktrees/<id>/`, where the mission branch is
+checked out. The shipped worktree flow
+(`framework/commands/apes-build.md` mission-worktree step and Execute
+Wave, :812-870) is therefore unwritable unless the session cd's into the
+worktree first. In the AC-9 dry-run this produced 3 Write denials and the
+cascade of improvised fallbacks (bash heredoc, printf redirect, inline
+`node -e`, `git hash-object -w`, cd-prefixed chains) that account for
+most of the 14-denial log.
+
+### 2026-07-13 — AC-9 candidate: EnterWorktree ungranted — ABSORB INTO M-0004 (ships with the guard fix)
+
+The native `EnterWorktree` tool — the clean escape hatch for the
+candidate above — is granted nowhere (no frontmatter, no settings allow);
+it prompted when the AC-9 agent reached for it. Grant rides M-0004
+together with the guard-main-branch fix; granting it alone would leave
+the hook defect masked.
+
+### 2026-07-13 — AC-9 candidate: mkdir allow-rule denial anomaly — PARKED (needs interactive repro, not release-blocking)
+
+Plain `mkdir tmp-probe` was denied twice in the AC-9 headless run despite
+the live `Bash(mkdir *)` allow. Both hooks exonerated by inspection
+(guard-forbidden-commands.sh has no mkdir rule; guard-main-branch.sh
+matches Edit|Write only). Denial log: ac9-result.json entries 10-11.
+Needs an interactive repro before any fix is scoped.
+
+### 2026-07-13 — AC-9 candidate: mission-cli move fails on untracked companions + pre-existing destination — ABSORB INTO M-0004 (3.6.0-blocking)
+
+`mission-cli.js move <id> review` failed in the AC-9 run: `git mv`
+reports "source directory is empty" when the per-mission directory holds
+only untracked companion files (verification.jsonl written mid-flight)
+and the evidence generator has already created `review/<id>/`. The
+headless agent completed the move manually. Candidate fix: plain-rename
+fallback for untracked companions; tolerate a pre-existing destination
+directory. Surfaced by the AC-9 agent's own closing report.
+
+### 2026-07-13 — Process-note candidate for the CLAUDE.md queue: hooks that check session-cwd state instead of target-path state are a defect class
+
+Evidence: the guard-main-branch candidate above. The hook interrogates
+the session cwd's branch while the write targets a worktree on another
+branch — any hook keyed to cwd state silently mis-fires for target paths
+outside the cwd's domain. When M-0004 fixes the instance, the class rule
+belongs in CLAUDE.md's operational hazards.
