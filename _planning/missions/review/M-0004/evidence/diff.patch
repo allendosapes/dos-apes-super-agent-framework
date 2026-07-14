@@ -1,0 +1,1090 @@
+diff --git a/CLAUDE.md b/CLAUDE.md
+index e2e20a5..c4beb0f 100644
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -33,11 +33,11 @@ npm publish
+ ```
+ dos-apes/
+ ├── bin/cli.js              # CLI entry point (npx dos-apes)
+-├── package.json            # npm package config (v2.0.0)
++├── package.json            # npm package config
+ ├── framework/
+-│   ├── commands/           # 13 slash commands (.md files)
+-│   ├── skills/             # 7 domain skills + README
+-│   ├── scripts/            # 10 hook scripts (.sh files)
++│   ├── commands/           # 18 slash commands (.md files)
++│   ├── skills/             # 15 domain skills + README
++│   ├── scripts/            # hook scripts (.sh), helpers + guards (.js)
+ │   ├── ci/                 # 3 GitHub Actions workflows
+ │   ├── templates/          # CLAUDE-TEMPLATE, PRD, ADR, multi-repo-config
+ │   └── settings.json       # Hooks, permissions, MCP config
+@@ -126,6 +126,12 @@ These rules are learned from real incidents in this codebase. Each is short, beh
+ 
+ 7. **Never grant ahead of body evidence.** A declared-but-unused grant is drift by definition and fails `allowed-tools-guard.test.js` (declarations-without-usage). Aspirational grants — "the mechanism this will migrate to" — are rejected; the grant lands in the same commit as the change that creates the evidence. Judgment-call exceptions live as cited pins in the guard, never as uncited frontmatter.
+ 
++8. **Hooks that check session-cwd state instead of target-path state are a defect class.** A hook that interrogates the session's cwd (its branch, its dirty state) silently mis-fires for tool calls whose target lives in another checkout: guard-main-branch.sh blocked the framework's own worktree flow because the primary checkout sat on `main` while writes targeted `.worktrees/<id>` on a mission branch (found by M-0003's AC-9 live-fire dry-run; fixed in M-0004 AC-1). Resolve state from the path the tool call names (`git -C <target-dir>`), never from where the session happens to sit.
++
++9. **`git mv` stages the rename only — content edits need their own `git add`, and committed contents get verified post-commit.** An `RM` pair in `git status --short` means the rename is staged but the modification is NOT; committing then ships the old content under the new path (a `rename ... (100%)` line in the commit summary is the tell). After any commit that mixes renames with edits, verify with `git show HEAD:<new-path>` that the edit actually landed. The check costs seconds; the M-0003 closeout commit shipped without its workpad entry this way.
++
++10. **Test and dry-run projects must be scaffolded OUTSIDE `~/.claude`.** Claude Code's sensitive-path protection for the `.claude` subtree overrides permission allow rules there and pollutes denial evidence — the M-0003/M-0004 "mkdir allow-rule anomaly" was exactly this, root-caused by the 2026-07-13 repro (M-0004 ledger; closed as environmental, framework exonerated).
++
+ ## Verification Pyramid (8 levels)
+ 
+ The framework teaches projects this verification stack:
+@@ -151,3 +157,5 @@ L0–L2.5 enforced by hooks. L3–L5 by scripts. L6–L7 require Playwright MCP.
+ - `bin/`, `framework/commands/`, `framework/skills/`, `framework/scripts/`, `framework/ci/`, `framework/templates/`, `framework/settings.json`, `assets/`, `README.md`, `LICENSE`
+ 
+ Test with `npm pack --dry-run` to verify included files before publishing.
++
++Whitelist completeness is mechanically enforced, not just prose: cli.test.js's reverse packaging assertion ("every scripts/*.js|sh invoked by shipped command/skill bodies ships", M-0004 AC-8) fails the suite when a body-invoked script is missing from `files`.
+diff --git a/_planning/M-0002-process-notes-for-claude-md.md b/_planning/M-0002-process-notes-for-claude-md.md
+deleted file mode 100644
+index fe3df99..0000000
+--- a/_planning/M-0002-process-notes-for-claude-md.md
++++ /dev/null
+@@ -1,32 +0,0 @@
+-# M-0002 → CLAUDE.md process notes (draft — ships in the follow-up lifecycle PR)
+-
+-Drafted at Task 7 closeout per the closeout-gate ruling; batched with
+-M-0002's review→done move, NOT this mission's PR. Style matches the existing
+-"Operational hazards" numbered list (short, behavioral, incident-sourced);
+-proposed as entries 5–7.
+-
+----
+-
+-5. **"Body invokes" columns in analysis tables are hypotheses — full-read
+-   re-verification per file is mandatory before acting on them.** Three
+-   extraction defects were found in one mission (M-0002): a fence parser
+-   anchored at column 0 silently skipped fenced blocks indented inside list
+-   items; browser-verification.md's commands live in *unfenced*
+-   indentation-style code invisible to fence parsers; and a whole-file token
+-   scan matched frontmatter declarations against themselves, manufacturing
+-   its own evidence. If a table says a file does X, the table is a lead, not
+-   a fact.
+-
+-6. **Reference ≠ invocation.** Prose that *describes* a script or tool — or
+-   names a different executor (a hook, a loop driver, another command) — is
+-   not evidence that the reading agent runs it. Grants, permissions, and
+-   capability claims attach only to sites where the file's own executor is
+-   instructed to act. Litmus: "who runs this?" — if the answer isn't "the
+-   agent executing this file," it's a reference.
+-
+-7. **Never grant ahead of body evidence.** A declared-but-unused grant is
+-   drift by definition and fails `allowed-tools-guard.test.js`
+-   (declarations-without-usage). Aspirational grants — "the mechanism this
+-   will migrate to" — are rejected; the grant lands in the same commit as
+-   the change that creates the evidence. Judgment-call exceptions live as
+-   cited pins in the guard, never as uncited frontmatter.
+diff --git a/_planning/M-0004-charter-and-playbook.md b/_planning/M-0004-charter-and-playbook.md
+new file mode 100644
+index 0000000..9f93c4d
+--- /dev/null
++++ b/_planning/M-0004-charter-and-playbook.md
+@@ -0,0 +1,141 @@
++# M-0004 — Worktree Write Guard, Mission-Move Companions, CLAUDE.md Batch
++## Mission Charter + Execution Playbook
++
++**Status:** Ready to execute once the M-0003 closeout PR is merged to main
++**Branch:** `mission/M-0004-worktree-guard-and-move-fixes` (cut from fresh main)
++**Budget:** One Claude Code session, four prompts, four STOP gates
++**Release gate:** AC-1 through AC-3 and AC-6 are 3.6.0-blocking
++
++---
++
++## Charter
++
++M-0004 fixes the two release-blocking defects surfaced by M-0003's AC-9 live-fire dry-run, ships the bundled permission grant, lands the queued CLAUDE.md hazard batch, and re-runs the dry-run to prove the flagship flow no longer fights its own policy.
++
++### Acceptance criteria
++
++- **AC-1 (blocking):** `guard-main-branch.sh` resolves the branch of the **target path's containing worktree**, not the session cwd. Writes into the framework's worktree directories succeed when that worktree has a mission branch checked out; direct writes to main-checked-out paths remain blocked. Regression tests cover both directions (worktree write from main cwd passes; main write still blocked).
++- **AC-2 (blocking, ships with AC-1):** `EnterWorktree` granted in the shipped `settings.json` allow-list; allowed-tools guard covering-declaration bookkeeping updated in the same commit.
++- **AC-3 (blocking):** `mission-cli.js move` succeeds when the mission has untracked companion files and/or a pre-existing destination directory: `git mv` for tracked files, plain-rename fallback for untracked companions, tolerate existing `review/<id>/`. Tests cover the exact M-0003 failure shape (tracked mission file + untracked evidence dir + pre-created destination).
++- **AC-4:** CLAUDE.md updated with the queued hazard batch: the three entries from `_planning/M-0002-process-notes-for-claude-md.md` (retire that file once absorbed), the session-cwd-vs-target-path hook defect-class note, and the RM-staging hazard (git mv stages the rename; later content edits need their own add; verify committed contents post-commit). Stay under the CLAUDE.md token budget — prune if needed.
++- **AC-5:** M-0003's `review → done` transition rides this branch's **first commit**.
++- **AC-6 (blocking):** In-use verification — re-run the AC-9-style headless `/apes-build` dry-run (Task 3a probe method, Git Bash runner). Expected: the three Write denials, the improvised-fallback cascade, and the EnterWorktree prompt are gone. Remaining acceptable denials: only the parked cd-prefixed-chain class and, if it recurs, the parked mkdir anomaly (evidence appended, still no fix).
++- **AC-7:** Final state — allowed-tools guard test and full npm test green at final HEAD.
++
++### Explicitly out of scope
++
++The installer permission migration (`--update-permissions`) — the former `todo/M-0004-installer-permission-migration.md` stub — is REFILED as its own mission at the next free ID (see Prompt 0) and gates `latest` promotion, not the 3.6.0 beta publish. Also out: the parked mkdir anomaly (optional bounded probe only — see Prompt 3), the parked template-hygiene candidate, the parked cd-prefixed-chain class, and anything not enumerated above. New discoveries get appended to the ledger with file:line evidence, never fixed in-mission.
++
++---
++
++## Pre-flight (Allen, PowerShell, after the closeout PR merges)
++
++```powershell
++git switch main
++git pull
++git switch -c mission/M-0004-worktree-guard-and-move-fixes
++git push -u origin mission/M-0004-worktree-guard-and-move-fixes
++```
++
++---
++
++## Prompt 0 — Setup, stub refile, M-0003 done transition
++
++```
++Begin mission M-0004 on branch mission/M-0004-worktree-guard-and-move-fixes, cut from main after the M-0003 closeout PR merged. FIXED facts: branch retention policy active; M-0003 evidence and ledger are final; the parked items (mkdir anomaly, template hygiene, cd-prefixed chains) stay parked.
++
++TASK 0a — Stub refile (ruling already made, execute it): _planning/missions/todo/M-0004-installer-permission-migration.md is a placeholder stub (frontmatter id M-XXYA, "renumber on filing"). Refile it as its OWN mission: assign the next free ID via the mission tooling's auto-increment, rename the file to match (<new-id>-installer-permission-migration.md), set frontmatter id accordingly, resolve depends_on to M-0001 (least-privilege policy, done), keep priority 1 and codex.required: true, and append a frontmatter/body note: "Gates latest-tag promotion; does not block the 3.6.0 beta publish." Preserve the stub's body verbatim otherwise. The M-0004 ID belongs to THIS mission per the committed M-0003 ledger dispositions.
++
++TASK 0b — Mission file: create the M-0004 mission file via the framework's mission tooling, titled "Worktree write guard, mission-move companions, CLAUDE.md batch", with the seven charter ACs. Move it todo -> doing via the standard transition.
++
++TASK 0c — M-0003 done transition: git mv the M-0003 mission file review -> done. Note in its workpad that the closeout PR approval served as review.
++
++STOP GATE: Report the refiled mission's new ID and filename, the M-0004 frontmatter, and git status. Do not commit. If the auto-increment produces an ID that collides with anything in any state directory, stop and report instead of forcing.
++```
++
++**Gate review:** confirm the refiled ID landed clean and the stub body survived verbatim. Then commit (this is the "first commit" carrying AC-5):
++
++```
++Commit as: "M-0004: mission open, installer-migration stub refiled as <new-id>, M-0003 review -> done". Push. Report SHA and stop.
++```
++
++## Prompt 1 — AC-1 + AC-2 (guard fix + grant, one unit)
++
++```
++Continue M-0004. TASK — Fix guard-main-branch.sh per AC-1 and grant EnterWorktree per AC-2, as ONE unit:
++
++1. Read framework/scripts/guard-main-branch.sh and the worktree sections of apes-build.md to confirm the worktree root convention before writing anything.
++2. Rework the guard to resolve the branch of the TARGET FILE's containing git worktree (git -C <target-dir> or equivalent), not the session cwd. Preserve existing behavior for paths outside any worktree. Windows-safe: no bashisms the shipped runner can't handle; hook must keep its fail-open safety net.
++3. Regression tests: (a) write into a mission-branch worktree while session cwd is on main -> allowed; (b) write to a main-checked-out path -> blocked; (c) fail-open path unchanged.
++4. Add EnterWorktree to shipped settings.json allow-list; update allowed-tools guard bookkeeping (covering declaration) in the same change. Evidence rule applies: exact form vs star per actual invocation evidence.
++5. Run guard test + full npm test (Git Bash). Report counts.
++
++STOP GATE: full diff, test counts, any new ledger candidates. No commit.
++```
++
++**Commit on approval:** `"M-0004 AC-1/AC-2: guard-main-branch resolves target-path worktree branch; EnterWorktree granted"`
++
++## Prompt 2 — AC-3 (mission-cli move)
++
++```
++Continue M-0004. TASK — Fix mission-cli.js move per AC-3:
++
++1. Reproduce first: a test fixture with a tracked mission file, an untracked companion evidence directory, and a pre-created destination review/<id>/ — confirm the current failure shape ("source directory is empty") before fixing.
++2. Fix: git mv for tracked content; plain-rename fallback for untracked companions; tolerate pre-existing destination; the transition must remain atomic-in-effect (no half-moved mission on failure — report what rollback/ordering guarantees you implement).
++3. Tests: the reproduction fixture passes; plain moves unaffected; failure mid-move leaves a recoverable, reported state.
++4. Run guard test + full npm test. Report counts.
++
++STOP GATE: full diff, the before/after reproduction evidence, test counts. No commit.
++```
++
++**Commit on approval:** `"M-0004 AC-3: mission-cli move handles untracked companions and pre-existing destinations"`
++
++## Prompt 3 — AC-4 (CLAUDE.md batch) + optional bounded probe
++
++```
++Continue M-0004. TASK A — CLAUDE.md batch per AC-4: absorb the three entries from _planning/M-0002-process-notes-for-claude-md.md (then delete that file in the same change), add the session-cwd-vs-target-path hook defect-class hazard, add the RM-staging hazard. Respect the CLAUDE.md token budget; prune stale content if needed and report what was pruned.
++
++TASK B (OPTIONAL, hard cap ~10 minutes): one interactive reproduction attempt of the parked mkdir allow-rule denial anomaly. If reproduced: append evidence (exact command, settings state, denial text) to the ledger. If not reproduced or the cap hits: append "repro attempted <date>, not reproduced" and move on. NO FIX either way. Skipping Task B entirely is acceptable.
++
++STOP GATE: CLAUDE.md diff, pruning report, Task B outcome. No commit.
++```
++
++**Commit on approval:** `"M-0004 AC-4: CLAUDE.md hazard batch (M-0002 queue + cwd-vs-target-path + RM-staging)"`
++
++## Prompt 4 — AC-6 dry-run, AC-7, closeout
++
++```
++Complete M-0004. TASK 1 — AC-6: re-run the AC-9-style headless /apes-build dry-run (same Task 3a probe method, Git Bash runner, fresh sample project). PASS means: zero Write denials into the worktree, no improvised-fallback cascade, no EnterWorktree prompt. Acceptable residuals: parked cd-prefixed-chain denials; the mkdir anomaly if it recurs (append evidence only). Any OTHER unintended denial: STOP and report the rule/site — no patching. Preserve the result JSON into the mission evidence directory.
++
++TASK 2 — AC-7: guard test + full npm test at final HEAD. Exact counts.
++
++TASK 3 — Closeout: finalize ledger dispositions; evidence packet (reference all M-0004 SHAs, the AC-6 before/after denial comparison against M-0003's ac9-result.json, AC-7 counts); closeout workpad entry; git mv doing -> review. Not done. Verify staged content includes post-move edits (RM-staging hazard — check committed contents after the commit lands).
++
++STOP GATE: AC-6 comparison summary, AC-7 counts, ledger diff, git status. No commit.
++```
++
++**Commit on approval:** `"M-0004 closeout: AC-6 dry-run clean, evidence packet, mission doing -> review"` — then Allen opens the closeout PR, squash-merges, branch stays per retention policy.
++
++---
++
++## After M-0004 merges
++
++3.6.0 beta is unblocked. Next artifact: the publish runbook session — fresh session from main, dual-publish convention (`--tag beta`; `latest` pinned at 3.0.0), SHA-pinned `v3.6.0` tag, BOM-safe writes. Then branch-retention sunset and the `dosapes` org migration mission. The refiled installer-permission-migration mission is the hard gate on any future `latest` promotion.
++
++---
++
++## Handoff prompt for the new Claude Desktop thread
++
++Paste this as the first message of the new conversation, with this playbook file attached:
++
++```
++CPO context handoff — Dos Apes Framework, M-0004 execution thread.
++
++State: M-0003 (body hygiene) is DONE — closed via two PRs (#19 checkpoint + closeout PR), evidence packet in review/M-0003/evidence/, all nine ACs dispositioned including the AC-9 live-fire dry-run that surfaced the defects M-0004 now fixes. 3.6.0 publish is gated behind M-0004 only.
++
++This thread executes M-0004 per the attached charter + playbook. My role: run the pre-flight, paste prompts 0-4 into Claude Code sequentially, bring each STOP-gate report back here for your review and commit ruling. Your role: review gate reports against the charter, rule on deviations and new ledger candidates (default: park with evidence), issue commit instructions in imperative form only, keep commit messages ASCII-safe, never let the session expand scope beyond the seven ACs.
++
++Standing rulings already made (do not reopen): the installer-permission-migration stub refiles as its own mission at the next free ID and gates latest promotion, not the 3.6.0 beta; the mkdir anomaly, template hygiene, and cd-prefixed chains stay parked; F-2/F-3 and all M-0003 dispositions are final; branch retention policy holds until 3.6.0 ships.
++
++Expected decision points: Prompt 0's gate (refiled ID confirmation), Prompt 4's gate (any dry-run denial outside the two parked classes stops everything for a ruling). First action: confirm the M-0003 closeout PR is merged, then give me the pre-flight commands.
++```
+diff --git a/_planning/M-0004-ledger.md b/_planning/M-0004-ledger.md
+new file mode 100644
+index 0000000..102c96f
+--- /dev/null
++++ b/_planning/M-0004-ledger.md
+@@ -0,0 +1,67 @@
++# M-0004 — Findings ledger
++
++New discoveries made during M-0004 execution, appended with file:line
++evidence per the charter's evidence rule (never fixed in-mission unless a
++CPO ruling folds them into an AC). The M-0003 ledger
++(`_planning/M-0003-scope-additions.md`) is FINAL per standing ruling and
++takes no further entries.
++
++---
++
++### 2026-07-13 — YAML-subset parser swallows trailing inline comments into scalar values — PARKED per CPO ruling
++
++`framework/lib/mission-parser.js` scalar handling: `required: false  # note`
++parses as the string `"false  # note"`. Inline comments after values become
++part of the value — silently for string-typed fields (the M-XXYA stub's
++`id:` / `depends_on:` inline comments round-tripped as value content),
++loudly only when schema type-checking rejects the type. Evidence:
++`moveMissionState` refusal `codex.required must be a boolean, got
++"false  # hook + CLI fixes…"` during M-0004 filing (Task 0b). Workaround:
++comments on their own line. PARKED — no fix in-mission, not
++release-blocking.
++
++### 2026-07-13 — moveMissionState non-atomic: git mv before frontmatter validation — FOLDED INTO AC-3 per CPO ruling
++
++`framework/lib/mission-tracker.js:328-339`: the `git mv` executes before
++`_writeFile` validates the updated frontmatter; a validation failure
++leaves the file already moved with a stale `state:` field (observed
++during Task 0b: M-0004 sat in `doing/` with `state: todo` after the
++inline-comment rejection above; completed manually). FOLDED INTO AC-3:
++this failure shape — post-move frontmatter write/validation failure
++leaving a moved file with stale state — becomes a REQUIRED reproduction
++fixture in the AC-3 task, alongside the untracked-companions and
++pre-existing-destination shapes.
++
++### 2026-07-13 — M-0003 AC-4 helper scripts missing from the npm `files` whitelist — ABSORBED INTO M-0004 as AC-8 per CPO ruling (3.6.0-blocking)
++
++`package.json:41-61` enumerates `framework/scripts/` entries individually;
++the six AC-4 helpers (`json-field.js`, `mission-next.js`,
++`mission-filter.js`, `mission-dashboard.js`, `metrics-summary.js`,
++`codex-envelope.js`, all added in 593375c) are absent. They will not ship
++in the tarball, so `npx dos-apes-super-agent` installs get command bodies
++that invoke helpers that don't exist on disk (every AC-4 conversion site
++breaks at runtime). Invisible to `npm test`: cli.test.js's packaging group
++asserts the whitelist SHIPS, not that all production files are
++WHITELISTED (no reverse check). Found during M-0004 AC-1/AC-2 while
++editing `package.json`'s test chain. Candidate fix is a six-line
++whitelist addition plus a reverse packaging assertion. RESOLUTION
++(2026-07-13, same day): absorbed as M-0004 AC-8 per CPO ruling — six
++whitelist entries added, reverse assertion landed in cli.test.js's
++packaging group (proven red against the pre-fix whitelist, exactly the
++six helpers; green post-fix).
++
++### 2026-07-13 — mkdir allow-rule denial anomaly: CLOSED (environmental, root-caused, framework exonerated, no action)
++
++Repro attempted 2026-07-13 (M-0004 Prompt 3 Task B, one bounded headless
++attempt, same `--settings`-injection shape as the original AC-9 run).
++Both `mkdir tmp-probe` and `mkdir -p tmp-probe2/nested` denied despite
++the live `Bash(mkdir *)` allow. Denial text verbatim: "Claude requested
++permissions to edit C:\Users\allen\.claude\jobs\977580c4\tmp\ac9-sample\
++tmp-probe which is a sensitive file." Root cause: the AC-9 sample
++project lives under `~/.claude/jobs/...`, and Claude Code's built-in
++sensitive-path protection for the `.claude` subtree overrides permission
++allow rules for fs-mutating commands there. Not an allow-rule defect;
++`framework/settings.json` exonerated. NO FIX (nothing framework-side to
++fix). Methodology consequence: the AC-6 dry-run sample project MUST be
++scaffolded OUTSIDE `~/.claude` so environmental denials don't pollute
++the denial log.
+diff --git a/_planning/missions/doing/M-0004-worktree-guard-and-move-fixes.md b/_planning/missions/doing/M-0004-worktree-guard-and-move-fixes.md
+new file mode 100644
+index 0000000..8ceb8a2
+--- /dev/null
++++ b/_planning/missions/doing/M-0004-worktree-guard-and-move-fixes.md
+@@ -0,0 +1,108 @@
++---
++id: M-0004
++schema_version: 2
++title: Worktree write guard, mission-move companions, CLAUDE.md batch
++state: doing
++created: 2026-07-13
++updated: 2026-07-13
++priority: 1
++depends_on:
++  - M-0003
++labels:
++  - hooks
++  - worktrees
++  - missions
++# codex gate: hook + CLI fixes — L1 drift-guard, unit suites, and the
++# AC-6 live-fire re-run are the gates, not adversarial review
++codex:
++  required: false
++verification:
++  required_levels:
++    - L0
++    - L1
++    - L2
++workspace:
++  branch: mission/M-0004-worktree-guard-and-move-fixes
++  worktree: .worktrees/M-0004
++---
++
++## Context
++
++M-0003's AC-9 live-fire dry-run surfaced two release-blocking defects and
++a bundled grant gap, all ledgered with dispositions at the M-0003 closeout
++(`_planning/M-0003-scope-additions.md`, 2026-07-13 entries): the
++guard-main-branch hook blocks the framework's own worktree flow, the
++mission-move transition breaks on untracked companion files, and the
++EnterWorktree escape hatch is ungranted. M-0004 fixes the defects, ships
++the grant, lands the queued CLAUDE.md hazard batch, and re-runs the
++dry-run to prove the flagship flow no longer fights its own policy.
++Charter + execution playbook: `_planning/M-0004-charter-and-playbook.md`.
++3.6.0 beta publish is gated on AC-1 through AC-3 and AC-6.
++
++## Acceptance criteria
++
++- [ ] **AC-1 (blocking):** `guard-main-branch.sh` resolves the branch of
++      the **target path's containing worktree**, not the session cwd.
++      Writes into the framework's worktree directories succeed when that
++      worktree has a mission branch checked out; direct writes to
++      main-checked-out paths remain blocked. Regression tests cover both
++      directions (worktree write from main cwd passes; main write still
++      blocked).
++- [ ] **AC-2 (blocking, ships with AC-1):** `EnterWorktree` granted in
++      the shipped `settings.json` allow-list; allowed-tools guard
++      covering-declaration bookkeeping updated in the same commit.
++- [ ] **AC-3 (blocking):** `mission-cli.js move` succeeds when the
++      mission has untracked companion files and/or a pre-existing
++      destination directory: `git mv` for tracked files, plain-rename
++      fallback for untracked companions, tolerate existing `review/<id>/`.
++      Tests cover the exact M-0003 failure shape (tracked mission file +
++      untracked evidence dir + pre-created destination).
++- [ ] **AC-4:** CLAUDE.md updated with the queued hazard batch: the three
++      entries from `_planning/M-0002-process-notes-for-claude-md.md`
++      (retire that file once absorbed), the session-cwd-vs-target-path
++      hook defect-class note, and the RM-staging hazard (git mv stages
++      the rename; later content edits need their own add; verify
++      committed contents post-commit). Stay under the CLAUDE.md token
++      budget — prune if needed.
++- [ ] **AC-5:** M-0003's `review → done` transition rides this branch's
++      **first commit**.
++- [ ] **AC-6 (blocking):** In-use verification — re-run the AC-9-style
++      headless `/apes-build` dry-run (Task 3a probe method, Git Bash
++      runner). Expected: the three Write denials, the improvised-fallback
++      cascade, and the EnterWorktree prompt are gone. Remaining
++      acceptable denials: only the parked cd-prefixed-chain class and, if
++      it recurs, the parked mkdir anomaly (evidence appended, still no
++      fix).
++- [ ] **AC-7:** Final state — allowed-tools guard test and full npm test
++      green at final HEAD.
++- [ ] **AC-8 (blocking, absorbed 2026-07-13):** Packaging completeness —
++      the six M-0003 AC-4 helper scripts added to package.json's `files`
++      whitelist, plus a REVERSE packaging assertion in cli.test.js's
++      packaging group: every `scripts/*.js|sh` invoked by shipped
++      command/skill bodies (and present in `framework/scripts/`) must
++      ship. Proven red against the pre-fix whitelist (exactly the six
++      helpers), then green post-fix. (M-0004 ledger 2026-07-13, ABSORBED
++      per CPO ruling.)
++
++## Out of scope
++
++The installer permission migration (`--update-permissions`) — refiled as
++M-0006 at this mission's opening; it gates `latest` promotion, not the
++3.6.0 beta publish. Also out: the parked mkdir anomaly (optional bounded
++probe only), the parked template-hygiene candidate, the parked
++cd-prefixed-chain class, and anything not enumerated above. New
++discoveries get appended to the ledger with file:line evidence, never
++fixed in-mission.
++
++## References
++
++`_planning/M-0004-charter-and-playbook.md` (charter + playbook);
++`_planning/M-0003-scope-additions.md` (AC-9 candidates + dispositions,
++2026-07-13); `_planning/missions/review/M-0003/evidence/ac9-result.json`
++(the denial log AC-6 compares against);
++`framework/scripts/guard-main-branch.sh`; `framework/lib/mission-tracker.js`
++(moveMissionState); `framework/scripts/mission-cli.js`.
++
++## Workpad
++
++<!-- Append timestamped entries; do not delete prior entries. -->
+diff --git a/_planning/missions/review/M-0003-body-hygiene.md b/_planning/missions/done/M-0003-body-hygiene.md
+similarity index 98%
+rename from _planning/missions/review/M-0003-body-hygiene.md
+rename to _planning/missions/done/M-0003-body-hygiene.md
+index d7aab78..f0ee0c1 100644
+--- a/_planning/missions/review/M-0003-body-hygiene.md
++++ b/_planning/missions/done/M-0003-body-hygiene.md
+@@ -301,3 +301,11 @@ site in delta 2.
+    back-compatible.
+ 5. Mission doing → review. The done transition rides the next branch's
+    first commit after closeout PR approval.
++
++### 2026-07-13 — review → done
++
++Closeout PR #20 approval served as the mission review (squash-merged to
++main as defe991, branch retained per policy). Transition rides
++mission/M-0004-worktree-guard-and-move-fixes' first commit, as recorded
++at closeout. Evidence packet remains at
++`_planning/missions/review/M-0003/evidence/`.
+diff --git a/_planning/missions/todo/M-0004-installer-permission-migration.md b/_planning/missions/todo/M-0006-installer-permission-migration.md
+similarity index 88%
+rename from _planning/missions/todo/M-0004-installer-permission-migration.md
+rename to _planning/missions/todo/M-0006-installer-permission-migration.md
+index 567776f..ff7301b 100644
+--- a/_planning/missions/todo/M-0004-installer-permission-migration.md
++++ b/_planning/missions/todo/M-0006-installer-permission-migration.md
+@@ -1,15 +1,20 @@
+ ---
+-id: M-XXYA  # renumber on filing
++id: M-0006
+ title: Installer permission migration for existing installs (--update-permissions)
+ priority: 1
+ labels: [installer, dx]
+-depends_on: [M-XXXX]  # least-privilege permissions policy
++depends_on: [M-0001]  # least-privilege permissions policy (done)
+ codex:
+   required: true  # touches user-owned settings files; adversarial review must complete
+ verification:
+   required_levels: [L0, L1, L2, L8]
+ ---
+ 
++> **Release gating:** Gates latest-tag promotion; does not block the 3.6.0
++> beta publish. (Refiled from the M-0004 placeholder stub at M-0003
++> closeout; the M-0004 ID belongs to the worktree-guard mission per the
++> committed M-0003 ledger dispositions.)
++
+ ## Context
+ 
+ `bin/cli.js:685-689` writes shipped settings only when no `.claude/settings.json` exists;
+diff --git a/bin/cli.test.js b/bin/cli.test.js
+index 6d0d945..a049490 100644
+--- a/bin/cli.test.js
++++ b/bin/cli.test.js
+@@ -394,6 +394,31 @@ group("packaging (npm pack --dry-run --json)", () => {
+     const missing = explicit.filter((f) => !shipped.includes(f));
+     assert.deepStrictEqual(missing, [], `whitelisted files missing from tarball: ${missing.join(", ")}`);
+   });
++
++  test("every scripts/*.js|sh invoked by shipped command/skill bodies ships (reverse whitelist check — M-0004 AC-8)", () => {
++    // Bodies reference helpers as `scripts/<name>.<ext>` (the installer
++    // copies framework/scripts/ -> scripts/), so every such reference that
++    // exists in framework/scripts/ must ship — a body invoking a helper
++    // the whitelist omits breaks every fresh install at runtime (the
++    // M-0003 AC-4 helper gap; M-0004 ledger 2026-07-13). References to
++    // scripts that do NOT exist in framework/scripts/ are user-project
++    // illustrations and are skipped.
++    const invoked = new Set();
++    for (const dir of ["framework/commands", "framework/skills"]) {
++      for (const f of fs.readdirSync(path.join(REPO_ROOT, dir))) {
++        if (!f.endsWith(".md")) continue;
++        const text = fs.readFileSync(path.join(REPO_ROOT, dir, f), "utf8");
++        for (const m of text.matchAll(/scripts\/([a-z0-9.-]+\.(?:js|sh))\b/g)) {
++          if (fs.existsSync(path.join(REPO_ROOT, "framework", "scripts", m[1]))) {
++            invoked.add(`framework/scripts/${m[1]}`);
++          }
++        }
++      }
++    }
++    const missing = [...invoked].filter((p) => !shipped.includes(p)).sort();
++    assert.deepStrictEqual(missing, [],
++      `body-invoked scripts missing from the tarball (files whitelist gap): ${missing.join(", ")}`);
++  });
+ });
+ 
+ // ─── Summary ─────────────────────────────────────────────────────────────────
+diff --git a/framework/commands/apes-build.md b/framework/commands/apes-build.md
+index d484539..859946f 100644
+--- a/framework/commands/apes-build.md
++++ b/framework/commands/apes-build.md
+@@ -1,6 +1,6 @@
+ ---
+ description: Full autonomous build from PRD to shipped product
+-allowed-tools: Read, Edit, Write, Grep, Glob, TaskCreate, TaskUpdate, TaskList, Bash(git checkout -b:*), Bash(git merge:*), Bash(npm run build:*), Bash(npm run lint:*), Bash(npm run typecheck:*), Bash(npm test:*)
++allowed-tools: Read, Edit, Write, Grep, Glob, EnterWorktree, TaskCreate, TaskUpdate, TaskList, Bash(git checkout -b:*), Bash(git merge:*), Bash(npm run build:*), Bash(npm run lint:*), Bash(npm run typecheck:*), Bash(npm test:*)
+ ---
+ 
+ # Build Product
+@@ -164,7 +164,9 @@ node scripts/mission-cli.js set-active "$TARGET"
+ ```
+ 
+ From this point on, all work happens **inside the worktree directory**
+-(`.worktrees/${TARGET}`). The build phases below (PHASE 0 through PHASE 5
++(`.worktrees/${TARGET}`). Enter it with the EnterWorktree tool (pass the
++worktree path) before writing any file — the session then operates on the
++mission branch directly. The build phases below (PHASE 0 through PHASE 5
+ in this file) run against that directory, not the main checkout. The
+ mission's frontmatter declares the team composition and required
+ verification levels; honor both.
+diff --git a/framework/lib/mission-tracker.js b/framework/lib/mission-tracker.js
+index 1e6192b..34db587 100644
+--- a/framework/lib/mission-tracker.js
++++ b/framework/lib/mission-tracker.js
+@@ -295,6 +295,34 @@ class MissionTracker {
+     return { allowed: true, reason: "ok" };
+   }
+ 
++  // Any tracked content at or under p (file or directory)? Untracked
++  // sources make `git mv` refuse ("not under version control" for files,
++  // "source directory is empty" for directories of untracked files — the
++  // M-0003 closeout failure); those move via plain rename instead.
++  _isTrackedPath(gitRoot, p) {
++    try {
++      const out = execFileSync("git", ["-C", gitRoot, "ls-files", "--", p], {
++        encoding: "utf8",
++        stdio: ["ignore", "pipe", "pipe"],
++      });
++      return out.trim().length > 0;
++    } catch (_) {
++      return false;
++    }
++  }
++
++  // M-0004 AC-3. Ordering + rollback guarantees ("atomic-in-effect"):
++  //   1. FSM check, post-move frontmatter validation, destination and
++  //      collision pre-checks all run BEFORE any filesystem effect — a
++  //      failure there moves nothing (the M-0004 Task 0 fixture: git mv
++  //      used to precede validation, stranding a moved file with a stale
++  //      `state:` field).
++  //   2. Moves execute per-path (git mv for tracked, rename for untracked;
++  //      a pre-existing destination dir is tolerated by entry-merge), each
++  //      completed step recorded.
++  //   3. Any failure during moves or the final frontmatter write rolls the
++  //      completed steps back in reverse. If the rollback itself fails,
++  //      the error reports the exact partial state path-by-path.
+   moveMissionState(id, targetState) {
+     const check = this.canTransition(id, targetState);
+     if (!check.allowed) {
+@@ -304,39 +332,102 @@ class MissionTracker {
+     const fileBase = path.basename(m.path);
+     const destFile = path.join(this.root, targetState, fileBase);
+     const destDir = path.join(this.root, targetState);
+-    fs.mkdirSync(destDir, { recursive: true });
+ 
+-    // Companion per-mission directory (e.g. for verification.jsonl) lives
+-    // alongside the .md file. Move it too if present.
++    // Pre-validate the post-move frontmatter: zero filesystem effects on
++    // failure (same message shape _writeFile would produce at write time).
++    const newFm = { ...m.frontmatter, state: targetState, updated: todayIso() };
++    const validation = schema.validateFrontmatter(newFm);
++    if (!validation.valid) {
++      throw new Error(
++        `mission-tracker: refusing to write invalid frontmatter to ${destFile}:\n  - ` +
++        validation.errors.join("\n  - ") +
++        `\n  (nothing moved — validation runs before any filesystem effect)`
++      );
++    }
++    if (fs.existsSync(destFile)) {
++      throw new Error(`moveMissionState: destination already exists: ${destFile} — nothing moved`);
++    }
++
+     const companionSrc = path.join(this.root, m.state, id);
+     const companionDst = path.join(this.root, targetState, id);
+     const hasCompanion = fs.existsSync(companionSrc);
+-
+     const gitRoot = this._gitRoot();
+-    if (gitRoot) {
+-      try {
+-        execFileSync("git", ["-C", gitRoot, "mv", m.path, destFile], {
++
++    // Plan the companion strategy up front. A pre-existing destination dir
++    // (the evidence generator pre-creates review/<id>/) is tolerated by
++    // merging entries into it; entry collisions abort before any move.
++    let mergeEntries = null; // null = whole-dir move; array = per-entry merge
++    if (hasCompanion && fs.existsSync(companionDst)) {
++      mergeEntries = fs.readdirSync(companionSrc);
++      for (const e of mergeEntries) {
++        if (fs.existsSync(path.join(companionDst, e))) {
++          throw new Error(
++            `moveMissionState: companion entry collides with pre-existing destination: ` +
++            `${path.join(companionDst, e)} — nothing moved`
++          );
++        }
++      }
++    }
++
++    fs.mkdirSync(destDir, { recursive: true });
++
++    const done = []; // completed steps, for reverse rollback
++    const moveOne = (src, dst) => {
++      if (gitRoot && this._isTrackedPath(gitRoot, src)) {
++        execFileSync("git", ["-C", gitRoot, "mv", src, dst], {
+           stdio: ["ignore", "pipe", "pipe"],
+         });
+-        if (hasCompanion) {
+-          execFileSync("git", ["-C", gitRoot, "mv", companionSrc, companionDst], {
+-            stdio: ["ignore", "pipe", "pipe"],
+-          });
++        done.push({ src, dst, how: "git-mv" });
++      } else {
++        fs.renameSync(src, dst);
++        done.push({ src, dst, how: "rename" });
++      }
++    };
++    const rollback = () => {
++      const problems = [];
++      for (const step of done.reverse()) {
++        try {
++          if (step.how === "rmdir") {
++            fs.mkdirSync(step.src, { recursive: true });
++          } else if (step.how === "git-mv") {
++            execFileSync("git", ["-C", gitRoot, "mv", step.dst, step.src], {
++              stdio: ["ignore", "pipe", "pipe"],
++            });
++          } else {
++            fs.renameSync(step.dst, step.src);
++          }
++        } catch (e) {
++          problems.push(`${step.dst || step.src}: not restored (${e.message.split("\n")[0]})`);
+         }
+-      } catch (err) {
+-        const stderr = err.stderr ? String(err.stderr).trim() : err.message;
+-        throw new Error(`moveMissionState: git mv failed: ${stderr}`);
+       }
+-    } else {
+-      fs.renameSync(m.path, destFile);
+-      if (hasCompanion) fs.renameSync(companionSrc, companionDst);
+-    }
++      return problems;
++    };
+ 
+-    // Update frontmatter so it matches the new directory. Atomic-on-disk:
+-    // by the time this method returns, the .md file is in the new location
+-    // AND its `state` field reflects that.
+-    const newFm = { ...m.frontmatter, state: targetState, updated: todayIso() };
+-    this._writeFile(destFile, { frontmatter: newFm, body: m.body });
++    try {
++      moveOne(m.path, destFile);
++      if (hasCompanion) {
++        if (mergeEntries === null) {
++          moveOne(companionSrc, companionDst);
++        } else {
++          for (const e of mergeEntries) {
++            moveOne(path.join(companionSrc, e), path.join(companionDst, e));
++          }
++          fs.rmdirSync(companionSrc); // empty after the merge
++          done.push({ src: companionSrc, dst: null, how: "rmdir" });
++        }
++      }
++      this._writeFile(destFile, { frontmatter: newFm, body: m.body });
++    } catch (err) {
++      const msg = err && err.stderr ? String(err.stderr).trim() : (err && err.message) || String(err);
++      const problems = rollback();
++      if (problems.length) {
++        throw new Error(
++          `moveMissionState: failed (${msg}) AND rollback was incomplete — partial state, fix by hand:\n  ` +
++          problems.join("\n  ")
++        );
++      }
++      throw new Error(`moveMissionState: failed — all completed steps rolled back. Cause: ${msg}`);
++    }
+     return destFile;
+   }
+ 
+diff --git a/framework/lib/mission-tracker.test.js b/framework/lib/mission-tracker.test.js
+index 4f6b85e..4777fe8 100644
+--- a/framework/lib/mission-tracker.test.js
++++ b/framework/lib/mission-tracker.test.js
+@@ -304,6 +304,110 @@ group("State transitions — moveMissionState", () => {
+   });
+ });
+ 
++// ─── State transitions — AC-3 move hardening (M-0004) ──────────────────────
++// The exact M-0003 closeout failure shape plus the ledger-folded
++// non-atomicity fixture: tracked mission file, UNTRACKED companion
++// directory, pre-created destination; validation failures move nothing;
++// mid-move failures roll back to a reported, recoverable state.
++
++group("State transitions — AC-3 move hardening (M-0004)", () => {
++  test("M-0003 shape: tracked file + untracked companion + pre-created destination → succeeds, entries merged", () => {
++    const { root, repoRoot } = makeTempTree({ git: true });
++    const file = seedMission(root, "doing", "M-0001", { title: "Shape" });
++    execFileSync("git", ["add", "-A"], { cwd: repoRoot });
++    execFileSync("git", ["commit", "-q", "-m", "track mission file"], { cwd: repoRoot });
++    // untracked companion written mid-flight
++    fs.mkdirSync(path.join(root, "doing", "M-0001"), { recursive: true });
++    fs.writeFileSync(
++      path.join(root, "doing", "M-0001", "verification.jsonl"),
++      `{"level":"L0","outcome":"pass"}\n`
++    );
++    // destination pre-created by the evidence generator
++    fs.mkdirSync(path.join(root, "review", "M-0001", "evidence"), { recursive: true });
++    fs.writeFileSync(path.join(root, "review", "M-0001", "evidence", "summary.md"), "packet\n");
++
++    const t = new MissionTracker({ root });
++    const newPath = t.moveMissionState("M-0001", "review");
++    assert(fs.existsSync(newPath));
++    assert.strictEqual(fs.existsSync(file), false);
++    // merged: mid-flight log arrived, pre-existing evidence untouched
++    assert.strictEqual(
++      fs.existsSync(path.join(root, "review", "M-0001", "verification.jsonl")), true);
++    assert.strictEqual(
++      fs.existsSync(path.join(root, "review", "M-0001", "evidence", "summary.md")), true);
++    assert.strictEqual(fs.existsSync(path.join(root, "doing", "M-0001")), false);
++    const m = t.findMissionById("M-0001");
++    assert.strictEqual(m.state, "review");
++    assert.strictEqual(m.frontmatter.state, "review");
++  });
++
++  test("untracked mission file in a git repo moves via the rename fallback", () => {
++    const { root } = makeTempTree({ git: true }); // file never committed
++    seedMission(root, "todo", "M-0001", { title: "Untracked" });
++    const t = new MissionTracker({ root });
++    const newPath = t.moveMissionState("M-0001", "doing");
++    assert(fs.existsSync(newPath));
++    assert.strictEqual(t.findMissionById("M-0001").state, "doing");
++  });
++
++  test("companion entry collision with pre-existing destination → throws, nothing moved", () => {
++    const { root } = makeTempTree({ git: false });
++    const file = seedMission(root, "doing", "M-0001", { title: "Collide" });
++    fs.mkdirSync(path.join(root, "doing", "M-0001"), { recursive: true });
++    fs.writeFileSync(path.join(root, "doing", "M-0001", "verification.jsonl"), "src\n");
++    fs.mkdirSync(path.join(root, "review", "M-0001"), { recursive: true });
++    fs.writeFileSync(path.join(root, "review", "M-0001", "verification.jsonl"), "dest\n");
++
++    const t = new MissionTracker({ root });
++    assert.throws(() => t.moveMissionState("M-0001", "review"), /collides .* nothing moved/s);
++    assert.strictEqual(fs.existsSync(file), true);
++    assert.strictEqual(
++      fs.readFileSync(path.join(root, "doing", "M-0001", "verification.jsonl"), "utf8"), "src\n");
++    assert.strictEqual(
++      fs.readFileSync(path.join(root, "review", "M-0001", "verification.jsonl"), "utf8"), "dest\n");
++  });
++
++  test("REQUIRED fixture (M-0004 ledger): frontmatter validation failure moves nothing — no stale-state stranding", () => {
++    const { root } = makeTempTree({ git: false });
++    // the M-0004 Task 0 shape: codex.required is a non-boolean on disk
++    const file = path.join(root, "doing", "M-0001-bad-codex.md");
++    const text =
++      "---\nid: M-0001\ntitle: Bad codex\nstate: doing\ncreated: 2026-05-01\n" +
++      "updated: 2026-05-01\ncodex:\n  required: nope\n---\n\n## Workpad\n";
++    fs.writeFileSync(file, text);
++
++    const t = new MissionTracker({ root });
++    assert.throws(
++      () => t.moveMissionState("M-0001", "review"),
++      /refusing to write invalid frontmatter[\s\S]*nothing moved/
++    );
++    // zero filesystem effects: still in doing/, content byte-identical
++    assert.strictEqual(fs.existsSync(file), true);
++    assert.strictEqual(fs.readFileSync(file, "utf8"), text);
++    assert.strictEqual(fs.existsSync(path.join(root, "review", "M-0001-bad-codex.md")), false);
++  });
++
++  test("mid-move failure rolls completed steps back and reports it", () => {
++    const { root } = makeTempTree({ git: false });
++    const file = seedMission(root, "doing", "M-0001", { title: "Midfail" });
++    fs.mkdirSync(path.join(root, "doing", "M-0001"), { recursive: true });
++    fs.writeFileSync(path.join(root, "doing", "M-0001", "verification.jsonl"), "log\n");
++    // destination companion path exists as a FILE: the entry-merge rename
++    // into it fails after the mission file has already moved
++    fs.mkdirSync(path.join(root, "review"), { recursive: true });
++    fs.writeFileSync(path.join(root, "review", "M-0001"), "not a directory\n");
++
++    const t = new MissionTracker({ root });
++    assert.throws(() => t.moveMissionState("M-0001", "review"), /rolled back/);
++    // recoverable state: mission file and companion restored to doing/
++    assert.strictEqual(fs.existsSync(file), true);
++    assert.strictEqual(
++      fs.readFileSync(path.join(root, "doing", "M-0001", "verification.jsonl"), "utf8"), "log\n");
++    const m = t.findMissionById("M-0001");
++    assert.strictEqual(m.state, "doing");
++  });
++});
++
+ // ─── Mutations ─────────────────────────────────────────────────────────────
+ 
+ group("Mutations", () => {
+diff --git a/framework/scripts/allowed-tools-guard.test.js b/framework/scripts/allowed-tools-guard.test.js
+index 088ab20..1073eaa 100644
+--- a/framework/scripts/allowed-tools-guard.test.js
++++ b/framework/scripts/allowed-tools-guard.test.js
+@@ -76,14 +76,16 @@ const INVENTORY = process.argv.includes("--inventory");
+ const NATIVE_TOOLS = new Set([
+   "Read", "Edit", "Write", "Grep", "Glob",
+   "TaskCreate", "TaskUpdate", "TaskList",
++  "EnterWorktree", // M-0004 AC-2: worktree-entry grant (token-evidence class, like the Task tools)
+ ]);
+ // Never flagged as unused (Task 4 gate ruling: permitted floor for prose-only files).
+ const FLOOR = new Set(["Read", "Grep", "Glob"]);
+ // v1-era tool names; also bare Bash (the thing this mission removed everywhere).
+ const FORBIDDEN_ENTRIES = new Set(["Task", "TodoWrite", "Bash"]);
+-// Task tools get literal-token usage evidence; Edit/Write have no mechanical
+-// signal and are pinned per file instead (see EDIT_WRITE_EXPECTED).
+-const TASK_TOOLS = new Set(["TaskCreate", "TaskUpdate", "TaskList"]);
++// Task tools and EnterWorktree get literal-token usage evidence (the tool
++// name appears in bodies that instruct its use); Edit/Write have no
++// mechanical signal and are pinned per file instead (see EDIT_WRITE_EXPECTED).
++const TASK_TOOLS = new Set(["TaskCreate", "TaskUpdate", "TaskList", "EnterWorktree"]);
+ 
+ // First tokens that make a line/segment count as an invocation.
+ const EXEC = new Set([
+diff --git a/framework/scripts/guard-main-branch.sh b/framework/scripts/guard-main-branch.sh
+index 6125cc1..a5626d5 100644
+--- a/framework/scripts/guard-main-branch.sh
++++ b/framework/scripts/guard-main-branch.sh
+@@ -1,7 +1,47 @@
+ #!/bin/bash
+-# PreToolUse hook: Block edits on main branch
+-BRANCH=$(git branch --show-current 2>/dev/null)
++# PreToolUse hook: block Edit/Write when the TARGET file's containing git
++# checkout has main/master checked out (M-0004 AC-1).
++#
++# The signal is the branch of the checkout CONTAINING THE TARGET PATH, never
++# the session cwd: the shipped worktree flow writes into .worktrees/<id>
++# (mission branch checked out there) while the primary checkout sits on
++# main — a cwd-keyed check blocks the framework's own flow (M-0003 AC-9
++# finding; "hooks keyed to session-cwd state instead of target-path state"
++# defect class).
++#
++# Input: hook JSON on stdin; target = .tool_input.file_path (Edit/Write).
++# Fail-open ladder:
++#   - no target resolvable from stdin -> legacy session-cwd check
++#     (pre-M-0004 behavior; still guards something on a malformed payload)
++#   - no branch resolvable for the target (outside any repo, detached
++#     HEAD, git missing) -> allow; this rail must not brick editing.
++
++INPUT=$(cat 2>/dev/null)
++if command -v jq >/dev/null 2>&1; then
++  TARGET=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null)
++else
++  TARGET=$(echo "$INPUT" | node -e "process.stdout.write((JSON.parse(require('fs').readFileSync(0,'utf8')).tool_input||{}).file_path||'')" 2>/dev/null)
++fi
++
++if [ -n "$TARGET" ]; then
++  # Windows-safe: normalize backslashes so dirname sees path components.
++  TARGET=${TARGET//\\//}
++  DIR=$(dirname "$TARGET")
++  # A Write may create nested directories — walk up to the nearest one
++  # that exists so `git -C` has a real cwd to resolve from.
++  while [ ! -d "$DIR" ]; do
++    PARENT=$(dirname "$DIR")
++    [ "$PARENT" = "$DIR" ] && break
++    DIR="$PARENT"
++  done
++  BRANCH=$(git -C "$DIR" branch --show-current 2>/dev/null)
++else
++  # Legacy fallback: payload carried no target path.
++  BRANCH=$(git branch --show-current 2>/dev/null)
++fi
++
+ if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "master" ]; then
+-  echo '{"block": true, "message": "Cannot edit files on main branch. Create a feature branch first."}' >&2
++  echo '{"block": true, "message": "Cannot edit files on main branch. Create a feature branch first, or write inside the mission worktree (.worktrees/<id>)."}' >&2
+   exit 2
+ fi
++exit 0
+diff --git a/framework/scripts/guard-main-branch.test.js b/framework/scripts/guard-main-branch.test.js
+new file mode 100644
+index 0000000..471428d
+--- /dev/null
++++ b/framework/scripts/guard-main-branch.test.js
+@@ -0,0 +1,163 @@
++"use strict";
++//
++// guard-main-branch.test.js — fixture tests for the PreToolUse Edit/Write
++// guard (M-0004 AC-1). Drives the real script through bash with hook-shaped
++// stdin JSON against real git fixtures (primary checkout on main + a linked
++// worktree on a mission branch) and asserts on exit codes: 2 = blocked,
++// 0 = allowed.
++//
++// The load-bearing property under test: the guard resolves the branch of
++// the TARGET path's containing checkout, not the session cwd — writes into
++// .worktrees/<id> must pass while cwd sits on main (the M-0003 AC-9 defect).
++//
++// Run:  node framework/scripts/guard-main-branch.test.js
++//
++
++const assert = require("assert");
++const fs = require("fs");
++const os = require("os");
++const path = require("path");
++const { spawnSync, execFileSync } = require("child_process");
++
++const SCRIPT = path.join(__dirname, "guard-main-branch.sh");
++
++// Bail gracefully where bash is unavailable (the guard itself only ever runs
++// under bash / Git Bash, so there is nothing to test on such a machine).
++const probe = spawnSync("bash", ["--version"], { encoding: "utf8" });
++if (probe.error) {
++  process.stdout.write("bash not found on PATH — guard tests skipped\n");
++  process.exit(0);
++}
++
++let passed = 0;
++let failed = 0;
++const failures = [];
++
++function test(name, fn) {
++  try {
++    fn();
++    passed++;
++    process.stdout.write(`  ✓ ${name}\n`);
++  } catch (err) {
++    failed++;
++    failures.push({ name, err });
++    process.stdout.write(`  ✗ ${name}\n`);
++  }
++}
++
++// runGuard(cwd, stdin) → exit code (null → treated as failure)
++function runGuard(cwd, stdin) {
++  const r = spawnSync("bash", [SCRIPT], {
++    cwd,
++    input: stdin,
++    encoding: "utf8",
++  });
++  return r.status;
++}
++
++function payloadFor(filePath) {
++  return JSON.stringify({ tool_name: "Write", tool_input: { file_path: filePath, content: "x" } });
++}
++
++function git(cwd, args) {
++  execFileSync("git", args, { cwd, stdio: "pipe" });
++}
++
++// ── fixtures ─────────────────────────────────────────────────────────────────
++// base/
++//   repo/                 primary checkout, branch main
++//   repo/.worktrees/M-0001  linked worktree, branch feat/m-0001
++//   repo/.worktrees/DETACHED linked worktree, detached HEAD
++//   plain/                not a git repo
++
++const base = fs.mkdtempSync(path.join(os.tmpdir(), "guard-main-branch-"));
++const repo = path.join(base, "repo");
++const wt = path.join(repo, ".worktrees", "M-0001");
++const wtDetached = path.join(repo, ".worktrees", "DETACHED");
++const plain = path.join(base, "plain");
++
++fs.mkdirSync(repo, { recursive: true });
++fs.mkdirSync(plain, { recursive: true });
++git(repo, ["init", "-q", "-b", "main"]);
++git(repo, ["config", "user.email", "guard@test.local"]);
++git(repo, ["config", "user.name", "Guard Test"]);
++fs.writeFileSync(path.join(repo, "README.md"), "fixture\n");
++git(repo, ["add", "-A"]);
++git(repo, ["commit", "-qm", "init"]);
++git(repo, ["worktree", "add", "-q", wt, "-b", "feat/m-0001"]);
++git(repo, ["worktree", "add", "-q", "--detach", wtDetached]);
++
++// ── the tests ────────────────────────────────────────────────────────────────
++
++process.stdout.write("\nguard-main-branch — target-path branch resolution\n");
++
++test("(a) write into mission worktree while cwd is on main → allowed", () => {
++  const code = runGuard(repo, payloadFor(path.join(wt, "src", "hello.js")));
++  assert.strictEqual(code, 0);
++});
++
++test("(a2) nested not-yet-existing dirs inside the worktree → allowed (walk-up)", () => {
++  const code = runGuard(repo, payloadFor(path.join(wt, "deep", "new", "dir", "file.md")));
++  assert.strictEqual(code, 0);
++});
++
++test("(b) write to a main-checked-out path → blocked", () => {
++  const code = runGuard(repo, payloadFor(path.join(repo, "src", "index.ts")));
++  assert.strictEqual(code, 2);
++});
++
++test("(b2) main-checkout write blocked even when cwd is the mission worktree", () => {
++  // the inverse direction: target-path signal must also override a
++  // feature-branch cwd — otherwise the guard is still cwd-keyed.
++  const code = runGuard(wt, payloadFor(path.join(repo, "src", "index.ts")));
++  assert.strictEqual(code, 2);
++});
++
++test("(c) fail-open: target outside any git repo → allowed", () => {
++  const code = runGuard(repo, payloadFor(path.join(plain, "notes.txt")));
++  assert.strictEqual(code, 0);
++});
++
++test("(c2) fail-open: detached-HEAD worktree target → allowed (no branch name)", () => {
++  const code = runGuard(repo, payloadFor(path.join(wtDetached, "file.md")));
++  assert.strictEqual(code, 0);
++});
++
++test("(c3) legacy fallback: garbage stdin + cwd on main → blocked (pre-M-0004 behavior preserved)", () => {
++  const code = runGuard(repo, "this is not json");
++  assert.strictEqual(code, 2);
++});
++
++test("(c4) legacy fallback: garbage stdin + cwd on mission branch → allowed", () => {
++  const code = runGuard(wt, "this is not json");
++  assert.strictEqual(code, 0);
++});
++
++test("(c5) legacy fallback: valid JSON without file_path + cwd on main → blocked", () => {
++  const code = runGuard(repo, JSON.stringify({ tool_name: "Write", tool_input: {} }));
++  assert.strictEqual(code, 2);
++});
++
++if (process.platform === "win32") {
++  test("(w) Windows backslash target path resolves correctly (worktree write allowed)", () => {
++    const winPath = path.join(wt, "src", "hello.js").replace(/\//g, "\\");
++    const code = runGuard(repo, payloadFor(winPath));
++    assert.strictEqual(code, 0);
++  });
++}
++
++// ── cleanup + summary ────────────────────────────────────────────────────────
++
++try {
++  fs.rmSync(base, { recursive: true, force: true });
++} catch (_) {
++  // Windows can hold handles briefly; a leaked tmpdir is not a failure.
++}
++
++process.stdout.write(`\nguard-main-branch: ${passed} passed, ${failed} failed\n`);
++if (failed > 0) {
++  for (const f of failures) {
++    process.stdout.write(`\n✗ ${f.name}\n  ${f.err && f.err.message}\n`);
++  }
++  process.exit(1);
++}
+diff --git a/framework/settings.json b/framework/settings.json
+index b74bdba..e962065 100644
+--- a/framework/settings.json
++++ b/framework/settings.json
+@@ -244,7 +244,8 @@
+       "Edit",
+       "Write",
+       "Grep",
+-      "Glob"
++      "Glob",
++      "EnterWorktree"
+     ],
+     "ask": [
+       "Bash(git push *)",
+diff --git a/package.json b/package.json
+index d2061c5..d255638 100644
+--- a/package.json
++++ b/package.json
+@@ -8,7 +8,7 @@
+   },
+   "scripts": {
+     "test": "npm run test:lib && npm run test:cli",
+-    "test:lib": "node framework/lib/mission-parser.test.js && node framework/lib/mission-tracker.test.js && node framework/scripts/codex-review.test.js && node framework/scripts/codex-review-loop.test.js && node framework/scripts/codex-review-cwd-equivalence.test.js && node framework/scripts/codex-config.test.js && node framework/scripts/guard-forbidden-commands.test.js && node framework/scripts/allowed-tools-guard.test.js",
++    "test:lib": "node framework/lib/mission-parser.test.js && node framework/lib/mission-tracker.test.js && node framework/scripts/codex-review.test.js && node framework/scripts/codex-review-loop.test.js && node framework/scripts/codex-review-cwd-equivalence.test.js && node framework/scripts/codex-config.test.js && node framework/scripts/guard-forbidden-commands.test.js && node framework/scripts/guard-main-branch.test.js && node framework/scripts/allowed-tools-guard.test.js",
+     "test:cli": "node bin/cli.test.js"
+   },
+   "keywords": [
+@@ -45,9 +45,15 @@
+     "framework/scripts/check-task-gates.sh",
+     "framework/scripts/codex-check.js",
+     "framework/scripts/codex-config.js",
++    "framework/scripts/codex-envelope.js",
+     "framework/scripts/codex-review.js",
+     "framework/scripts/codex-review-loop.js",
+     "framework/scripts/evidence-packet.js",
++    "framework/scripts/json-field.js",
++    "framework/scripts/metrics-summary.js",
++    "framework/scripts/mission-dashboard.js",
++    "framework/scripts/mission-filter.js",
++    "framework/scripts/mission-next.js",
+     "framework/scripts/guard-forbidden-commands.sh",
+     "framework/scripts/guard-main-branch.sh",
+     "framework/scripts/hook-format-and-stage.sh",

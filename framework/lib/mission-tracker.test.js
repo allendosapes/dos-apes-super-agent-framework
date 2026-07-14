@@ -304,6 +304,110 @@ group("State transitions — moveMissionState", () => {
   });
 });
 
+// ─── State transitions — AC-3 move hardening (M-0004) ──────────────────────
+// The exact M-0003 closeout failure shape plus the ledger-folded
+// non-atomicity fixture: tracked mission file, UNTRACKED companion
+// directory, pre-created destination; validation failures move nothing;
+// mid-move failures roll back to a reported, recoverable state.
+
+group("State transitions — AC-3 move hardening (M-0004)", () => {
+  test("M-0003 shape: tracked file + untracked companion + pre-created destination → succeeds, entries merged", () => {
+    const { root, repoRoot } = makeTempTree({ git: true });
+    const file = seedMission(root, "doing", "M-0001", { title: "Shape" });
+    execFileSync("git", ["add", "-A"], { cwd: repoRoot });
+    execFileSync("git", ["commit", "-q", "-m", "track mission file"], { cwd: repoRoot });
+    // untracked companion written mid-flight
+    fs.mkdirSync(path.join(root, "doing", "M-0001"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "doing", "M-0001", "verification.jsonl"),
+      `{"level":"L0","outcome":"pass"}\n`
+    );
+    // destination pre-created by the evidence generator
+    fs.mkdirSync(path.join(root, "review", "M-0001", "evidence"), { recursive: true });
+    fs.writeFileSync(path.join(root, "review", "M-0001", "evidence", "summary.md"), "packet\n");
+
+    const t = new MissionTracker({ root });
+    const newPath = t.moveMissionState("M-0001", "review");
+    assert(fs.existsSync(newPath));
+    assert.strictEqual(fs.existsSync(file), false);
+    // merged: mid-flight log arrived, pre-existing evidence untouched
+    assert.strictEqual(
+      fs.existsSync(path.join(root, "review", "M-0001", "verification.jsonl")), true);
+    assert.strictEqual(
+      fs.existsSync(path.join(root, "review", "M-0001", "evidence", "summary.md")), true);
+    assert.strictEqual(fs.existsSync(path.join(root, "doing", "M-0001")), false);
+    const m = t.findMissionById("M-0001");
+    assert.strictEqual(m.state, "review");
+    assert.strictEqual(m.frontmatter.state, "review");
+  });
+
+  test("untracked mission file in a git repo moves via the rename fallback", () => {
+    const { root } = makeTempTree({ git: true }); // file never committed
+    seedMission(root, "todo", "M-0001", { title: "Untracked" });
+    const t = new MissionTracker({ root });
+    const newPath = t.moveMissionState("M-0001", "doing");
+    assert(fs.existsSync(newPath));
+    assert.strictEqual(t.findMissionById("M-0001").state, "doing");
+  });
+
+  test("companion entry collision with pre-existing destination → throws, nothing moved", () => {
+    const { root } = makeTempTree({ git: false });
+    const file = seedMission(root, "doing", "M-0001", { title: "Collide" });
+    fs.mkdirSync(path.join(root, "doing", "M-0001"), { recursive: true });
+    fs.writeFileSync(path.join(root, "doing", "M-0001", "verification.jsonl"), "src\n");
+    fs.mkdirSync(path.join(root, "review", "M-0001"), { recursive: true });
+    fs.writeFileSync(path.join(root, "review", "M-0001", "verification.jsonl"), "dest\n");
+
+    const t = new MissionTracker({ root });
+    assert.throws(() => t.moveMissionState("M-0001", "review"), /collides .* nothing moved/s);
+    assert.strictEqual(fs.existsSync(file), true);
+    assert.strictEqual(
+      fs.readFileSync(path.join(root, "doing", "M-0001", "verification.jsonl"), "utf8"), "src\n");
+    assert.strictEqual(
+      fs.readFileSync(path.join(root, "review", "M-0001", "verification.jsonl"), "utf8"), "dest\n");
+  });
+
+  test("REQUIRED fixture (M-0004 ledger): frontmatter validation failure moves nothing — no stale-state stranding", () => {
+    const { root } = makeTempTree({ git: false });
+    // the M-0004 Task 0 shape: codex.required is a non-boolean on disk
+    const file = path.join(root, "doing", "M-0001-bad-codex.md");
+    const text =
+      "---\nid: M-0001\ntitle: Bad codex\nstate: doing\ncreated: 2026-05-01\n" +
+      "updated: 2026-05-01\ncodex:\n  required: nope\n---\n\n## Workpad\n";
+    fs.writeFileSync(file, text);
+
+    const t = new MissionTracker({ root });
+    assert.throws(
+      () => t.moveMissionState("M-0001", "review"),
+      /refusing to write invalid frontmatter[\s\S]*nothing moved/
+    );
+    // zero filesystem effects: still in doing/, content byte-identical
+    assert.strictEqual(fs.existsSync(file), true);
+    assert.strictEqual(fs.readFileSync(file, "utf8"), text);
+    assert.strictEqual(fs.existsSync(path.join(root, "review", "M-0001-bad-codex.md")), false);
+  });
+
+  test("mid-move failure rolls completed steps back and reports it", () => {
+    const { root } = makeTempTree({ git: false });
+    const file = seedMission(root, "doing", "M-0001", { title: "Midfail" });
+    fs.mkdirSync(path.join(root, "doing", "M-0001"), { recursive: true });
+    fs.writeFileSync(path.join(root, "doing", "M-0001", "verification.jsonl"), "log\n");
+    // destination companion path exists as a FILE: the entry-merge rename
+    // into it fails after the mission file has already moved
+    fs.mkdirSync(path.join(root, "review"), { recursive: true });
+    fs.writeFileSync(path.join(root, "review", "M-0001"), "not a directory\n");
+
+    const t = new MissionTracker({ root });
+    assert.throws(() => t.moveMissionState("M-0001", "review"), /rolled back/);
+    // recoverable state: mission file and companion restored to doing/
+    assert.strictEqual(fs.existsSync(file), true);
+    assert.strictEqual(
+      fs.readFileSync(path.join(root, "doing", "M-0001", "verification.jsonl"), "utf8"), "log\n");
+    const m = t.findMissionById("M-0001");
+    assert.strictEqual(m.state, "doing");
+  });
+});
+
 // ─── Mutations ─────────────────────────────────────────────────────────────
 
 group("Mutations", () => {
