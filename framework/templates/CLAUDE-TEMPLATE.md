@@ -274,4 +274,4 @@ Claude should operate autonomously for routine development work. Only pause for 
 
 ---
 
-_Managed by [Dos Apes Super Agent Framework](https://github.com/allendosapes/dos-apes-super-agent-framework)_
+_Managed by [Dos Apes Super Agent Framework](https://github.com/dos-apes/dos-apes-super-agent-framework)_
