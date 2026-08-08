@@ -309,7 +309,7 @@ _Track recurring issues here. Remove when resolved._
 
 ---
 
-_Managed by [Dos Apes Super Agent Framework v${VERSION}](https://github.com/allendosapes/dos-apes-super-agent-framework)_
+_Managed by [Dos Apes Super Agent Framework v${VERSION}](https://github.com/dos-apes/dos-apes-super-agent-framework)_
 `;
 
   return claudeMd;
@@ -1174,7 +1174,7 @@ ${c.green}╔══════════════════════�
   }
 
   console.log();
-  print("  Docs: https://github.com/allendosapes/dos-apes-super-agent-framework", c.blue);
+  print("  Docs: https://github.com/dos-apes/dos-apes-super-agent-framework", c.blue);
   console.log();
 }
 

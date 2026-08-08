@@ -9,7 +9,7 @@ You are Claude Desktop. The user has dropped this file plus three sub-guides int
 
 ## Overview
 
-Dos Apes Super Agent ([npm](https://www.npmjs.com/package/dos-apes-super-agent), [repo](https://github.com/allendosapes/dos-apes-super-agent-framework)) is a software-engineering framework that runs inside Claude Code. It installs slash commands, skills, hook scripts, and CI workflows into a project's `.claude/` directory. After install, the user drives work with `/apes-build`, `/apes-mission`, `/apes-fix`, etc., inside Claude Code.
+Dos Apes Super Agent ([npm](https://www.npmjs.com/package/dos-apes-super-agent), [repo](https://github.com/dos-apes/dos-apes-super-agent-framework)) is a software-engineering framework that runs inside Claude Code. It installs slash commands, skills, hook scripts, and CI workflows into a project's `.claude/` directory. After install, the user drives work with `/apes-build`, `/apes-mission`, `/apes-fix`, etc., inside Claude Code.
 
 The workflow has two halves:
 
@@ -46,9 +46,9 @@ If the user's intent is ambiguous — for example, they describe a "refactor" th
 
 Don't reproduce schemas in this document — the canonical sources live in the user's Dos Apes install and in the framework repo. Point at them; don't duplicate them.
 
-- **Mission frontmatter schema.** Source of truth: [`framework/lib/mission-schema.js`](https://github.com/allendosapes/dos-apes-super-agent-framework/blob/main/framework/lib/mission-schema.js) in the framework repo, or `lib/mission-schema.js` at the root of the user's project after install. This file owns the list of valid states, required fields, schema version, and validation logic. When you write mission frontmatter, conform to it.
-- **PRD template.** Source: [`framework/templates/PRD-TEMPLATE.md`](https://github.com/allendosapes/dos-apes-super-agent-framework/blob/main/framework/templates/PRD-TEMPLATE.md), installed at `docs/templates/PRD-TEMPLATE.md` in the user's project. The PRD workflow guide walks through filling this in section by section.
-- **Mission file template.** Source: [`framework/templates/mission-template.md`](https://github.com/allendosapes/dos-apes-super-agent-framework/blob/main/framework/templates/mission-template.md), installed at `docs/templates/mission-template.md`. The feature and bugfix workflow guides reference this directly.
+- **Mission frontmatter schema.** Source of truth: [`framework/lib/mission-schema.js`](https://github.com/dos-apes/dos-apes-super-agent-framework/blob/main/framework/lib/mission-schema.js) in the framework repo, or `lib/mission-schema.js` at the root of the user's project after install. This file owns the list of valid states, required fields, schema version, and validation logic. When you write mission frontmatter, conform to it.
+- **PRD template.** Source: [`framework/templates/PRD-TEMPLATE.md`](https://github.com/dos-apes/dos-apes-super-agent-framework/blob/main/framework/templates/PRD-TEMPLATE.md), installed at `docs/templates/PRD-TEMPLATE.md` in the user's project. The PRD workflow guide walks through filling this in section by section.
+- **Mission file template.** Source: [`framework/templates/mission-template.md`](https://github.com/dos-apes/dos-apes-super-agent-framework/blob/main/framework/templates/mission-template.md), installed at `docs/templates/mission-template.md`. The feature and bugfix workflow guides reference this directly.
 
 If the user's framework version is unclear, tell them to run `npx dos-apes-super-agent --version` in their project terminal and report back. Don't guess.
 

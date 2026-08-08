@@ -81,4 +81,4 @@ git reset --hard phase-N/task-M-complete
 
 ---
 
-_Template from [Dos Apes Super Agent Framework](https://github.com/allendosapes/dos-apes-super-agent-framework)_
+_Template from [Dos Apes Super Agent Framework](https://github.com/dos-apes/dos-apes-super-agent-framework)_

@@ -225,4 +225,4 @@ These can wait for later versions.
 
 ---
 
-_This PRD was created for use with [Dos Apes Super Agent Framework](https://github.com/allendosapes/dos-apes-super-agent-framework)_
+_This PRD was created for use with [Dos Apes Super Agent Framework](https://github.com/dos-apes/dos-apes-super-agent-framework)_

@@ -4,10 +4,32 @@ All notable changes to the Dos Apes Super Agent Framework are documented in
 this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.6.0] — 2026-08-08
 
-M-0001 through M-0004 ship together as one minor release; the version number
-is assigned at publish. Entries below are M-0001 (least-privilege permissions).
+The **permission-hardening release**. Four missions ship together: M-0001
+(least-privilege permission policy), M-0002 (per-command `allowed-tools`
+scoping), M-0003 (command and skill body hygiene), and M-0004 (worktree write
+guard and mission-move companion handling).
+
+**Published as beta.** This release goes out under `--tag beta`. The `latest`
+dist-tag remains pinned at 3.0.0, so `npx dos-apes-super-agent` continues to
+resolve 3.0.0 until `latest` is promoted separately.
+
+**Measured on this release.** Full `npm test`: 352 passed / 0 failed. The L1
+`allowed-tools` drift-guard: 108 passed / 0 failed across 33 command and skill
+files. Counted from the guard's `KNOWN_PROMPTING` pin table, the pin inventory
+stands at 53 entries — 46 `util` and 7 `policy` — and the `node-e`,
+`bare-form`, and `env` classes hold zero entries, having been emptied by
+M-0003's sweeps.
+
+**In-use verification: analytic, not empirical.** M-0003's AC-9 dry-run did not
+meet its strict zero-prompt criterion; 14 denials were observed. Those denials
+are attributed to pre-existing defects rather than to M-0003's changes, and
+that attribution was established **by analysis, not by a pre-M-0003 re-run** —
+no before/after differential was measured. Four candidates were ledgered: three
+were absorbed into M-0004 (merged in this release) and one is parked. The
+measured results in the paragraph above and this analytic attribution are two
+separate claims and should be read as such.
 
 ### Security
 
@@ -42,6 +64,29 @@ is assigned at publish. Entries below are M-0001 (least-privilege permissions).
   flagged injection in its own prompt template: a changed markdown file could
   close the 3-backtick diff fence and inject reviewer instructions. Now a
   10-backtick fence with explicit untrusted-data framing.
+- **M-0002 — Twelve of fifteen commands granted themselves unrestricted
+  shell.** `allowed-tools` frontmatter *grants* rather than restricts, so a
+  bare `Bash` declaration handed a skill unscoped shell for its entire run,
+  defeating M-0001's global policy the moment any framework skill activated.
+  All 18 commands and 15 skills rescoped: the build family gets branch-create,
+  merge, and `npm run`/test (no push, no tags); mission and evidence commands
+  get their named `node scripts/*.js` entry points plus `git commit`;
+  verification commands get the check-scripts, playwright, audit, and
+  log-verification set; the six domain-knowledge skills drop to a
+  `Read, Grep, Glob` floor — they are documents, not executors.
+  *Pattern:* a grant is justified only by an invocation in the file's own body.
+  Prose that names a script, or names a different executor, is a reference and
+  not evidence.
+- **New L1 drift-guard (`framework/scripts/allowed-tools-guard.test.js`).**
+  Parses every command and skill, replicates Claude Code's matcher semantics
+  (including the bare-form quirk, where `Bash(git status *)` covers
+  `git status --short` but not bare `git status`), and cross-checks
+  declarations against body usage in both directions: a declaration without
+  usage fails, and new prompting surface without a cited pin fails. Wired into
+  `test:lib`, so it rides L0 on every run.
+- **`Bash(agent-browser:*)` granted to the browser-verification skill only** —
+  a deliberate, skill-scoped relaxation of M-0001's printed-suggestion stance.
+  The global baseline stays clean.
 
 ### Added
 
@@ -56,6 +101,46 @@ is assigned at publish. Entries below are M-0001 (least-privilege permissions).
   the `CLAUDE_CODE_GIT_BASH_PATH` note.
 - `DOS_APES_VERSION` env is stamped from `package.json` at install time
   (was hardcoded `2.0.0` against package 3.5.1).
+- **`EnterWorktree` added to the shipped `settings.json` allow-list** (M-0004),
+  with the drift-guard's covering-declaration bookkeeping updated in the same
+  commit. Note that the path form of `EnterWorktree` additionally triggers a
+  harness-native confirmation that no permission rule can or should silence —
+  one click in an interactive install, unanswerable headless.
+
+### Changed
+
+- **M-0003 — Command and skill bodies rewritten to stop colliding with the
+  permission policy.** M-0002 scoped the frontmatter; this mission fixed the
+  bodies underneath it. Every rewrite that altered an invocation updated the
+  guard's pins in the same commit.
+  - **One shipped command was broken, not merely noisy.** `/apes-feature`'s
+    cleanup step invoked `git push origin --delete`, which M-0001 *denies* —
+    the body instructed an operation the policy refused. Cleanup now deletes
+    the local branch only and hands remote deletion to a human;
+    `apes-build`'s prose carve-out for the same operation is removed.
+  - **18 inline `node -e` pipeline segments replaced by six named helper
+    scripts.** An inline `node -e` cannot be matched by any permission rule,
+    so each one prompted unconditionally regardless of policy. The helpers
+    ship in the tarball and run under scoped allows.
+  - **11 `git checkout` sites migrated to `git switch`**, covered by a narrow
+    `Bash(git switch main)` ask rule rather than a blanket allow. Deliberate
+    working-tree discards (`git checkout .`) still prompt by design.
+  - **Bare-form and argument sweeps across 9 sites.** Bare `git status`,
+    bare `git stash`, argument-less `check-structure.sh`, and env-prefixed
+    invocations (`COVERAGE_THRESHOLD=90 bash …`) were rewritten into forms
+    their own rules actually cover, with zero new policy lines. Two shipped
+    scripts gained back-compatible interfaces to make this possible:
+    `check-coverage.sh` accepts the threshold as a first positional argument
+    (the env var remains a fallback), and `check-structure.sh` accepts
+    `--all` for an explicit full scan.
+  - **L8 skip-cause enumerations completed** in `apes-verify`,
+    `cross-model-review`, and `missions`, naming `config-absent`,
+    `config-unparseable`, and `config-invalid`. Prose only; no invocation
+    change.
+  - *Tradeoff recorded:* `apes-build`'s `trap '…' EXIT` cleanup was replaced
+    with explicit per-abort-path instructions. A deterministic EXIT hook was
+    traded for a rule-visible instruction — it gains permission coverage and
+    relies on flow compliance.
 
 ### Fixed
 
@@ -73,6 +158,27 @@ is assigned at publish. Entries below are M-0001 (least-privilege permissions).
   files (`*.test.js`) prune even explicitly `files`-listed entries (verified
   against npm docs and empirically); a packaging drift-guard test asserts no
   test files, no `_planning/` content, and all production files present.
+- **M-0004 — The main-branch write guard blocked the framework's own worktree
+  flow.** `guard-main-branch.sh` resolved the branch from the session's cwd,
+  so with the primary checkout sitting on `main`, writes targeting
+  `.worktrees/<id>` on a mission branch were refused: the flagship mission
+  flow fought its own policy. The hook now resolves state from the *target
+  path's* containing worktree (`git -C <target-dir>`). Direct writes to a
+  main-checked-out path remain blocked, and regression tests cover both
+  directions.
+  *Pattern:* a hook that interrogates the session's cwd instead of the path
+  the tool call names is a defect class, not a one-off bug.
+- **M-0004 — `mission-cli move` broke on untracked companion files.** The
+  transition used `git mv` for everything, so a mission carrying an untracked
+  evidence directory stranded half-moved with "source directory is empty".
+  The move now uses `git mv` for tracked files, a plain rename for untracked
+  companions, and tolerates a pre-existing destination directory. Verified
+  live against the exact shape that broke M-0003's closeout.
+- **M-0004 — Six M-0003 helper scripts were missing from the npm `files`
+  whitelist**, so shipped command bodies invoked scripts that did not ship.
+  Added, along with a *reverse* packaging assertion in `cli.test.js`: every
+  `scripts/*.js|sh` invoked by a shipped command or skill body must itself
+  ship. Proven red against the pre-fix whitelist, then green.
 
 ## [3.5.1] — 2026-05-19
 

@@ -184,7 +184,7 @@ L0: Build                 ← Compiles?
 - `scripts/*.sh` - Hook scripts
 - `ci/*.yml` - CI workflow templates
 
-Full docs: https://github.com/allendosapes/dos-apes-super-agent-framework
+Full docs: https://github.com/dos-apes/dos-apes-super-agent-framework
 
 ---
 
