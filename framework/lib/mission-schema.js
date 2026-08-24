@@ -27,28 +27,55 @@ const CURRENT_SCHEMA_VERSION = 2;
 const STATES = Object.freeze(["todo", "doing", "review", "done", "canceled"]);
 
 const LEVEL_IDS = Object.freeze([
-  "L0", "L0.5", "L1", "L1.5", "L2", "L2.5",
-  "L3", "L4", "L5", "L6", "L7", "L8",
+  "L0",
+  "L0.5",
+  "L1",
+  "L1.5",
+  "L2",
+  "L2.5",
+  "L3",
+  "L4",
+  "L5",
+  "L6",
+  "L7",
+  "L8",
 ]);
 
 // Terminal verdicts emitted by the L8 (Codex adversarial review) loop. Stored
 // on the mission's `codex.last_verdict` so the gate can reason about whether
 // a review→done transition is allowed.
 const CODEX_VERDICTS = Object.freeze([
-  "none",                 // no L8 run yet
-  "accepted",             // reviewer signed off
-  "partial-success",      // accepted with caveats; non-blocking findings
-  "findings-reported",    // findings exist; resolution pending
-  "exhausted",            // hit max_rounds without convergence
-  "no-progress",          // loop terminated due to lack of forward progress
-  "skipped",              // explicitly skipped (e.g., not required for this mission)
+  "none", // no L8 run yet
+  "accepted", // reviewer signed off
+  "partial-success", // accepted with caveats; non-blocking findings
+  "findings-reported", // findings exist; resolution pending
+  "exhausted", // hit max_rounds without convergence
+  "no-progress", // loop terminated due to lack of forward progress
+  "skipped", // explicitly skipped (e.g., not required for this mission)
 ]);
 
-const REQUIRED_FIELDS = Object.freeze(["id", "title", "state", "created", "updated"]);
+// The only reviewer verdict a human may adjudicate (M-0007).
+//
+// `partial-success` means the review RAN TO COMPLETION and left only low/medium
+// findings. Every other non-accepted terminal means the review is unfinished —
+// `exhausted` hit the budget with critical/high still open, `no-progress` stalled,
+// `skipped` never ran, `findings-reported` reported without resolving. Unfinished
+// is not the same as finished-with-acceptable-residue, and adjudication is only
+// for the second.
+const ADJUDICABLE_VERDICT = "partial-success";
+
+const REQUIRED_FIELDS = Object.freeze([
+  "id",
+  "title",
+  "state",
+  "created",
+  "updated",
+]);
 const MISSION_ID_REGEX = /^M-\d{4}$/;
 const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 // Accepts the JS toISOString() form plus shorter variants without ms / TZ.
-const ISO_DATETIME_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/;
+const ISO_DATETIME_REGEX =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/;
 
 // ─── Validation ─────────────────────────────────────────────────────────────
 
@@ -68,13 +95,17 @@ function validateFrontmatter(fm) {
 
   if (fm.id !== undefined && fm.id !== null && fm.id !== "") {
     if (typeof fm.id !== "string" || !MISSION_ID_REGEX.test(fm.id)) {
-      errors.push(`invalid id "${fm.id}" — must match M-NNNN (exactly four digits)`);
+      errors.push(
+        `invalid id "${fm.id}" — must match M-NNNN (exactly four digits)`,
+      );
     }
   }
 
   if (fm.state !== undefined && fm.state !== null && fm.state !== "") {
     if (!STATES.includes(fm.state)) {
-      errors.push(`invalid state "${fm.state}" — must be one of: ${STATES.join(", ")}`);
+      errors.push(
+        `invalid state "${fm.state}" — must be one of: ${STATES.join(", ")}`,
+      );
     }
   }
 
@@ -82,14 +113,18 @@ function validateFrontmatter(fm) {
     const v = fm[dateField];
     if (v !== undefined && v !== null && v !== "") {
       if (typeof v !== "string" || !ISO_DATE_REGEX.test(v)) {
-        errors.push(`${dateField} must be an ISO date (YYYY-MM-DD), got "${v}"`);
+        errors.push(
+          `${dateField} must be an ISO date (YYYY-MM-DD), got "${v}"`,
+        );
       }
     }
   }
 
   if (fm.priority !== undefined && fm.priority !== null) {
     if (!Number.isInteger(fm.priority) || fm.priority < 1 || fm.priority > 5) {
-      errors.push(`priority must be an integer between 1 and 5, got ${JSON.stringify(fm.priority)}`);
+      errors.push(
+        `priority must be an integer between 1 and 5, got ${JSON.stringify(fm.priority)}`,
+      );
     }
   }
 
@@ -109,19 +144,33 @@ function validateFrontmatter(fm) {
     if (typeof fm.verification !== "object" || Array.isArray(fm.verification)) {
       errors.push("verification must be an object");
     } else {
-      validateLevelArray(fm.verification.required_levels, "verification.required_levels", errors);
-      validateLevelArray(fm.verification.optional_levels, "verification.optional_levels", errors);
+      validateLevelArray(
+        fm.verification.required_levels,
+        "verification.required_levels",
+        errors,
+      );
+      validateLevelArray(
+        fm.verification.optional_levels,
+        "verification.optional_levels",
+        errors,
+      );
     }
   }
 
   if (fm.schema_version !== undefined && fm.schema_version !== null) {
     if (!Number.isInteger(fm.schema_version) || fm.schema_version < 1) {
-      errors.push(`schema_version must be a positive integer, got ${JSON.stringify(fm.schema_version)}`);
+      errors.push(
+        `schema_version must be a positive integer, got ${JSON.stringify(fm.schema_version)}`,
+      );
     }
   }
 
   if (fm.codex !== undefined && fm.codex !== null) {
     validateCodexBlock(fm.codex, errors);
+  }
+
+  if (fm.human_adjudication !== undefined && fm.human_adjudication !== null) {
+    validateHumanAdjudication(fm.human_adjudication, fm.codex, errors);
   }
 
   return { valid: errors.length === 0, errors };
@@ -135,7 +184,9 @@ function validateLevelArray(value, fieldName, errors) {
   }
   for (const lvl of value) {
     if (!LEVEL_IDS.includes(lvl)) {
-      errors.push(`invalid level in ${fieldName}: "${lvl}" (valid: ${LEVEL_IDS.join(", ")})`);
+      errors.push(
+        `invalid level in ${fieldName}: "${lvl}" (valid: ${LEVEL_IDS.join(", ")})`,
+      );
     }
   }
 }
@@ -151,43 +202,237 @@ function validateCodexBlock(codex, errors) {
   }
 
   if (codex.required !== undefined && typeof codex.required !== "boolean") {
-    errors.push(`codex.required must be a boolean, got ${JSON.stringify(codex.required)}`);
+    errors.push(
+      `codex.required must be a boolean, got ${JSON.stringify(codex.required)}`,
+    );
   }
 
   if (codex.max_rounds !== undefined) {
     if (!Number.isInteger(codex.max_rounds) || codex.max_rounds < 1) {
-      errors.push(`codex.max_rounds must be a positive integer, got ${JSON.stringify(codex.max_rounds)}`);
+      errors.push(
+        `codex.max_rounds must be a positive integer, got ${JSON.stringify(codex.max_rounds)}`,
+      );
     }
   }
 
   if (codex.last_verdict !== undefined) {
     if (!CODEX_VERDICTS.includes(codex.last_verdict)) {
       errors.push(
-        `invalid codex.last_verdict "${codex.last_verdict}" — must be one of: ${CODEX_VERDICTS.join(", ")}`
+        `invalid codex.last_verdict "${codex.last_verdict}" — must be one of: ${CODEX_VERDICTS.join(", ")}`,
       );
     }
   }
 
   if (codex.last_review_path !== undefined && codex.last_review_path !== null) {
-    if (typeof codex.last_review_path !== "string" || codex.last_review_path === "") {
+    if (
+      typeof codex.last_review_path !== "string" ||
+      codex.last_review_path === ""
+    ) {
       errors.push("codex.last_review_path must be a non-empty string when set");
     }
   }
 
   if (codex.unresolved_findings !== undefined) {
-    if (!Number.isInteger(codex.unresolved_findings) || codex.unresolved_findings < 0) {
+    if (
+      !Number.isInteger(codex.unresolved_findings) ||
+      codex.unresolved_findings < 0
+    ) {
       errors.push(
-        `codex.unresolved_findings must be a non-negative integer, got ${JSON.stringify(codex.unresolved_findings)}`
+        `codex.unresolved_findings must be a non-negative integer, got ${JSON.stringify(codex.unresolved_findings)}`,
       );
     }
   }
 
   if (codex.last_run_at !== undefined && codex.last_run_at !== null) {
-    if (typeof codex.last_run_at !== "string" || !ISO_DATETIME_REGEX.test(codex.last_run_at)) {
+    if (
+      typeof codex.last_run_at !== "string" ||
+      !ISO_DATETIME_REGEX.test(codex.last_run_at)
+    ) {
       errors.push(
-        `codex.last_run_at must be an ISO 8601 datetime string, got ${JSON.stringify(codex.last_run_at)}`
+        `codex.last_run_at must be an ISO 8601 datetime string, got ${JSON.stringify(codex.last_run_at)}`,
       );
     }
+  }
+}
+
+// Human adjudication of a non-`accepted` reviewer verdict (M-0007).
+//
+// TOP-LEVEL, deliberately — a sibling of `codex`, not a field inside it.
+//
+// Two reasons, and the second is the better one. Mechanically, the frontmatter
+// serializer supports one level of nesting, so a block inside `codex` cannot be
+// written at all. Semantically, this is not a reviewer field: `codex` holds what
+// the machine reviewer reported, and human authority does not belong in the same
+// object. Keeping them apart is the whole point of the fix, so the serializer
+// constraint pushed the design somewhere better than it started.
+//
+// This block is ADDITIVE and never replaces a reviewer-reported field. It
+// exists because `codex.required: true` previously had exactly three exits when
+// the review budget was spent with only low/medium findings left — rewrite the
+// verdict, re-roll the review, or bypass the transition — and all three falsify
+// the record.
+//
+// The reviewer's conclusion and the human's disposition are different facts and
+// are recorded separately. `last_verdict` stays whatever the reviewer said.
+// The adjudication is validated AGAINST THE CURRENT CODEX STATE, not in
+// isolation. That cross-check is the whole hardening: without it a record
+// written when the verdict was `partial-success` stays schema-valid after the
+// review is re-run and returns something worse, and would keep authorizing
+// completion. Stale adjudication is the failure mode this guards.
+//
+// Because `validateFrontmatter` runs on every write AND is re-run by the
+// `review → done` gate, these invariants cannot be bypassed by editing the file
+// by hand — which is the point. The governed setter is a convenience, not the
+// enforcement boundary.
+function validateHumanAdjudication(adj, codex, errors) {
+  if (typeof adj !== "object" || Array.isArray(adj)) {
+    errors.push("human_adjudication must be an object");
+    return;
+  }
+
+  for (const key of ["actor", "adjudicated_verdict", "rationale_ref"]) {
+    if (typeof adj[key] !== "string" || adj[key] === "") {
+      errors.push(`human_adjudication.${key} must be a non-empty string`);
+    }
+  }
+
+  if (typeof adj.at !== "string" || !ISO_DATETIME_REGEX.test(adj.at)) {
+    errors.push(
+      `human_adjudication.at must be an ISO 8601 datetime string, got ${JSON.stringify(adj.at)}`,
+    );
+  }
+
+  // ── Only `partial-success` is adjudicable ──────────────────────────────
+  //
+  // Adjudication accepts disclosed low/medium residual risk after a review that
+  // RAN TO COMPLETION. It is not a way to close out `exhausted` (budget hit with
+  // critical/high still open), `no-progress` (the fix loop stalled), `skipped`
+  // (no review happened), or `findings-reported` (report-only, nothing resolved).
+  // Each of those means the review is unfinished, and unfinished is not the same
+  // as finished-with-acceptable-residue.
+  if (
+    adj.adjudicated_verdict !== undefined &&
+    adj.adjudicated_verdict !== ADJUDICABLE_VERDICT
+  ) {
+    errors.push(
+      `human_adjudication.adjudicated_verdict must be "${ADJUDICABLE_VERDICT}", got ` +
+        `${JSON.stringify(adj.adjudicated_verdict)} — adjudication accepts disclosed low/medium ` +
+        `residual risk after a completed review, and is not a way to close an unfinished one`,
+    );
+  }
+
+  if (adj.no_critical_or_high_remaining !== true) {
+    errors.push(
+      "human_adjudication.no_critical_or_high_remaining must be exactly true — " +
+        "adjudication accepts disclosed low/medium residual risk, never unresolved critical or high findings",
+    );
+  }
+
+  if (
+    !Array.isArray(adj.accepted_obligations) ||
+    adj.accepted_obligations.length === 0
+  ) {
+    errors.push(
+      "human_adjudication.accepted_obligations must be a non-empty array — " +
+        "accepting residual risk requires naming what is being accepted",
+    );
+  } else if (
+    !adj.accepted_obligations.every((o) => typeof o === "string" && o !== "")
+  ) {
+    errors.push(
+      "human_adjudication.accepted_obligations entries must be non-empty strings",
+    );
+  }
+
+  // ── Severity distribution ──────────────────────────────────────────────
+  //
+  // M-0007 requires the record to carry the severity distribution of the
+  // remaining findings, not just a total. It is expressed as flat sibling counts
+  // rather than a nested object because the frontmatter serializer supports one
+  // level of nesting and `human_adjudication` already occupies it.
+  //
+  // Requiring low + medium to account for the WHOLE total is what makes
+  // `no_critical_or_high_remaining` mechanical rather than a self-assertion: the
+  // total is cross-checked against the reviewer's own count below, so any
+  // critical or high finding would leave the distribution unable to balance.
+  const counts = {};
+  for (const key of [
+    "remaining_findings",
+    "remaining_low",
+    "remaining_medium",
+  ]) {
+    const v = adj[key];
+    if (!Number.isInteger(v) || v < 0) {
+      errors.push(
+        `human_adjudication.${key} must be a non-negative integer, got ${JSON.stringify(v)}`,
+      );
+    } else {
+      counts[key] = v;
+    }
+  }
+
+  if (
+    counts.remaining_findings !== undefined &&
+    counts.remaining_low !== undefined &&
+    counts.remaining_medium !== undefined &&
+    counts.remaining_low + counts.remaining_medium !== counts.remaining_findings
+  ) {
+    errors.push(
+      `human_adjudication severity distribution does not account for every remaining finding: ` +
+        `remaining_low (${counts.remaining_low}) + remaining_medium (${counts.remaining_medium}) ` +
+        `!== remaining_findings (${counts.remaining_findings}). Findings that are neither low nor ` +
+        `medium cannot be adjudicated.`,
+    );
+  }
+
+  // ── Cross-checks against the live codex block ──────────────────────────
+
+  if (!codex || typeof codex !== "object" || Array.isArray(codex)) {
+    errors.push(
+      "human_adjudication requires a codex block — there is no reviewer verdict to adjudicate",
+    );
+    return;
+  }
+
+  // A completed review must actually have happened. Both fields are written by
+  // the review loop on terminal, so their absence means no review reached a
+  // terminal state for this mission.
+  if (typeof codex.last_run_at !== "string" || codex.last_run_at === "") {
+    errors.push(
+      "human_adjudication requires codex.last_run_at — adjudication presupposes a review that ran",
+    );
+  }
+  if (
+    typeof codex.last_review_path !== "string" ||
+    codex.last_review_path === ""
+  ) {
+    errors.push(
+      "human_adjudication requires codex.last_review_path — the findings being accepted must be locatable",
+    );
+  }
+
+  // THE staleness check. If the review is re-run and returns a different
+  // verdict, the existing adjudication stops validating and stops unblocking
+  // completion, rather than silently outliving the state it was written for.
+  if (codex.last_verdict !== adj.adjudicated_verdict) {
+    errors.push(
+      `human_adjudication is stale: it adjudicates "${adj.adjudicated_verdict}" but the current ` +
+        `codex.last_verdict is "${codex.last_verdict}". Re-adjudicate against the current review, ` +
+        `or remove the adjudication — never edit the verdict to match it.`,
+    );
+  }
+
+  // Same staleness argument applied to the count: a re-run that resolves or adds
+  // findings must invalidate an adjudication written against the old number.
+  if (
+    counts.remaining_findings !== undefined &&
+    Number.isInteger(codex.unresolved_findings) &&
+    codex.unresolved_findings !== counts.remaining_findings
+  ) {
+    errors.push(
+      `human_adjudication is stale: it accepts ${counts.remaining_findings} remaining finding(s) but ` +
+        `codex.unresolved_findings is ${codex.unresolved_findings}`,
+    );
   }
 }
 
@@ -235,14 +480,14 @@ function migrateFrontmatter(fm) {
     working.schema_version = 1;
   } else if (!Number.isInteger(working.schema_version)) {
     throw new Error(
-      `migrateFrontmatter: schema_version must be an integer, got ${JSON.stringify(working.schema_version)}`
+      `migrateFrontmatter: schema_version must be an integer, got ${JSON.stringify(working.schema_version)}`,
     );
   }
 
   if (working.schema_version > CURRENT_SCHEMA_VERSION) {
     throw new Error(
       `migrateFrontmatter: schema_version ${working.schema_version} is newer than this parser supports ` +
-      `(CURRENT_SCHEMA_VERSION=${CURRENT_SCHEMA_VERSION}); upgrade your tooling`
+        `(CURRENT_SCHEMA_VERSION=${CURRENT_SCHEMA_VERSION}); upgrade your tooling`,
     );
   }
 
@@ -250,13 +495,13 @@ function migrateFrontmatter(fm) {
     const step = MIGRATIONS.find((m) => m.from === working.schema_version);
     if (!step) {
       throw new Error(
-        `migrateFrontmatter: no migration registered for schema_version ${working.schema_version} → next`
+        `migrateFrontmatter: no migration registered for schema_version ${working.schema_version} → next`,
       );
     }
     working = step.migrate(working);
     if (working.schema_version !== step.to) {
       throw new Error(
-        `migrateFrontmatter: migration ${step.from} → ${step.to} did not set schema_version correctly`
+        `migrateFrontmatter: migration ${step.from} → ${step.to} did not set schema_version correctly`,
       );
     }
   }
@@ -269,6 +514,7 @@ module.exports = {
   STATES,
   LEVEL_IDS,
   CODEX_VERDICTS,
+  ADJUDICABLE_VERDICT,
   validateFrontmatter,
   migrateFrontmatter,
 };

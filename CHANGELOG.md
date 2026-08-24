@@ -4,6 +4,80 @@ All notable changes to the Dos Apes Super Agent Framework are documented in
 this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed — M-0007: `codex.required` completion gate
+
+Discovered by dogfooding in Dos Apes Coding Troop, where it blocked closeout of
+an approved mission. Three defects in one area, fixed together.
+
+- **The `review → done` gate was documented but unenforced.** `missions.md` said
+  `codex.required: true` blocked `done` without `last_verdict: accepted`;
+  nothing in `canTransition()` or `moveMissionState()` consulted the codex block.
+  `codex.required: true` therefore carried **no completion guarantee at all** —
+  the rule held only for an agent that read it and chose to honour it. Now
+  enforced in `canTransition()`, which `moveMissionState()` delegates to, so the
+  CLI and programmatic callers cannot diverge.
+- **The two skills stated different rules.** `missions.md` described a
+  `review → done` gate; `cross-model-review.md` described a `doing → review`
+  one. Both are real and they are now stated as such, in one place, with
+  `missions.md` authoritative.
+- **There was no governed human-adjudication path.** When the review budget is
+  exhausted, all critical/high findings are resolved, and only disclosed
+  low/medium caveats remain, the honest verdict is `partial-success` — and the
+  only routes to `done` were to rewrite the verdict, re-run the review until the
+  wording improved, or bypass the transition. All three falsify the record.
+
+### Added
+
+- **`human_adjudication`** — a **top-level** mission frontmatter block (a sibling
+  of `codex`, deliberately not a field inside it) recording that a human
+  explicitly accepted disclosed residual findings. `review → done` now passes on
+  `last_verdict: accepted` **or** a valid adjudication.
+- **`MissionTracker.setHumanAdjudication(id, record)`** — the governed writer. It
+  refuses to write any reviewer-reported field, refuses a verdict that does not
+  match what the reviewer returned, and refuses to adjudicate a review that never
+  ran or was already accepted.
+
+**The adjudication never rewrites the reviewer verdict.** `last_verdict` stays
+exactly what the reviewer said. The reviewer's conclusion and the human's
+disposition are different facts and are recorded separately — which is also why
+the block sits outside `codex` rather than inside it.
+
+### Invariants, and where they are enforced
+
+All of them live in `validateFrontmatter`, which runs on every write **and** is
+re-run by the `review → done` gate. A hand-edited mission file therefore cannot
+bypass them: the governed setter is a convenience, not the enforcement boundary.
+
+- **Only `partial-success` is adjudicable.** That verdict means the review _ran
+  to completion_ and left only low/medium findings. Every other non-accepted
+  terminal means the review is **unfinished** — `exhausted` hit the budget with
+  critical/high still open, `no-progress` stalled, `skipped` never ran,
+  `findings-reported` resolved nothing — and unfinished is not the same as
+  finished-with-acceptable-residue.
+- **Stale adjudication fails closed.** `adjudicated_verdict` must equal the
+  current `codex.last_verdict`, and `remaining_findings` must equal the current
+  `codex.unresolved_findings`. If the review is re-run and comes back different,
+  the existing record stops validating and stops unblocking completion, instead
+  of silently outliving the state it was written for. The remedy is to
+  re-adjudicate against the current review — never to edit the verdict to match
+  the adjudication.
+- **A completed review must exist.** `codex.last_run_at` and
+  `codex.last_review_path` are both required: adjudication presupposes a review
+  that ran, and the findings being accepted must be locatable.
+- **The severity distribution is required and must balance.** `remaining_low +
+remaining_medium` must equal `remaining_findings`. Because the total is itself
+  cross-checked against the reviewer's own count, a critical or high finding
+  would leave the distribution unable to balance — which is what makes
+  `no_critical_or_high_remaining` mechanical rather than a self-assertion.
+- `no_critical_or_high_remaining` must be exactly `true`, and
+  `accepted_obligations` must be non-empty. Adjudication accepts **disclosed**
+  low/medium residual risk, never unresolved critical or high findings, and
+  accepting risk requires naming what is being accepted.
+
+23 regression tests added.
+
 ## [3.6.0] — 2026-08-08
 
 The **permission-hardening release**. Four missions ship together: M-0001
@@ -43,7 +117,7 @@ separate claims and should be read as such.
   (human-only per SECURITY.md); `git push`, branch/tag deletion,
   `git reset --hard`, `rm`, and `npm audit fix` **ask**; the allow list
   covers exactly the framework machinery and read-only utilities.
-  *Pattern:* a rule that pre-approves the dangerous case to save one prompt
+  _Pattern:_ a rule that pre-approves the dangerous case to save one prompt
   is the wrong trade; encode human-only operations as deny + hook, not trust.
 - **New PreToolUse guard hook (`scripts/guard-forbidden-commands.sh`)** —
   deterministic backstop scanning the full Bash command string, including
@@ -65,7 +139,7 @@ separate claims and should be read as such.
   close the 3-backtick diff fence and inject reviewer instructions. Now a
   10-backtick fence with explicit untrusted-data framing.
 - **M-0002 — Twelve of fifteen commands granted themselves unrestricted
-  shell.** `allowed-tools` frontmatter *grants* rather than restricts, so a
+  shell.** `allowed-tools` frontmatter _grants_ rather than restricts, so a
   bare `Bash` declaration handed a skill unscoped shell for its entire run,
   defeating M-0001's global policy the moment any framework skill activated.
   All 18 commands and 15 skills rescoped: the build family gets branch-create,
@@ -74,7 +148,7 @@ separate claims and should be read as such.
   verification commands get the check-scripts, playwright, audit, and
   log-verification set; the six domain-knowledge skills drop to a
   `Read, Grep, Glob` floor — they are documents, not executors.
-  *Pattern:* a grant is justified only by an invocation in the file's own body.
+  _Pattern:_ a grant is justified only by an invocation in the file's own body.
   Prose that names a script, or names a different executor, is a reference and
   not evidence.
 - **New L1 drift-guard (`framework/scripts/allowed-tools-guard.test.js`).**
@@ -114,7 +188,7 @@ separate claims and should be read as such.
   bodies underneath it. Every rewrite that altered an invocation updated the
   guard's pins in the same commit.
   - **One shipped command was broken, not merely noisy.** `/apes-feature`'s
-    cleanup step invoked `git push origin --delete`, which M-0001 *denies* —
+    cleanup step invoked `git push origin --delete`, which M-0001 _denies_ —
     the body instructed an operation the policy refused. Cleanup now deletes
     the local branch only and hands remote deletion to a human;
     `apes-build`'s prose carve-out for the same operation is removed.
@@ -137,7 +211,7 @@ separate claims and should be read as such.
     `cross-model-review`, and `missions`, naming `config-absent`,
     `config-unparseable`, and `config-invalid`. Prose only; no invocation
     change.
-  - *Tradeoff recorded:* `apes-build`'s `trap '…' EXIT` cleanup was replaced
+  - _Tradeoff recorded:_ `apes-build`'s `trap '…' EXIT` cleanup was replaced
     with explicit per-abort-path instructions. A deterministic EXIT hook was
     traded for a rule-visible instruction — it gains permission coverage and
     relies on flow compliance.
@@ -152,7 +226,7 @@ separate claims and should be read as such.
   Hooks now ship in their original `bash scripts/*.sh` form on every
   platform; re-running the installer migrates previously-broken settings
   back (`unpatchWindowsHooks`); `run-hook.cmd` is retired.
-  *Pattern:* wrappers that duplicate platform discovery the product already
+  _Pattern:_ wrappers that duplicate platform discovery the product already
   does become silent failure points when the product moves.
 - **Test files no longer ship in the npm tarball.** Subdirectory `.npmignore`
   files (`*.test.js`) prune even explicitly `files`-listed entries (verified
@@ -162,11 +236,11 @@ separate claims and should be read as such.
   flow.** `guard-main-branch.sh` resolved the branch from the session's cwd,
   so with the primary checkout sitting on `main`, writes targeting
   `.worktrees/<id>` on a mission branch were refused: the flagship mission
-  flow fought its own policy. The hook now resolves state from the *target
-  path's* containing worktree (`git -C <target-dir>`). Direct writes to a
+  flow fought its own policy. The hook now resolves state from the _target
+  path's_ containing worktree (`git -C <target-dir>`). Direct writes to a
   main-checked-out path remain blocked, and regression tests cover both
   directions.
-  *Pattern:* a hook that interrogates the session's cwd instead of the path
+  _Pattern:_ a hook that interrogates the session's cwd instead of the path
   the tool call names is a defect class, not a one-off bug.
 - **M-0004 — `mission-cli move` broke on untracked companion files.** The
   transition used `git mv` for everything, so a mission carrying an untracked
@@ -176,7 +250,7 @@ separate claims and should be read as such.
   live against the exact shape that broke M-0003's closeout.
 - **M-0004 — Six M-0003 helper scripts were missing from the npm `files`
   whitelist**, so shipped command bodies invoked scripts that did not ship.
-  Added, along with a *reverse* packaging assertion in `cli.test.js`: every
+  Added, along with a _reverse_ packaging assertion in `cli.test.js`: every
   `scripts/*.js|sh` invoked by a shipped command or skill body must itself
   ship. Proven red against the pre-fix whitelist, then green.
 
@@ -191,37 +265,37 @@ discoverable, not just the symptom.
 ### Fixed
 
 - **L8 #1 (Critical) — OpenAI structured-output schema rejected with HTTP 400.**
-  *Root cause:* OpenAI's structured-output JSON Schema has no notion of
+  _Root cause:_ OpenAI's structured-output JSON Schema has no notion of
   "optional property" — every key in `properties` must also appear in
   `required`; optionality is expressed by a `["T", "null"]` type union. The
   shipped `findings.items` schema declared `suggested_fix` in `properties`
   but omitted it from `required`, so every `codex exec --output-schema` call
   failed `invalid_json_schema` 400. Blocked 100% of L8 reviews in every
   consuming project.
-  *Pattern:* when writing schemas for OpenAI structured outputs, every leaf
+  _Pattern:_ when writing schemas for OpenAI structured outputs, every leaf
   object's `required` array must be a superset of its `properties` keys.
   Audit the whole schema for this class on every change.
   Fix: `framework/templates/codex-review-schema.json`.
 
 - **L8 #2 (High) — `.dos-apes/` and mission paths resolved against the worktree, not the main checkout.**
-  *Root cause:* `const PROJECT_ROOT = process.cwd()` at the top of
+  _Root cause:_ `const PROJECT_ROOT = process.cwd()` at the top of
   `codex-review.js` and `codex-review-loop.js`. Run from a git worktree,
   PROJECT_ROOT pointed at the worktree path and read the branch's stale
   copy of `.dos-apes/` — so any fix on `main` (including L8 #1's schema
   fix) was invisible to in-flight missions.
-  *Pattern:* never derive a project root from `process.cwd()` in scripts
+  _Pattern:_ never derive a project root from `process.cwd()` in scripts
   that can run from a git worktree. Resolve via
   `git rev-parse --git-common-dir`; its parent directory is the canonical
   project root from any worktree, the main checkout, or CI.
   Fix: `framework/scripts/codex-review.js`, `framework/scripts/codex-review-loop.js`.
 
 - **L8 #3 (Medium) — Codex failure messages were truncated from the START, missing the real error footer.**
-  *Root cause:* failure handling did `detail.slice(0, 500)` — the **first**
+  _Root cause:_ failure handling did `detail.slice(0, 500)` — the **first**
   500 chars. Codex CLI 0.130 prints a ~400-char startup banner and echoes
   the user prompt before any error, so the slice window never reached the
   actual `invalid_request_error / status: 400` footer. Made every other L8
   bug undebuggable (had to land this before #2/#4).
-  *Pattern:* tools that print banners and echo input before failing
+  _Pattern:_ tools that print banners and echo input before failing
   produce diagnostics where the signal lives at the **tail**. Slice from
   the end (`detail.slice(-1000)`) and side-file the full output to
   `os.tmpdir()` so nothing is lost regardless of cap. Wrap the side-file
@@ -229,13 +303,13 @@ discoverable, not just the symptom.
   Fix: `framework/scripts/codex-review.js`.
 
 - **L8 #4 (Critical) — Loop emitted `state:"skipped"` exit 0 for in-flight missions with an empty diff.**
-  *Root cause:* `git diff <base>...HEAD`. From the main checkout HEAD == base
+  _Root cause:_ `git diff <base>...HEAD`. From the main checkout HEAD == base
   for un-merged missions, so the diff was empty and `codex-review.js`
   emitted a `"no changes"` skip — indistinguishable from "L8 disabled" or
   "Codex unavailable". `/apes-build` treated it as success, advanced the
   mission to `review/`, and never wrote an L8 entry to `verification.jsonl`.
   Silent no-op on every mission run from the wrong directory.
-  *Pattern:* when computing a diff for a mission-scoped review, pin the
+  _Pattern:_ when computing a diff for a mission-scoped review, pin the
   range to the mission's `workspace.branch` from frontmatter, not to HEAD.
   An empty diff for a mission in `doing/` is a misconfiguration, not a
   legitimate skip — hard-fail (exit 2). Regression-lock at the
@@ -246,11 +320,11 @@ discoverable, not just the symptom.
   layers).
 
 - **L8 #5 (Medium) — `apes-build` step 4.5 specced an undocumented CWD dependency.**
-  *Root cause:* the build spec invoked `codex-review-loop.js` without
+  _Root cause:_ the build spec invoked `codex-review-loop.js` without
   specifying a working directory; the underlying script silently depended
   on one. An agent reading the spec literally would run it from the main
   checkout and trip L8 #4.
-  *Pattern:* specs and the code they invoke must agree on prerequisites —
+  _Pattern:_ specs and the code they invoke must agree on prerequisites —
   a CWD requirement that lives only in oral tradition is a latent bug.
   After fixing the script to be cwd-independent, the spec comment now
   documents that, and explicitly warns against re-introducing a
@@ -259,24 +333,24 @@ discoverable, not just the symptom.
   Comment-only change: `framework/commands/apes-build.md`.
 
 - **YAML parser error (Low-Medium) — flow-style rejection named the rule, not the fix.**
-  *Root cause:* `lib/mission-parser.js#rejectExotic` deliberately rejects
+  _Root cause:_ `lib/mission-parser.js#rejectExotic` deliberately rejects
   flow-style sequences/mappings — the hand-rolled parser accepts only a
   YAML subset, and that constraint is intentional. But the error said
   "unsupported YAML feature flow-style sequence" without showing the
   supported form or pointing at the spec, so authors had no actionable
   path forward.
-  *Pattern:* when intentionally rejecting a construct, the error at the
+  _Pattern:_ when intentionally rejecting a construct, the error at the
   point of failure should name **what** is rejected and show **what to
   use instead**, with a doc pointer. "It's by design" is not an excuse for
   unactionable diagnostics.
   Fix: `framework/lib/mission-parser.js`.
 
 - **YAML template guidance (Low-Medium) — author-facing surface didn't surface the constraint.**
-  *Root cause:* the mission template (the file authors copy when writing
+  _Root cause:_ the mission template (the file authors copy when writing
   missions) had no inline note about the YAML subset. The constraint
   only surfaced at parse time — late, after the author had committed to a
   shape.
-  *Pattern:* parser-scope constraints belong on the author's surface
+  _Pattern:_ parser-scope constraints belong on the author's surface
   (the template), inside the frontmatter fence as YAML comments so the
   parser ignores them. The skill file is deliberately left untouched —
   skills stay domain-generic; tooling constraints live with the tooling.
@@ -395,7 +469,7 @@ silently bypassed when Codex happens to be unavailable.
   inputs. Forward-only. No codex block is added by the migration
   itself — only by L8 actually running.
 - **Three new MissionTracker helpers**: `getCodexState(id) → object |
-  null`, `setCodexState(id, partial)` (shallow merge through the
+null`, `setCodexState(id, partial)` (shallow merge through the
   validation gate), `clearCodexState(id)` (removes the block). All
   route through the existing schema-validate-then-write path.
 - **Codex state surfaced on `/apes-status`.** Missions in `doing/` and
@@ -633,7 +707,7 @@ a writer/reader mismatch during P4 (when the library landed but
 tightened to accept both shapes:
 
 ```js
-/^###\s+(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})(?:\s+—\s+\S.*)?\s*$/gm
+/^###\s+(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})(?:\s+—\s+\S.*)?\s*$/gm;
 ```
 
 Anchored at end-of-line, with an optional non-capturing group for the
@@ -834,7 +908,7 @@ to spawnSync's `input` option (with `-` as the positional) above. Critical
 nuance: spawnSync's stdin handling writes to the child's stdin via OS
 APIs with **no shell involvement**, so the cross-platform concern the
 spec raised (PowerShell-vs-bash piping behavior) does not apply here —
-that concern is about *shell-level* piping (`Get-Content | codex`),
+that concern is about _shell-level_ piping (`Get-Content | codex`),
 not Node-mediated stdin. Documented in the file header.
 
 **Why this matters going forward:** Spec rules that conflict with real
@@ -919,7 +993,7 @@ bundle.
 - **Structured verification log.** Each verification run appends a JSONL
   record to `.planning/missions/<state>/M-NNNN/verification.jsonl` via
   `scripts/log-verification.js`. Schema: `{ timestamp, level, level_name,
-  outcome, duration_ms, details, summary }`. Helper resolves the active
+outcome, duration_ms, details, summary }`. Helper resolves the active
   mission from `.planning/active-mission` and degrades gracefully (warns
   to stderr, exits 0) when no mission is active.
 - **Evidence packets.** `scripts/evidence-packet.js generate <M-NNNN>`
@@ -1001,13 +1075,14 @@ non-empty value. The resulting string parsed as JSON in the simple case
 `{"src_changed":true,"doc_updated":false}}`.
 
 **Root cause:** Bash parameter expansion `${VAR:-WORD}` reads `WORD` until
-the *first* unescaped `}` — that closes the expansion. The intended
+the _first_ unescaped `}` — that closes the expansion. The intended
 default `{}` looks like `{` to the parser, and the trailing `}` becomes a
 literal character appended after the expansion. This is documented Bash
 behavior, not a Bash bug. The pattern is widely used and looks correct
 unless you read it carefully.
 
 **Fix:** Replaced the inline default with a temp variable:
+
 ```bash
 local DETAILS="${3-}"
 if [ -z "$DETAILS" ]; then DETAILS='{}'; fi

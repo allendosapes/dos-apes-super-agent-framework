@@ -49,10 +49,14 @@ function makeTempTree({ git = false } = {}) {
   }
   if (git) {
     execFileSync("git", ["init", "-q"], { cwd: repoRoot });
-    execFileSync("git", ["config", "user.email", "test@example.com"], { cwd: repoRoot });
+    execFileSync("git", ["config", "user.email", "test@example.com"], {
+      cwd: repoRoot,
+    });
     execFileSync("git", ["config", "user.name", "Test"], { cwd: repoRoot });
     execFileSync("git", ["add", "-A"], { cwd: repoRoot });
-    execFileSync("git", ["commit", "-q", "--allow-empty", "-m", "init"], { cwd: repoRoot });
+    execFileSync("git", ["commit", "-q", "--allow-empty", "-m", "init"], {
+      cwd: repoRoot,
+    });
   }
   cleanups.push(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   return { repoRoot, root };
@@ -60,7 +64,10 @@ function makeTempTree({ git = false } = {}) {
 
 function seedMission(root, state, id, extras = {}) {
   const title = extras.title || `Mission ${id}`;
-  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 60);
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .slice(0, 60);
   const fm = {
     id,
     title,
@@ -149,7 +156,9 @@ group("Listing", () => {
     assert.deepStrictEqual(ids, ["M-0001", "M-0002"]);
     for (const entry of list) {
       assert(typeof entry.title === "string" && entry.title.length > 0);
-      assert(typeof entry.frontmatter === "object" && entry.frontmatter !== null);
+      assert(
+        typeof entry.frontmatter === "object" && entry.frontmatter !== null,
+      );
       assert(entry.path.endsWith(".md"));
     }
   });
@@ -182,17 +191,21 @@ group("State transitions — canTransition", () => {
     const t = new MissionTracker({ root });
 
     const legal = [
-      ["M-0001", "doing"],     // todo → doing
-      ["M-0002", "review"],    // doing → review
-      ["M-0003", "done"],      // review → done
-      ["M-0004", "doing"],     // review → doing (rejection)
-      ["M-0005", "canceled"],  // todo → canceled
-      ["M-0006", "canceled"],  // doing → canceled
-      ["M-0007", "canceled"],  // review → canceled
+      ["M-0001", "doing"], // todo → doing
+      ["M-0002", "review"], // doing → review
+      ["M-0003", "done"], // review → done
+      ["M-0004", "doing"], // review → doing (rejection)
+      ["M-0005", "canceled"], // todo → canceled
+      ["M-0006", "canceled"], // doing → canceled
+      ["M-0007", "canceled"], // review → canceled
     ];
     for (const [id, target] of legal) {
       const r = t.canTransition(id, target);
-      assert.strictEqual(r.allowed, true, `expected ${id} → ${target} allowed; got: ${r.reason}`);
+      assert.strictEqual(
+        r.allowed,
+        true,
+        `expected ${id} → ${target} allowed; got: ${r.reason}`,
+      );
     }
   });
 
@@ -205,19 +218,26 @@ group("State transitions — canTransition", () => {
     const t = new MissionTracker({ root });
 
     const illegal = [
-      ["M-0001", "doing"],   // done → doing
-      ["M-0001", "todo"],    // done → todo
-      ["M-0001", "canceled"],// done → canceled (terminal)
-      ["M-0002", "done"],    // todo → done (skipping)
-      ["M-0002", "review"],  // todo → review (skipping)
-      ["M-0003", "todo"],    // canceled → anything
-      ["M-0004", "todo"],    // doing → todo (no backward jump)
-      ["M-0004", "done"],    // doing → done (skipping review)
+      ["M-0001", "doing"], // done → doing
+      ["M-0001", "todo"], // done → todo
+      ["M-0001", "canceled"], // done → canceled (terminal)
+      ["M-0002", "done"], // todo → done (skipping)
+      ["M-0002", "review"], // todo → review (skipping)
+      ["M-0003", "todo"], // canceled → anything
+      ["M-0004", "todo"], // doing → todo (no backward jump)
+      ["M-0004", "done"], // doing → done (skipping review)
     ];
     for (const [id, target] of illegal) {
       const r = t.canTransition(id, target);
-      assert.strictEqual(r.allowed, false, `expected ${id} → ${target} rejected; got allowed`);
-      assert(typeof r.reason === "string" && r.reason.length > 0, "reason should be non-empty");
+      assert.strictEqual(
+        r.allowed,
+        false,
+        `expected ${id} → ${target} rejected; got allowed`,
+      );
+      assert(
+        typeof r.reason === "string" && r.reason.length > 0,
+        "reason should be non-empty",
+      );
     }
   });
 
@@ -225,11 +245,11 @@ group("State transitions — canTransition", () => {
     const t = new MissionTracker({ root: "/tmp/whatever" });
     assert.throws(
       () => t.validateStateTransition("done", "doing"),
-      /transition done → doing is not allowed/
+      /transition done → doing is not allowed/,
     );
     assert.throws(
       () => t.validateStateTransition("wibble", "doing"),
-      /invalid current state/
+      /invalid current state/,
     );
   });
 });
@@ -245,14 +265,17 @@ group("State transitions — moveMissionState", () => {
     assert.strictEqual(fs.existsSync(newPath), true);
     assert.strictEqual(
       fs.existsSync(path.join(root, "todo", "M-0001-move-me.md")),
-      false
+      false,
     );
 
     const m = t.findMissionById("M-0001");
     assert.strictEqual(m.state, "doing");
     assert.strictEqual(m.frontmatter.state, "doing");
     // updated should be today
-    assert.strictEqual(m.frontmatter.updated, new Date().toISOString().slice(0, 10));
+    assert.strictEqual(
+      m.frontmatter.updated,
+      new Date().toISOString().slice(0, 10),
+    );
   });
 
   test("moves the file AND updates frontmatter `state` atomically (git)", () => {
@@ -267,9 +290,13 @@ group("State transitions — moveMissionState", () => {
 
     // git status should show the rename staged
     const status = execFileSync("git", ["status", "--porcelain"], {
-      cwd: repoRoot, encoding: "utf8",
+      cwd: repoRoot,
+      encoding: "utf8",
     });
-    assert(/^R[ M]/m.test(status), `expected git to show staged rename; got:\n${status}`);
+    assert(
+      /^R[ M]/m.test(status),
+      `expected git to show staged rename; got:\n${status}`,
+    );
 
     const m = t.findMissionById("M-0001");
     assert.strictEqual(m.state, "doing");
@@ -282,14 +309,14 @@ group("State transitions — moveMissionState", () => {
     fs.mkdirSync(path.join(root, "todo", "M-0001"), { recursive: true });
     fs.writeFileSync(
       path.join(root, "todo", "M-0001", "verification.jsonl"),
-      `{"level":"L0","outcome":"pass"}\n`
+      `{"level":"L0","outcome":"pass"}\n`,
     );
     const t = new MissionTracker({ root });
     t.moveMissionState("M-0001", "doing");
     assert.strictEqual(fs.existsSync(path.join(root, "todo", "M-0001")), false);
     assert.strictEqual(
       fs.existsSync(path.join(root, "doing", "M-0001", "verification.jsonl")),
-      true
+      true,
     );
   });
 
@@ -297,10 +324,7 @@ group("State transitions — moveMissionState", () => {
     const { root } = makeTempTree();
     seedMission(root, "done", "M-0001");
     const t = new MissionTracker({ root });
-    assert.throws(
-      () => t.moveMissionState("M-0001", "doing"),
-      /not allowed/
-    );
+    assert.throws(() => t.moveMissionState("M-0001", "doing"), /not allowed/);
   });
 });
 
@@ -315,16 +339,23 @@ group("State transitions — AC-3 move hardening (M-0004)", () => {
     const { root, repoRoot } = makeTempTree({ git: true });
     const file = seedMission(root, "doing", "M-0001", { title: "Shape" });
     execFileSync("git", ["add", "-A"], { cwd: repoRoot });
-    execFileSync("git", ["commit", "-q", "-m", "track mission file"], { cwd: repoRoot });
+    execFileSync("git", ["commit", "-q", "-m", "track mission file"], {
+      cwd: repoRoot,
+    });
     // untracked companion written mid-flight
     fs.mkdirSync(path.join(root, "doing", "M-0001"), { recursive: true });
     fs.writeFileSync(
       path.join(root, "doing", "M-0001", "verification.jsonl"),
-      `{"level":"L0","outcome":"pass"}\n`
+      `{"level":"L0","outcome":"pass"}\n`,
     );
     // destination pre-created by the evidence generator
-    fs.mkdirSync(path.join(root, "review", "M-0001", "evidence"), { recursive: true });
-    fs.writeFileSync(path.join(root, "review", "M-0001", "evidence", "summary.md"), "packet\n");
+    fs.mkdirSync(path.join(root, "review", "M-0001", "evidence"), {
+      recursive: true,
+    });
+    fs.writeFileSync(
+      path.join(root, "review", "M-0001", "evidence", "summary.md"),
+      "packet\n",
+    );
 
     const t = new MissionTracker({ root });
     const newPath = t.moveMissionState("M-0001", "review");
@@ -332,10 +363,19 @@ group("State transitions — AC-3 move hardening (M-0004)", () => {
     assert.strictEqual(fs.existsSync(file), false);
     // merged: mid-flight log arrived, pre-existing evidence untouched
     assert.strictEqual(
-      fs.existsSync(path.join(root, "review", "M-0001", "verification.jsonl")), true);
+      fs.existsSync(path.join(root, "review", "M-0001", "verification.jsonl")),
+      true,
+    );
     assert.strictEqual(
-      fs.existsSync(path.join(root, "review", "M-0001", "evidence", "summary.md")), true);
-    assert.strictEqual(fs.existsSync(path.join(root, "doing", "M-0001")), false);
+      fs.existsSync(
+        path.join(root, "review", "M-0001", "evidence", "summary.md"),
+      ),
+      true,
+    );
+    assert.strictEqual(
+      fs.existsSync(path.join(root, "doing", "M-0001")),
+      false,
+    );
     const m = t.findMissionById("M-0001");
     assert.strictEqual(m.state, "review");
     assert.strictEqual(m.frontmatter.state, "review");
@@ -354,17 +394,36 @@ group("State transitions — AC-3 move hardening (M-0004)", () => {
     const { root } = makeTempTree({ git: false });
     const file = seedMission(root, "doing", "M-0001", { title: "Collide" });
     fs.mkdirSync(path.join(root, "doing", "M-0001"), { recursive: true });
-    fs.writeFileSync(path.join(root, "doing", "M-0001", "verification.jsonl"), "src\n");
+    fs.writeFileSync(
+      path.join(root, "doing", "M-0001", "verification.jsonl"),
+      "src\n",
+    );
     fs.mkdirSync(path.join(root, "review", "M-0001"), { recursive: true });
-    fs.writeFileSync(path.join(root, "review", "M-0001", "verification.jsonl"), "dest\n");
+    fs.writeFileSync(
+      path.join(root, "review", "M-0001", "verification.jsonl"),
+      "dest\n",
+    );
 
     const t = new MissionTracker({ root });
-    assert.throws(() => t.moveMissionState("M-0001", "review"), /collides .* nothing moved/s);
+    assert.throws(
+      () => t.moveMissionState("M-0001", "review"),
+      /collides .* nothing moved/s,
+    );
     assert.strictEqual(fs.existsSync(file), true);
     assert.strictEqual(
-      fs.readFileSync(path.join(root, "doing", "M-0001", "verification.jsonl"), "utf8"), "src\n");
+      fs.readFileSync(
+        path.join(root, "doing", "M-0001", "verification.jsonl"),
+        "utf8",
+      ),
+      "src\n",
+    );
     assert.strictEqual(
-      fs.readFileSync(path.join(root, "review", "M-0001", "verification.jsonl"), "utf8"), "dest\n");
+      fs.readFileSync(
+        path.join(root, "review", "M-0001", "verification.jsonl"),
+        "utf8",
+      ),
+      "dest\n",
+    );
   });
 
   test("REQUIRED fixture (M-0004 ledger): frontmatter validation failure moves nothing — no stale-state stranding", () => {
@@ -379,19 +438,25 @@ group("State transitions — AC-3 move hardening (M-0004)", () => {
     const t = new MissionTracker({ root });
     assert.throws(
       () => t.moveMissionState("M-0001", "review"),
-      /refusing to write invalid frontmatter[\s\S]*nothing moved/
+      /refusing to write invalid frontmatter[\s\S]*nothing moved/,
     );
     // zero filesystem effects: still in doing/, content byte-identical
     assert.strictEqual(fs.existsSync(file), true);
     assert.strictEqual(fs.readFileSync(file, "utf8"), text);
-    assert.strictEqual(fs.existsSync(path.join(root, "review", "M-0001-bad-codex.md")), false);
+    assert.strictEqual(
+      fs.existsSync(path.join(root, "review", "M-0001-bad-codex.md")),
+      false,
+    );
   });
 
   test("mid-move failure rolls completed steps back and reports it", () => {
     const { root } = makeTempTree({ git: false });
     const file = seedMission(root, "doing", "M-0001", { title: "Midfail" });
     fs.mkdirSync(path.join(root, "doing", "M-0001"), { recursive: true });
-    fs.writeFileSync(path.join(root, "doing", "M-0001", "verification.jsonl"), "log\n");
+    fs.writeFileSync(
+      path.join(root, "doing", "M-0001", "verification.jsonl"),
+      "log\n",
+    );
     // destination companion path exists as a FILE: the entry-merge rename
     // into it fails after the mission file has already moved
     fs.mkdirSync(path.join(root, "review"), { recursive: true });
@@ -402,7 +467,12 @@ group("State transitions — AC-3 move hardening (M-0004)", () => {
     // recoverable state: mission file and companion restored to doing/
     assert.strictEqual(fs.existsSync(file), true);
     assert.strictEqual(
-      fs.readFileSync(path.join(root, "doing", "M-0001", "verification.jsonl"), "utf8"), "log\n");
+      fs.readFileSync(
+        path.join(root, "doing", "M-0001", "verification.jsonl"),
+        "utf8",
+      ),
+      "log\n",
+    );
     const m = t.findMissionById("M-0001");
     assert.strictEqual(m.state, "doing");
   });
@@ -434,8 +504,12 @@ group("Mutations", () => {
     const t = new MissionTracker({ root });
     const m = t.readMission("M-0001");
     assert.throws(
-      () => t.writeMission("M-0001", { frontmatter: { ...m.frontmatter, id: "M-9999" }, body: m.body }),
-      /immutable/
+      () =>
+        t.writeMission("M-0001", {
+          frontmatter: { ...m.frontmatter, id: "M-9999" },
+          body: m.body,
+        }),
+      /immutable/,
     );
   });
 
@@ -446,7 +520,10 @@ group("Mutations", () => {
     t.updateFrontmatter("M-0001", { priority: 1 });
     const m = t.readMission("M-0001");
     assert.strictEqual(m.frontmatter.priority, 1);
-    assert.strictEqual(m.frontmatter.updated, new Date().toISOString().slice(0, 10));
+    assert.strictEqual(
+      m.frontmatter.updated,
+      new Date().toISOString().slice(0, 10),
+    );
   });
 
   test("updateFrontmatter rejects changes to `id`", () => {
@@ -455,7 +532,7 @@ group("Mutations", () => {
     const t = new MissionTracker({ root });
     assert.throws(
       () => t.updateFrontmatter("M-0001", { id: "M-9999" }),
-      /cannot change `id`/
+      /cannot change `id`/,
     );
   });
 
@@ -466,7 +543,7 @@ group("Mutations", () => {
     // Invalid state value — should be rejected at validation time.
     assert.throws(
       () => t.updateFrontmatter("M-0001", { state: "wibble" }),
-      /invalid frontmatter|invalid state/
+      /invalid frontmatter|invalid state/,
     );
   });
 
@@ -485,7 +562,10 @@ group("Mutations", () => {
     assert(after.includes("prior entry"), "prior entry text preserved");
     assert(after.includes("fresh note line"), "new note present");
     // New heading matches the YYYY-MM-DD HH:MM format.
-    assert(/### \d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(after), "new timestamp heading present");
+    assert(
+      /### \d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(after),
+      "new timestamp heading present",
+    );
     // Prior entry comes before new entry.
     assert(after.indexOf("prior entry") < after.indexOf("fresh note line"));
   });
@@ -499,16 +579,31 @@ group("Schema v2 migration", () => {
     const file = seedMission(root, "todo", "M-0001"); // no schema_version → v1
     const beforeMtime = fs.statSync(file).mtimeMs;
     const beforeText = fs.readFileSync(file, "utf8");
-    assert(!/schema_version/.test(beforeText), "seed must be v1 (no schema_version)");
+    assert(
+      !/schema_version/.test(beforeText),
+      "seed must be v1 (no schema_version)",
+    );
 
     const t = new MissionTracker({ root });
     const m = t.readMission("M-0001");
-    assert.strictEqual(m.frontmatter.schema_version, 2, "in-memory frontmatter is v2");
+    assert.strictEqual(
+      m.frontmatter.schema_version,
+      2,
+      "in-memory frontmatter is v2",
+    );
 
     const afterText = fs.readFileSync(file, "utf8");
     const afterMtime = fs.statSync(file).mtimeMs;
-    assert.strictEqual(afterText, beforeText, "disk file must be unchanged after a pure read");
-    assert.strictEqual(afterMtime, beforeMtime, "mtime must not move on a pure read");
+    assert.strictEqual(
+      afterText,
+      beforeText,
+      "disk file must be unchanged after a pure read",
+    );
+    assert.strictEqual(
+      afterMtime,
+      beforeMtime,
+      "mtime must not move on a pure read",
+    );
   });
 
   test("v2 mission with a codex block round-trips intact", () => {
@@ -520,7 +615,8 @@ group("Schema v2 migration", () => {
         max_rounds: 5,
         last_verdict: "accepted",
         unresolved_findings: 0,
-        last_review_path: ".planning/missions/doing/M-0001/codex/round-1/review.json",
+        last_review_path:
+          ".planning/missions/doing/M-0001/codex/round-1/review.json",
         last_run_at: "2026-05-03T10:00:00Z",
       },
     });
@@ -532,7 +628,8 @@ group("Schema v2 migration", () => {
       max_rounds: 5,
       last_verdict: "accepted",
       unresolved_findings: 0,
-      last_review_path: ".planning/missions/doing/M-0001/codex/round-1/review.json",
+      last_review_path:
+        ".planning/missions/doing/M-0001/codex/round-1/review.json",
       last_run_at: "2026-05-03T10:00:00Z",
     });
   });
@@ -547,8 +644,16 @@ group("Schema v2 migration", () => {
       updated: "2026-05-01",
     };
     const migrated = schema.migrateFrontmatter(original);
-    assert.deepStrictEqual(migrated, original, "v2 input must produce identical output");
-    assert.notStrictEqual(migrated, original, "result is a fresh object (shallow clone)");
+    assert.deepStrictEqual(
+      migrated,
+      original,
+      "v2 input must produce identical output",
+    );
+    assert.notStrictEqual(
+      migrated,
+      original,
+      "result is a fresh object (shallow clone)",
+    );
   });
 
   test("migrateFrontmatter v1 → v2 adds schema_version and bumps `updated`, no codex block", () => {
@@ -562,7 +667,11 @@ group("Schema v2 migration", () => {
     const migrated = schema.migrateFrontmatter(original);
     assert.strictEqual(migrated.schema_version, 2);
     assert.strictEqual(migrated.updated, new Date().toISOString().slice(0, 10));
-    assert.strictEqual(migrated.codex, undefined, "migration must NOT add a codex block");
+    assert.strictEqual(
+      migrated.codex,
+      undefined,
+      "migration must NOT add a codex block",
+    );
   });
 });
 
@@ -587,10 +696,18 @@ group("Codex state helpers", () => {
     const { root } = makeTempTree();
     seedMission(root, "doing", "M-0001", {
       schema_version: 2,
-      codex: { required: true, max_rounds: 3, last_verdict: "none", unresolved_findings: 0 },
+      codex: {
+        required: true,
+        max_rounds: 3,
+        last_verdict: "none",
+        unresolved_findings: 0,
+      },
     });
     const t = new MissionTracker({ root });
-    t.setCodexState("M-0001", { last_verdict: "findings-reported", unresolved_findings: 2 });
+    t.setCodexState("M-0001", {
+      last_verdict: "findings-reported",
+      unresolved_findings: 2,
+    });
     const codex = t.getCodexState("M-0001");
     assert.deepStrictEqual(codex, {
       required: true,
@@ -613,7 +730,10 @@ group("Codex state helpers", () => {
     assert.strictEqual(t.getCodexState("M-0001"), null);
     // And the on-disk text must not mention the block any more.
     const text = fs.readFileSync(m.path, "utf8");
-    assert(!/^\s*codex\s*:/m.test(text), "disk file should not contain a codex key");
+    assert(
+      !/^\s*codex\s*:/m.test(text),
+      "disk file should not contain a codex key",
+    );
   });
 
   test("setCodexState with an invalid value is rejected by the validation gate", () => {
@@ -622,11 +742,11 @@ group("Codex state helpers", () => {
     const t = new MissionTracker({ root });
     assert.throws(
       () => t.setCodexState("M-0001", { last_verdict: "bogus" }),
-      /invalid codex.last_verdict/
+      /invalid codex.last_verdict/,
     );
     assert.throws(
       () => t.setCodexState("M-0001", { unresolved_findings: -1 }),
-      /codex\.unresolved_findings/
+      /codex\.unresolved_findings/,
     );
   });
 });
@@ -643,7 +763,11 @@ group("validateFrontmatter — codex block", () => {
 
   test("a mission with no codex block validates cleanly", () => {
     const r = schema.validateFrontmatter(baseFm());
-    assert.strictEqual(r.valid, true, `expected valid; got: ${r.errors.join(", ")}`);
+    assert.strictEqual(
+      r.valid,
+      true,
+      `expected valid; got: ${r.errors.join(", ")}`,
+    );
   });
 
   test("rejects invalid last_verdict enum value", () => {
@@ -651,8 +775,10 @@ group("validateFrontmatter — codex block", () => {
     fm.codex = { last_verdict: "totally-made-up" };
     const r = schema.validateFrontmatter(fm);
     assert.strictEqual(r.valid, false);
-    assert(r.errors.some((e) => /invalid codex\.last_verdict/.test(e)),
-      `expected last_verdict error; got: ${r.errors.join(", ")}`);
+    assert(
+      r.errors.some((e) => /invalid codex\.last_verdict/.test(e)),
+      `expected last_verdict error; got: ${r.errors.join(", ")}`,
+    );
   });
 
   test("rejects negative unresolved_findings", () => {
@@ -660,8 +786,10 @@ group("validateFrontmatter — codex block", () => {
     fm.codex = { unresolved_findings: -3 };
     const r = schema.validateFrontmatter(fm);
     assert.strictEqual(r.valid, false);
-    assert(r.errors.some((e) => /unresolved_findings/.test(e)),
-      `expected unresolved_findings error; got: ${r.errors.join(", ")}`);
+    assert(
+      r.errors.some((e) => /unresolved_findings/.test(e)),
+      `expected unresolved_findings error; got: ${r.errors.join(", ")}`,
+    );
   });
 
   test("rejects non-boolean `required`", () => {
@@ -669,8 +797,10 @@ group("validateFrontmatter — codex block", () => {
     fm.codex = { required: "yes" };
     const r = schema.validateFrontmatter(fm);
     assert.strictEqual(r.valid, false);
-    assert(r.errors.some((e) => /codex\.required/.test(e)),
-      `expected codex.required error; got: ${r.errors.join(", ")}`);
+    assert(
+      r.errors.some((e) => /codex\.required/.test(e)),
+      `expected codex.required error; got: ${r.errors.join(", ")}`,
+    );
   });
 
   test("accepts every valid CODEX_VERDICTS value", () => {
@@ -678,7 +808,11 @@ group("validateFrontmatter — codex block", () => {
       const fm = baseFm();
       fm.codex = { last_verdict: v };
       const r = schema.validateFrontmatter(fm);
-      assert.strictEqual(r.valid, true, `${v} should be valid; got: ${r.errors.join(", ")}`);
+      assert.strictEqual(
+        r.valid,
+        true,
+        `${v} should be valid; got: ${r.errors.join(", ")}`,
+      );
     }
   });
 });
@@ -696,7 +830,7 @@ group("Dependencies", () => {
   test("resolveUnmetDependencies returns deps not in done/", () => {
     const { root } = makeTempTree();
     seedMission(root, "done", "M-0001");
-    seedMission(root, "todo", "M-0002");          // not in done — unmet
+    seedMission(root, "todo", "M-0002"); // not in done — unmet
     seedMission(root, "todo", "M-0003", { depends_on: ["M-0001", "M-0002"] });
     const t = new MissionTracker({ root });
     assert.deepStrictEqual(t.resolveUnmetDependencies("M-0003"), ["M-0002"]);
@@ -716,11 +850,19 @@ group("Dependencies", () => {
     seedMission(root, "todo", "M-0002", { depends_on: ["M-0001"] });
     const t = new MissionTracker({ root });
     const cycles = t.detectCycles("M-0001");
-    assert.strictEqual(cycles.length, 1, `expected 1 cycle, got ${cycles.length}: ${JSON.stringify(cycles)}`);
+    assert.strictEqual(
+      cycles.length,
+      1,
+      `expected 1 cycle, got ${cycles.length}: ${JSON.stringify(cycles)}`,
+    );
     const cycle = cycles[0];
     assert(cycle.includes("M-0001"));
     assert(cycle.includes("M-0002"));
-    assert.strictEqual(cycle[0], cycle[cycle.length - 1], "cycle should close on itself");
+    assert.strictEqual(
+      cycle[0],
+      cycle[cycle.length - 1],
+      "cycle should close on itself",
+    );
   });
 
   test("detectCycles returns [] when there is no cycle", () => {
@@ -786,7 +928,9 @@ group("Authoring", () => {
     const t = new MissionTracker({ root });
     const r = t.createMission({ title: "Add POST /todos endpoint" });
     assert.strictEqual(r.id, "M-0001");
-    assert(r.file.includes(path.join("todo", "M-0001-add-post-todos-endpoint.md")));
+    assert(
+      r.file.includes(path.join("todo", "M-0001-add-post-todos-endpoint.md")),
+    );
     assert(fs.existsSync(r.file));
     const m = t.readMission("M-0001");
     assert.strictEqual(m.frontmatter.id, "M-0001");
@@ -839,11 +983,407 @@ group("Authoring", () => {
     const t = new MissionTracker({ root });
     assert.throws(
       () => t.createMission({ title: "x", priority: 6 }),
-      /priority must be an integer 1–5/
+      /priority must be an integer 1–5/,
     );
     assert.throws(
       () => t.createMission({ title: "x", dependsOn: ["not-an-id"] }),
-      /invalid dependency id/
+      /invalid dependency id/,
+    );
+  });
+});
+
+// ─── M-0007: codex.required completion gate + human adjudication ────────────
+//
+// Regression cover for the defect found by dogfooding in Coding Troop: the
+// `review → done` rule in missions.md was documented and unenforced, and even
+// once enforced there was no legitimate exit when the review budget was spent
+// with only low/medium findings left. Every workaround was falsification.
+
+group("codex.required completion gate (M-0007)", () => {
+  const VALID_ADJ = {
+    actor: "allen",
+    at: "2026-08-24T04:00:00Z",
+    adjudicated_verdict: "partial-success",
+    no_critical_or_high_remaining: true,
+    remaining_findings: 4,
+    remaining_low: 3,
+    remaining_medium: 1,
+    accepted_obligations: [
+      "per-runtime execution-surface inventories before qualification",
+      "network-side observation before a provider may claim network denial",
+    ],
+    rationale_ref:
+      ".planning/missions/review/M-0001/adversarial-review-findings.md",
+  };
+
+  test("required:true + non-accepted verdict + no adjudication → done is REFUSED", () => {
+    const { root } = makeTempTree();
+    seedMission(root, "review", "M-0001", {
+      codex: {
+        required: true,
+        last_verdict: "partial-success",
+        unresolved_findings: 4,
+        last_run_at: "2026-08-24T03:40:00Z",
+        last_review_path: "findings.md",
+      },
+    });
+    const t = new MissionTracker({ root });
+    const r = t.canTransition("M-0001", "done");
+    assert.strictEqual(r.allowed, false);
+    assert.match(r.reason, /partial-success/);
+    // The refusal must name both legitimate remedies, not just say "no".
+    assert.match(r.reason, /accepted review/i);
+    assert.match(r.reason, /human adjudication/i);
+    // And must warn against the falsification path.
+    assert.match(r.reason, /Do not rewrite last_verdict/i);
+  });
+
+  test("required:true + accepted verdict → done is allowed", () => {
+    const { root } = makeTempTree();
+    seedMission(root, "review", "M-0001", {
+      codex: {
+        required: true,
+        last_verdict: "accepted",
+        unresolved_findings: 0,
+      },
+    });
+    const t = new MissionTracker({ root });
+    assert.strictEqual(t.canTransition("M-0001", "done").allowed, true);
+  });
+
+  test("required:false is not gated at all", () => {
+    const { root } = makeTempTree();
+    seedMission(root, "review", "M-0001", {
+      codex: {
+        required: false,
+        last_verdict: "exhausted",
+        unresolved_findings: 9,
+      },
+    });
+    const t = new MissionTracker({ root });
+    assert.strictEqual(t.canTransition("M-0001", "done").allowed, true);
+  });
+
+  test("no codex block at all is not gated", () => {
+    const { root } = makeTempTree();
+    seedMission(root, "review", "M-0001", {});
+    const t = new MissionTracker({ root });
+    assert.strictEqual(t.canTransition("M-0001", "done").allowed, true);
+  });
+
+  test("the gate applies ONLY to done, not to review or canceled", () => {
+    const { root } = makeTempTree();
+    seedMission(root, "doing", "M-0001", {
+      codex: { required: true, last_verdict: "partial-success", unresolved_findings: 4, last_run_at: "2026-08-24T03:40:00Z", last_review_path: "findings.md" },
+    });
+    const t = new MissionTracker({ root });
+    assert.strictEqual(t.canTransition("M-0001", "review").allowed, true);
+    assert.strictEqual(t.canTransition("M-0001", "canceled").allowed, true);
+  });
+
+  test("valid adjudication unblocks done", () => {
+    const { root } = makeTempTree();
+    seedMission(root, "review", "M-0001", {
+      codex: {
+        required: true,
+        last_verdict: "partial-success",
+        unresolved_findings: 4,
+        last_run_at: "2026-08-24T03:40:00Z",
+        last_review_path: "findings.md",
+      },
+      human_adjudication: VALID_ADJ,
+    });
+    const t = new MissionTracker({ root });
+    const r = t.canTransition("M-0001", "done");
+    assert.strictEqual(r.allowed, true, r.reason);
+  });
+
+  test("adjudication does NOT rewrite the reviewer verdict", () => {
+    const { root } = makeTempTree();
+    seedMission(root, "review", "M-0001", {
+      codex: {
+        required: true,
+        last_verdict: "partial-success",
+        unresolved_findings: 4,
+        last_run_at: "2026-08-24T03:40:00Z",
+        last_review_path: "findings.md",
+      },
+    });
+    const t = new MissionTracker({ root });
+    t.setHumanAdjudication("M-0001", VALID_ADJ);
+    const codex = t.getCodexState("M-0001");
+    // The whole point: the human's disposition sits alongside the reviewer's
+    // conclusion, and the reviewer's conclusion is untouched.
+    assert.strictEqual(codex.last_verdict, "partial-success");
+    assert.strictEqual(codex.unresolved_findings, 4);
+    assert.strictEqual(
+      t.readMission("M-0001").frontmatter.human_adjudication.actor,
+      "allen",
+    );
+    assert.strictEqual(t.canTransition("M-0001", "done").allowed, true);
+  });
+
+  test("an invalid adjudication does not unblock done", () => {
+    const { root } = makeTempTree();
+    seedMission(root, "review", "M-0001", {
+      codex: { required: true, last_verdict: "partial-success", unresolved_findings: 4, last_run_at: "2026-08-24T03:40:00Z", last_review_path: "findings.md" },
+      // asserts the one thing adjudication may never assert
+      human_adjudication: {
+        ...VALID_ADJ,
+        no_critical_or_high_remaining: false,
+      },
+    });
+    const t = new MissionTracker({ root });
+    const r = t.canTransition("M-0001", "done");
+    assert.strictEqual(r.allowed, false);
+    assert.match(r.reason, /invalid/i);
+  });
+
+  test("setHumanAdjudication refuses to write reviewer-reported fields", () => {
+    const { root } = makeTempTree();
+    seedMission(root, "review", "M-0001", {
+      codex: { required: true, last_verdict: "partial-success", unresolved_findings: 4, last_run_at: "2026-08-24T03:40:00Z", last_review_path: "findings.md" },
+    });
+    const t = new MissionTracker({ root });
+    assert.throws(
+      () =>
+        t.setHumanAdjudication("M-0001", {
+          ...VALID_ADJ,
+          last_verdict: "accepted",
+        }),
+      /refusing to write reviewer-reported field/i,
+    );
+    assert.strictEqual(
+      t.getCodexState("M-0001").last_verdict,
+      "partial-success",
+    );
+  });
+
+  test("setHumanAdjudication refuses a verdict mismatch", () => {
+    const { root } = makeTempTree();
+    seedMission(root, "review", "M-0001", {
+      codex: { required: true, last_verdict: "partial-success", unresolved_findings: 4, last_run_at: "2026-08-24T03:40:00Z", last_review_path: "findings.md" },
+    });
+    const t = new MissionTracker({ root });
+    assert.throws(
+      () =>
+        t.setHumanAdjudication("M-0001", {
+          ...VALID_ADJ,
+          adjudicated_verdict: "exhausted",
+        }),
+      /does not match/i,
+    );
+  });
+
+  test("setHumanAdjudication refuses when the review never ran", () => {
+    const { root } = makeTempTree();
+    seedMission(root, "review", "M-0001", { codex: { required: true } });
+    const t = new MissionTracker({ root });
+    assert.throws(
+      () => t.setHumanAdjudication("M-0001", VALID_ADJ),
+      /no reviewer verdict yet/i,
+    );
+  });
+
+  test("setHumanAdjudication refuses when the review was already accepted", () => {
+    const { root } = makeTempTree();
+    seedMission(root, "review", "M-0001", {
+      codex: { required: true, last_verdict: "accepted" },
+    });
+    const t = new MissionTracker({ root });
+    assert.throws(
+      () =>
+        t.setHumanAdjudication("M-0001", {
+          ...VALID_ADJ,
+          adjudicated_verdict: "accepted",
+        }),
+      /already has an accepted review/i,
+    );
+  });
+
+  test("moveMissionState is gated too — the CLI cannot diverge from canTransition", () => {
+    const { root } = makeTempTree();
+    seedMission(root, "review", "M-0001", {
+      codex: { required: true, last_verdict: "partial-success", unresolved_findings: 4, last_run_at: "2026-08-24T03:40:00Z", last_review_path: "findings.md" },
+    });
+    const t = new MissionTracker({ root });
+    assert.throws(() => t.moveMissionState("M-0001", "done"), /not "accepted"/);
+    // still in review, not silently moved
+    assert.strictEqual(t.findMissionById("M-0001").state, "review");
+  });
+
+  test("adjudication is schema-valid on disk and round-trips", () => {
+    const { root } = makeTempTree();
+    seedMission(root, "review", "M-0001", {
+      codex: { required: true, last_verdict: "partial-success", unresolved_findings: 4, last_run_at: "2026-08-24T03:40:00Z", last_review_path: "findings.md" },
+    });
+// ── Stale-adjudication invariants ────────────────────────────────────────
+//
+// The hardening pass. Before it, a schema-valid adjudication written against
+// `partial-success` stayed valid after the review was re-run and returned
+// something worse, and would keep authorizing completion. These invariants are
+// enforced in the SCHEMA, so editing the file by hand cannot bypass them —
+// the governed setter is a convenience, not the enforcement boundary.
+
+const COMPLETED_REVIEW = {
+  required: true,
+  last_verdict: "partial-success",
+  unresolved_findings: 4,
+  last_run_at: "2026-08-24T03:40:00Z",
+  last_review_path: "findings.md",
+};
+
+test("STALE: verdict changed under the adjudication → done is refused", () => {
+  const { root } = makeTempTree();
+  seedMission(root, "review", "M-0001", {
+    // the review was re-run and came back worse
+    codex: { ...COMPLETED_REVIEW, last_verdict: "exhausted" },
+    human_adjudication: VALID_ADJ, // still says partial-success
+  });
+  const t = new MissionTracker({ root });
+  const r = t.canTransition("M-0001", "done");
+  assert.strictEqual(r.allowed, false);
+  assert.match(r.reason, /stale/i);
+  assert.match(r.reason, /never edit the verdict to match it/i);
+});
+
+test("STALE: finding count changed under the adjudication → done is refused", () => {
+  const { root } = makeTempTree();
+  seedMission(root, "review", "M-0001", {
+    codex: { ...COMPLETED_REVIEW, unresolved_findings: 7 },
+    human_adjudication: VALID_ADJ, // accepts 4
+  });
+  const t = new MissionTracker({ root });
+  const r = t.canTransition("M-0001", "done");
+  assert.strictEqual(r.allowed, false);
+  assert.match(r.reason, /stale/i);
+});
+
+test("only partial-success is adjudicable — schema refuses the rest", () => {
+  for (const verdict of [
+    "exhausted",
+    "no-progress",
+    "skipped",
+    "findings-reported",
+  ]) {
+    const { root } = makeTempTree();
+    seedMission(root, "review", "M-0001", {
+      codex: { ...COMPLETED_REVIEW, last_verdict: verdict },
+      human_adjudication: { ...VALID_ADJ, adjudicated_verdict: verdict },
+    });
+    const t = new MissionTracker({ root });
+    const r = t.canTransition("M-0001", "done");
+    assert.strictEqual(
+      r.allowed,
+      false,
+      `${verdict} should not be adjudicable`,
+    );
+    assert.match(r.reason, /must be "partial-success"/);
+  }
+});
+
+test("setHumanAdjudication refuses a non-partial-success verdict", () => {
+  const { root } = makeTempTree();
+  seedMission(root, "review", "M-0001", {
+    codex: { ...COMPLETED_REVIEW, last_verdict: "exhausted" },
+  });
+  const t = new MissionTracker({ root });
+  assert.throws(
+    () =>
+      t.setHumanAdjudication("M-0001", {
+        ...VALID_ADJ,
+        adjudicated_verdict: "exhausted",
+      }),
+    /only "partial-success" is adjudicable/,
+  );
+});
+
+test("adjudication requires evidence that a review actually ran", () => {
+  for (const missing of ["last_run_at", "last_review_path"]) {
+    const codex = { ...COMPLETED_REVIEW };
+    delete codex[missing];
+    const { root } = makeTempTree();
+    seedMission(root, "review", "M-0001", {
+      codex,
+      human_adjudication: VALID_ADJ,
+    });
+    const t = new MissionTracker({ root });
+    const r = t.canTransition("M-0001", "done");
+    assert.strictEqual(r.allowed, false, `missing ${missing} should refuse`);
+    assert.match(r.reason, new RegExp(missing));
+  }
+});
+
+test("severity distribution must account for every remaining finding", () => {
+  const { root } = makeTempTree();
+  seedMission(root, "review", "M-0001", {
+    codex: COMPLETED_REVIEW, // 4 remaining
+    // 2 + 1 = 3, not 4 — the missing one could be a critical
+    human_adjudication: { ...VALID_ADJ, remaining_low: 2, remaining_medium: 1 },
+  });
+  const t = new MissionTracker({ root });
+  const r = t.canTransition("M-0001", "done");
+  assert.strictEqual(r.allowed, false);
+  assert.match(r.reason, /does not account for every remaining finding/);
+});
+
+test("severity distribution is required, not optional", () => {
+  const adj = { ...VALID_ADJ };
+  delete adj.remaining_low;
+  const { root } = makeTempTree();
+  seedMission(root, "review", "M-0001", {
+    codex: COMPLETED_REVIEW,
+    human_adjudication: adj,
+  });
+  const t = new MissionTracker({ root });
+  assert.strictEqual(t.canTransition("M-0001", "done").allowed, false);
+});
+
+test("setHumanAdjudication refuses a total that contradicts the reviewer", () => {
+  const { root } = makeTempTree();
+  seedMission(root, "review", "M-0001", { codex: COMPLETED_REVIEW });
+  const t = new MissionTracker({ root });
+  assert.throws(
+    () =>
+      t.setHumanAdjudication("M-0001", {
+        ...VALID_ADJ,
+        remaining_findings: 99,
+      }),
+    /contradicts codex.unresolved_findings/,
+  );
+});
+
+test("setHumanAdjudication requires the severity distribution", () => {
+  const adj = { ...VALID_ADJ };
+  delete adj.remaining_medium;
+  const { root } = makeTempTree();
+  seedMission(root, "review", "M-0001", { codex: COMPLETED_REVIEW });
+  const t = new MissionTracker({ root });
+  assert.throws(
+    () => t.setHumanAdjudication("M-0001", adj),
+    /remaining_medium must be a non-negative integer/,
+  );
+});
+
+test("a hand-written adjudication cannot bypass the setter's guards", () => {
+  // The enforcement lives in the schema, so writing the file directly is not a
+  // way around it. This is the invariant that makes the setter a convenience
+  // rather than the boundary.
+  const { root } = makeTempTree();
+  seedMission(root, "review", "M-0001", {
+    codex: { ...COMPLETED_REVIEW, last_verdict: "no-progress" },
+    human_adjudication: { ...VALID_ADJ, adjudicated_verdict: "no-progress" },
+  });
+  const t = new MissionTracker({ root });
+  assert.strictEqual(t.canTransition("M-0001", "done").allowed, false);
+});
+    const t = new MissionTracker({ root });
+    t.setHumanAdjudication("M-0001", VALID_ADJ);
+    const m = t.readMission("M-0001");
+    assert.strictEqual(schema.validateFrontmatter(m.frontmatter).valid, true);
+    assert.deepStrictEqual(
+      m.frontmatter.human_adjudication.accepted_obligations,
+      VALID_ADJ.accepted_obligations,
     );
   });
 });
@@ -851,7 +1391,11 @@ group("Authoring", () => {
 // ─── Cleanup + summary ────────────────────────────────────────────────────
 
 for (const c of cleanups) {
-  try { c(); } catch (_) { /* ignore */ }
+  try {
+    c();
+  } catch (_) {
+    /* ignore */
+  }
 }
 
 if (failed > 0) {

@@ -30,40 +30,40 @@ Findings conform to `.dos-apes/codex-review-schema.json`. Read that file as the 
 
 ### Top-level fields
 
-| Field        | Type     | Meaning                                                                |
-|--------------|----------|------------------------------------------------------------------------|
-| `verdict`    | enum     | `accept` / `revise` / `reject` — see verdict semantics below.          |
-| `confidence` | number   | 0.0–1.0 — reviewer's confidence in the verdict.                        |
-| `summary`    | string   | One-sentence justification.                                            |
-| `findings`   | array    | Zero or more finding objects (may be empty for clean accepts).         |
+| Field        | Type   | Meaning                                                        |
+| ------------ | ------ | -------------------------------------------------------------- |
+| `verdict`    | enum   | `accept` / `revise` / `reject` — see verdict semantics below.  |
+| `confidence` | number | 0.0–1.0 — reviewer's confidence in the verdict.                |
+| `summary`    | string | One-sentence justification.                                    |
+| `findings`   | array  | Zero or more finding objects (may be empty for clean accepts). |
 
 ### Verdict semantics
 
-| Verdict  | Meaning                                                                                   | Default loop behavior                                            |
-|----------|-------------------------------------------------------------------------------------------|------------------------------------------------------------------|
-| `accept` | Ship as-is or with low/medium nits the author may ignore.                                 | **Stop the loop** (terminal: clean — see "When to stop").       |
-| `revise` | At least one high/critical finding must be addressed before merge.                        | Address eligible findings, re-run review.                        |
-| `reject` | Change is fundamentally wrong (wrong approach, wrong scope, breaks invariants).           | Address eligible findings if tractable, otherwise escalate.      |
+| Verdict  | Meaning                                                                         | Default loop behavior                                       |
+| -------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `accept` | Ship as-is or with low/medium nits the author may ignore.                       | **Stop the loop** (terminal: clean — see "When to stop").   |
+| `revise` | At least one high/critical finding must be addressed before merge.              | Address eligible findings, re-run review.                   |
+| `reject` | Change is fundamentally wrong (wrong approach, wrong scope, breaks invariants). | Address eligible findings if tractable, otherwise escalate. |
 
 ### Finding fields
 
-| Field           | Type            | Meaning                                                                  |
-|-----------------|-----------------|--------------------------------------------------------------------------|
-| `severity`      | enum            | `critical` / `high` / `medium` / `low` — see severity reference below.   |
-| `category`      | enum            | `correctness` / `performance` / `security` / `maintainability` / `dx` / `testing` |
-| `file`          | string          | Repo-relative path. Must be inside the diff.                             |
-| `line_range`    | `{start, end}`  | 1-indexed, inclusive. Must fall within the diff's hunks.                 |
-| `explanation`   | string          | What's wrong and why.                                                    |
-| `suggested_fix` | string (opt.)   | Reviewer's proposed remediation. Treat as input, not a directive.        |
+| Field           | Type           | Meaning                                                                           |
+| --------------- | -------------- | --------------------------------------------------------------------------------- |
+| `severity`      | enum           | `critical` / `high` / `medium` / `low` — see severity reference below.            |
+| `category`      | enum           | `correctness` / `performance` / `security` / `maintainability` / `dx` / `testing` |
+| `file`          | string         | Repo-relative path. Must be inside the diff.                                      |
+| `line_range`    | `{start, end}` | 1-indexed, inclusive. Must fall within the diff's hunks.                          |
+| `explanation`   | string         | What's wrong and why.                                                             |
+| `suggested_fix` | string (opt.)  | Reviewer's proposed remediation. Treat as input, not a directive.                 |
 
 ### Severity reference
 
-| Severity   | Definition                                                                                          |
-|------------|-----------------------------------------------------------------------------------------------------|
-| `critical` | Bug that will fail in production, data-loss risk, or security vulnerability.                        |
-| `high`     | Likely bug, significant performance regression, or missing error handling on a critical path.       |
-| `medium`   | Code smell with concrete impact, missing test for added behavior, or unclear API.                   |
-| `low`      | Minor improvement, documentation gap, or naming suggestion.                                         |
+| Severity   | Definition                                                                                    |
+| ---------- | --------------------------------------------------------------------------------------------- |
+| `critical` | Bug that will fail in production, data-loss risk, or security vulnerability.                  |
+| `high`     | Likely bug, significant performance regression, or missing error handling on a critical path. |
+| `medium`   | Code smell with concrete impact, missing test for added behavior, or unclear API.             |
+| `low`      | Minor improvement, documentation gap, or naming suggestion.                                   |
 
 ## Triage protocol
 
@@ -72,7 +72,7 @@ The triage rules are **unambiguous by severity**. Do not invent your own thresho
 ### Eligibility table
 
 | Severity   | Verdict `accept` | Verdict `revise` | Verdict `reject` |
-|------------|------------------|------------------|------------------|
+| ---------- | ---------------- | ---------------- | ---------------- |
 | `critical` | Address          | Address          | Address          |
 | `high`     | Address          | Address          | Address          |
 | `medium`   | **Skip**         | Address          | Address          |
@@ -124,15 +124,15 @@ When implementing a fix:
 
 These are explicit DO-NOTs. Each is a signal that the loop is being misused.
 
-| Anti-pattern                                                       | Why it's wrong                                                              |
-|--------------------------------------------------------------------|-----------------------------------------------------------------------------|
-| Over-correcting on `low` style suggestions                         | Polish dilutes signal, eats iteration budget, and trains the loop to drift. |
-| Bundling unrelated changes into the fix commit                     | Loses the link between findings and fixes; bloats the diff Codex re-reviews.|
-| Modifying files outside the original diff's scope                  | The reviewer cited `<file>` in the diff. Touching unrelated files is scope creep. |
-| Arguing with `low`-severity findings in commit messages or notes   | If it's `low`, you skipped it. No further commentary needed.                |
-| Silently skipping a finding without a rejection note               | Looks like the loop addressed it; future iterations will surface it again.  |
-| Inflating severity to force the next iteration to act              | The loop's `loop_on_severity` config exists exactly to prevent this game.   |
-| Renaming/restructuring the diff so Codex sees fewer findings       | Hides defects; corrupts the cross-model contract.                           |
+| Anti-pattern                                                     | Why it's wrong                                                                    |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Over-correcting on `low` style suggestions                       | Polish dilutes signal, eats iteration budget, and trains the loop to drift.       |
+| Bundling unrelated changes into the fix commit                   | Loses the link between findings and fixes; bloats the diff Codex re-reviews.      |
+| Modifying files outside the original diff's scope                | The reviewer cited `<file>` in the diff. Touching unrelated files is scope creep. |
+| Arguing with `low`-severity findings in commit messages or notes | If it's `low`, you skipped it. No further commentary needed.                      |
+| Silently skipping a finding without a rejection note             | Looks like the loop addressed it; future iterations will surface it again.        |
+| Inflating severity to force the next iteration to act            | The loop's `loop_on_severity` config exists exactly to prevent this game.         |
+| Renaming/restructuring the diff so Codex sees fewer findings     | Hides defects; corrupts the cross-model contract.                                 |
 
 ## Composition with missions
 
@@ -181,14 +181,14 @@ Or in-process via `MissionTracker.getCodexState(id)` — see
 
 ### Who writes which field
 
-| Field                  | Writer                                          | When                                                                       |
-|------------------------|-------------------------------------------------|----------------------------------------------------------------------------|
-| `required`             | Author / setCodexState                          | Set explicitly when a mission must run L8 before review → done.            |
-| `max_rounds`           | Author / setCodexState                          | Per-mission override of the global `max_iterations` config.                |
-| `last_verdict`         | `codex-review.js`, `codex-review-loop.js`       | Single-shot writes accept/revise/reject (mapped); loop writes its terminal state. |
-| `last_review_path`     | `codex-review.js`, `codex-review-loop.js`       | Relative path to the most recent `review.json` (single-shot or final loop iteration). |
-| `unresolved_findings`  | `codex-review.js`, `codex-review-loop.js`       | Count of high/critical findings still open. `accepted` resets to 0.        |
-| `last_run_at`          | `codex-review.js`, `codex-review-loop.js`       | ISO 8601 timestamp; loop bumps it at each iteration start AND on terminal. |
+| Field                 | Writer                                    | When                                                                                  |
+| --------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------- |
+| `required`            | Author / setCodexState                    | Set explicitly when a mission must run L8 before review → done.                       |
+| `max_rounds`          | Author / setCodexState                    | Per-mission override of the global `max_iterations` config.                           |
+| `last_verdict`        | `codex-review.js`, `codex-review-loop.js` | Single-shot writes accept/revise/reject (mapped); loop writes its terminal state.     |
+| `last_review_path`    | `codex-review.js`, `codex-review-loop.js` | Relative path to the most recent `review.json` (single-shot or final loop iteration). |
+| `unresolved_findings` | `codex-review.js`, `codex-review-loop.js` | Count of high/critical findings still open. `accepted` resets to 0.                   |
+| `last_run_at`         | `codex-review.js`, `codex-review-loop.js` | ISO 8601 timestamp; loop bumps it at each iteration start AND on terminal.            |
 
 All writes go through `MissionTracker.setCodexState` — never edit the
 codex block by hand or via `mission-cli update --field codex.X=Y`.
@@ -208,11 +208,26 @@ codex block by hand or via `mission-cli update --field codex.X=Y`.
 
 ### required: true gate
 
-Setting `codex.required: true` makes a `skipped` terminal an error: the
-loop exits non-zero rather than allow a required L8 review to be
-silently bypassed when Codex happens to be unavailable. The build flow
-catches the non-zero exit and refuses to advance the mission to
-`review/`. See `apes-build.md` Step 4.5 for the hard-stop behavior.
+`codex.required: true` means **an adversarial review must actually
+happen**. It gates two different transitions, and conflating them was a
+real defect — see `missions.md` §"The `required: true` completion gate",
+which is the authoritative statement. This section covers the loop half.
+
+**`doing → review`.** A `skipped` terminal becomes an error: the loop
+exits non-zero rather than allow a required L8 review to be silently
+bypassed when Codex happens to be unavailable. The build flow catches the
+non-zero exit and refuses to advance the mission to `review/`. See
+`apes-build.md` Step 4.5 for the hard-stop behavior.
+
+**`review → done`.** Enforced by `MissionTracker.canTransition()`, not by
+this loop. It passes on `last_verdict: accepted` **or** on a valid
+top-level `human_adjudication` record.
+
+**The loop never writes an adjudication and never rewrites a verdict to
+obtain one.** If the budget is exhausted with only low/medium findings
+left, `partial-success` is the correct terminal and the loop reports it.
+Whether that residual risk is acceptable is a human decision recorded
+separately, and it leaves `last_verdict` untouched.
 
 ## When to stop the loop
 
@@ -220,14 +235,14 @@ The loop terminates in **exactly one** of six states. Each maps to a
 specific `codex.last_verdict` value, a specific workpad treatment, and
 a specific build-flow action.
 
-| Terminal state      | `codex.last_verdict` | Trigger                                                              | Workpad entry?                          |
-|---------------------|----------------------|----------------------------------------------------------------------|-----------------------------------------|
-| **accepted**        | `accepted`           | Reviewer signed off (verdict `accept` or empty findings).            | No — clean accept doesn't merit a note. |
-| **partial-success** | `partial-success`    | Only low/medium findings remain (none loop-eligible).                | Yes — summary of low/medium findings.   |
-| **findings-reported** | `findings-reported` | `--no-fix` was set; loop reports without attempting a fix.           | No — user explicitly opted into report-only. |
-| **exhausted**       | `exhausted`          | Hit `max_iterations` cap with open high/critical findings.           | Yes — list unresolved + final review path. |
-| **no-progress**     | `no-progress`        | Fix step ran but HEAD did not advance.                               | Yes — note + final review path.         |
-| **skipped**         | `skipped`            | Codex unavailable / disabled / no diff to review / config missing or defective (`config-absent`, `config-unparseable`, `config-invalid`). | No — skip is uninteresting (unless `required: true`, in which case the loop errors instead). |
+| Terminal state        | `codex.last_verdict` | Trigger                                                                                                                                   | Workpad entry?                                                                               |
+| --------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| **accepted**          | `accepted`           | Reviewer signed off (verdict `accept` or empty findings).                                                                                 | No — clean accept doesn't merit a note.                                                      |
+| **partial-success**   | `partial-success`    | Only low/medium findings remain (none loop-eligible).                                                                                     | Yes — summary of low/medium findings.                                                        |
+| **findings-reported** | `findings-reported`  | `--no-fix` was set; loop reports without attempting a fix.                                                                                | No — user explicitly opted into report-only.                                                 |
+| **exhausted**         | `exhausted`          | Hit `max_iterations` cap with open high/critical findings.                                                                                | Yes — list unresolved + final review path.                                                   |
+| **no-progress**       | `no-progress`        | Fix step ran but HEAD did not advance.                                                                                                    | Yes — note + final review path.                                                              |
+| **skipped**           | `skipped`            | Codex unavailable / disabled / no diff to review / config missing or defective (`config-absent`, `config-unparseable`, `config-invalid`). | No — skip is uninteresting (unless `required: true`, in which case the loop errors instead). |
 
 In every case, the original Codex review files
 (`.dos-apes/codex-reviews/*.json`) are preserved as the audit trail.
