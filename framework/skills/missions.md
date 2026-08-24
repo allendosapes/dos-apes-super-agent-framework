@@ -300,9 +300,11 @@ codex:
 human_adjudication:
   actor: allen
   at: 2026-08-24T04:00:00Z
-  adjudicated_verdict: partial-success
+  adjudicated_verdict: partial-success # must equal codex.last_verdict
   no_critical_or_high_remaining: true
-  remaining_findings: 4
+  remaining_findings: 4 # must equal codex.unresolved_findings
+  remaining_low: 3 # severity distribution; low + medium
+  remaining_medium: 1 # must equal remaining_findings
   accepted_obligations:
     - per-runtime execution-surface inventories before qualification
     - network-side observation before a provider may claim network denial
@@ -314,11 +316,33 @@ hand. That method refuses to touch any reviewer-reported field, refuses a
 verdict that does not match what the reviewer actually returned, and refuses to
 adjudicate a review that never ran or that was already `accepted`.
 
-**Constraints worth stating plainly:**
+**Invariants, all enforced in the schema.** They are checked by
+`validateFrontmatter`, which runs on every write **and** is re-run by the
+`review → done` gate — so a hand-edited file cannot bypass them. The setter is a
+convenience, not the enforcement boundary.
 
-- `no_critical_or_high_remaining` must be exactly `true`. Adjudication accepts
-  **disclosed low/medium residual risk**; it never accepts unresolved critical or
-  high findings, and it is not a way to close an `exhausted` review.
+- **Only `partial-success` is adjudicable.** That verdict means the review _ran
+  to completion_ and left only low/medium findings. Every other non-accepted
+  terminal means the review is **unfinished** — `exhausted` hit the budget with
+  critical/high still open, `no-progress` stalled, `skipped` never ran,
+  `findings-reported` resolved nothing — and unfinished is not the same as
+  finished-with-acceptable-residue.
+- **`adjudicated_verdict` must equal the current `codex.last_verdict`**, and
+  **`remaining_findings` must equal the current `codex.unresolved_findings`.**
+  This is the **staleness** guard: if the review is re-run and comes back
+  different, the existing adjudication stops validating and stops unblocking
+  completion, instead of silently outliving the state it was written for. The
+  remedy is to re-adjudicate against the current review — **never** to edit the
+  verdict to match the adjudication.
+- **A completed review must exist.** `codex.last_run_at` and
+  `codex.last_review_path` are both required: adjudication presupposes a review
+  that ran, and the findings being accepted must be locatable.
+- **The severity distribution is required and must balance.** `remaining_low +
+remaining_medium` must equal `remaining_findings`. Since the total is itself
+  cross-checked against the reviewer's own count, a critical or high finding
+  would leave the distribution unable to balance — which is what makes
+  `no_critical_or_high_remaining` mechanical rather than a self-assertion.
+- `no_critical_or_high_remaining` must be exactly `true`.
 - `accepted_obligations` must be non-empty. Accepting residual risk requires
   naming what is being accepted.
 - **The residual findings stay in the evidence packet.** Adjudication accepts

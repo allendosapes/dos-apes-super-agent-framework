@@ -1006,6 +1006,8 @@ group("codex.required completion gate (M-0007)", () => {
     adjudicated_verdict: "partial-success",
     no_critical_or_high_remaining: true,
     remaining_findings: 4,
+    remaining_low: 3,
+    remaining_medium: 1,
     accepted_obligations: [
       "per-runtime execution-surface inventories before qualification",
       "network-side observation before a provider may claim network denial",
@@ -1021,6 +1023,8 @@ group("codex.required completion gate (M-0007)", () => {
         required: true,
         last_verdict: "partial-success",
         unresolved_findings: 4,
+        last_run_at: "2026-08-24T03:40:00Z",
+        last_review_path: "findings.md",
       },
     });
     const t = new MissionTracker({ root });
@@ -1070,7 +1074,7 @@ group("codex.required completion gate (M-0007)", () => {
   test("the gate applies ONLY to done, not to review or canceled", () => {
     const { root } = makeTempTree();
     seedMission(root, "doing", "M-0001", {
-      codex: { required: true, last_verdict: "partial-success" },
+      codex: { required: true, last_verdict: "partial-success", unresolved_findings: 4, last_run_at: "2026-08-24T03:40:00Z", last_review_path: "findings.md" },
     });
     const t = new MissionTracker({ root });
     assert.strictEqual(t.canTransition("M-0001", "review").allowed, true);
@@ -1084,6 +1088,8 @@ group("codex.required completion gate (M-0007)", () => {
         required: true,
         last_verdict: "partial-success",
         unresolved_findings: 4,
+        last_run_at: "2026-08-24T03:40:00Z",
+        last_review_path: "findings.md",
       },
       human_adjudication: VALID_ADJ,
     });
@@ -1099,6 +1105,8 @@ group("codex.required completion gate (M-0007)", () => {
         required: true,
         last_verdict: "partial-success",
         unresolved_findings: 4,
+        last_run_at: "2026-08-24T03:40:00Z",
+        last_review_path: "findings.md",
       },
     });
     const t = new MissionTracker({ root });
@@ -1118,7 +1126,7 @@ group("codex.required completion gate (M-0007)", () => {
   test("an invalid adjudication does not unblock done", () => {
     const { root } = makeTempTree();
     seedMission(root, "review", "M-0001", {
-      codex: { required: true, last_verdict: "partial-success" },
+      codex: { required: true, last_verdict: "partial-success", unresolved_findings: 4, last_run_at: "2026-08-24T03:40:00Z", last_review_path: "findings.md" },
       // asserts the one thing adjudication may never assert
       human_adjudication: {
         ...VALID_ADJ,
@@ -1134,7 +1142,7 @@ group("codex.required completion gate (M-0007)", () => {
   test("setHumanAdjudication refuses to write reviewer-reported fields", () => {
     const { root } = makeTempTree();
     seedMission(root, "review", "M-0001", {
-      codex: { required: true, last_verdict: "partial-success" },
+      codex: { required: true, last_verdict: "partial-success", unresolved_findings: 4, last_run_at: "2026-08-24T03:40:00Z", last_review_path: "findings.md" },
     });
     const t = new MissionTracker({ root });
     assert.throws(
@@ -1154,7 +1162,7 @@ group("codex.required completion gate (M-0007)", () => {
   test("setHumanAdjudication refuses a verdict mismatch", () => {
     const { root } = makeTempTree();
     seedMission(root, "review", "M-0001", {
-      codex: { required: true, last_verdict: "partial-success" },
+      codex: { required: true, last_verdict: "partial-success", unresolved_findings: 4, last_run_at: "2026-08-24T03:40:00Z", last_review_path: "findings.md" },
     });
     const t = new MissionTracker({ root });
     assert.throws(
@@ -1196,7 +1204,7 @@ group("codex.required completion gate (M-0007)", () => {
   test("moveMissionState is gated too — the CLI cannot diverge from canTransition", () => {
     const { root } = makeTempTree();
     seedMission(root, "review", "M-0001", {
-      codex: { required: true, last_verdict: "partial-success" },
+      codex: { required: true, last_verdict: "partial-success", unresolved_findings: 4, last_run_at: "2026-08-24T03:40:00Z", last_review_path: "findings.md" },
     });
     const t = new MissionTracker({ root });
     assert.throws(() => t.moveMissionState("M-0001", "done"), /not "accepted"/);
@@ -1207,8 +1215,168 @@ group("codex.required completion gate (M-0007)", () => {
   test("adjudication is schema-valid on disk and round-trips", () => {
     const { root } = makeTempTree();
     seedMission(root, "review", "M-0001", {
-      codex: { required: true, last_verdict: "partial-success" },
+      codex: { required: true, last_verdict: "partial-success", unresolved_findings: 4, last_run_at: "2026-08-24T03:40:00Z", last_review_path: "findings.md" },
     });
+// ── Stale-adjudication invariants ────────────────────────────────────────
+//
+// The hardening pass. Before it, a schema-valid adjudication written against
+// `partial-success` stayed valid after the review was re-run and returned
+// something worse, and would keep authorizing completion. These invariants are
+// enforced in the SCHEMA, so editing the file by hand cannot bypass them —
+// the governed setter is a convenience, not the enforcement boundary.
+
+const COMPLETED_REVIEW = {
+  required: true,
+  last_verdict: "partial-success",
+  unresolved_findings: 4,
+  last_run_at: "2026-08-24T03:40:00Z",
+  last_review_path: "findings.md",
+};
+
+test("STALE: verdict changed under the adjudication → done is refused", () => {
+  const { root } = makeTempTree();
+  seedMission(root, "review", "M-0001", {
+    // the review was re-run and came back worse
+    codex: { ...COMPLETED_REVIEW, last_verdict: "exhausted" },
+    human_adjudication: VALID_ADJ, // still says partial-success
+  });
+  const t = new MissionTracker({ root });
+  const r = t.canTransition("M-0001", "done");
+  assert.strictEqual(r.allowed, false);
+  assert.match(r.reason, /stale/i);
+  assert.match(r.reason, /never edit the verdict to match it/i);
+});
+
+test("STALE: finding count changed under the adjudication → done is refused", () => {
+  const { root } = makeTempTree();
+  seedMission(root, "review", "M-0001", {
+    codex: { ...COMPLETED_REVIEW, unresolved_findings: 7 },
+    human_adjudication: VALID_ADJ, // accepts 4
+  });
+  const t = new MissionTracker({ root });
+  const r = t.canTransition("M-0001", "done");
+  assert.strictEqual(r.allowed, false);
+  assert.match(r.reason, /stale/i);
+});
+
+test("only partial-success is adjudicable — schema refuses the rest", () => {
+  for (const verdict of [
+    "exhausted",
+    "no-progress",
+    "skipped",
+    "findings-reported",
+  ]) {
+    const { root } = makeTempTree();
+    seedMission(root, "review", "M-0001", {
+      codex: { ...COMPLETED_REVIEW, last_verdict: verdict },
+      human_adjudication: { ...VALID_ADJ, adjudicated_verdict: verdict },
+    });
+    const t = new MissionTracker({ root });
+    const r = t.canTransition("M-0001", "done");
+    assert.strictEqual(
+      r.allowed,
+      false,
+      `${verdict} should not be adjudicable`,
+    );
+    assert.match(r.reason, /must be "partial-success"/);
+  }
+});
+
+test("setHumanAdjudication refuses a non-partial-success verdict", () => {
+  const { root } = makeTempTree();
+  seedMission(root, "review", "M-0001", {
+    codex: { ...COMPLETED_REVIEW, last_verdict: "exhausted" },
+  });
+  const t = new MissionTracker({ root });
+  assert.throws(
+    () =>
+      t.setHumanAdjudication("M-0001", {
+        ...VALID_ADJ,
+        adjudicated_verdict: "exhausted",
+      }),
+    /only "partial-success" is adjudicable/,
+  );
+});
+
+test("adjudication requires evidence that a review actually ran", () => {
+  for (const missing of ["last_run_at", "last_review_path"]) {
+    const codex = { ...COMPLETED_REVIEW };
+    delete codex[missing];
+    const { root } = makeTempTree();
+    seedMission(root, "review", "M-0001", {
+      codex,
+      human_adjudication: VALID_ADJ,
+    });
+    const t = new MissionTracker({ root });
+    const r = t.canTransition("M-0001", "done");
+    assert.strictEqual(r.allowed, false, `missing ${missing} should refuse`);
+    assert.match(r.reason, new RegExp(missing));
+  }
+});
+
+test("severity distribution must account for every remaining finding", () => {
+  const { root } = makeTempTree();
+  seedMission(root, "review", "M-0001", {
+    codex: COMPLETED_REVIEW, // 4 remaining
+    // 2 + 1 = 3, not 4 — the missing one could be a critical
+    human_adjudication: { ...VALID_ADJ, remaining_low: 2, remaining_medium: 1 },
+  });
+  const t = new MissionTracker({ root });
+  const r = t.canTransition("M-0001", "done");
+  assert.strictEqual(r.allowed, false);
+  assert.match(r.reason, /does not account for every remaining finding/);
+});
+
+test("severity distribution is required, not optional", () => {
+  const adj = { ...VALID_ADJ };
+  delete adj.remaining_low;
+  const { root } = makeTempTree();
+  seedMission(root, "review", "M-0001", {
+    codex: COMPLETED_REVIEW,
+    human_adjudication: adj,
+  });
+  const t = new MissionTracker({ root });
+  assert.strictEqual(t.canTransition("M-0001", "done").allowed, false);
+});
+
+test("setHumanAdjudication refuses a total that contradicts the reviewer", () => {
+  const { root } = makeTempTree();
+  seedMission(root, "review", "M-0001", { codex: COMPLETED_REVIEW });
+  const t = new MissionTracker({ root });
+  assert.throws(
+    () =>
+      t.setHumanAdjudication("M-0001", {
+        ...VALID_ADJ,
+        remaining_findings: 99,
+      }),
+    /contradicts codex.unresolved_findings/,
+  );
+});
+
+test("setHumanAdjudication requires the severity distribution", () => {
+  const adj = { ...VALID_ADJ };
+  delete adj.remaining_medium;
+  const { root } = makeTempTree();
+  seedMission(root, "review", "M-0001", { codex: COMPLETED_REVIEW });
+  const t = new MissionTracker({ root });
+  assert.throws(
+    () => t.setHumanAdjudication("M-0001", adj),
+    /remaining_medium must be a non-negative integer/,
+  );
+});
+
+test("a hand-written adjudication cannot bypass the setter's guards", () => {
+  // The enforcement lives in the schema, so writing the file directly is not a
+  // way around it. This is the invariant that makes the setter a convenience
+  // rather than the boundary.
+  const { root } = makeTempTree();
+  seedMission(root, "review", "M-0001", {
+    codex: { ...COMPLETED_REVIEW, last_verdict: "no-progress" },
+    human_adjudication: { ...VALID_ADJ, adjudicated_verdict: "no-progress" },
+  });
+  const t = new MissionTracker({ root });
+  assert.strictEqual(t.canTransition("M-0001", "done").allowed, false);
+});
     const t = new MissionTracker({ root });
     t.setHumanAdjudication("M-0001", VALID_ADJ);
     const m = t.readMission("M-0001");

@@ -54,6 +54,16 @@ const CODEX_VERDICTS = Object.freeze([
   "skipped", // explicitly skipped (e.g., not required for this mission)
 ]);
 
+// The only reviewer verdict a human may adjudicate (M-0007).
+//
+// `partial-success` means the review RAN TO COMPLETION and left only low/medium
+// findings. Every other non-accepted terminal means the review is unfinished —
+// `exhausted` hit the budget with critical/high still open, `no-progress` stalled,
+// `skipped` never ran, `findings-reported` reported without resolving. Unfinished
+// is not the same as finished-with-acceptable-residue, and adjudication is only
+// for the second.
+const ADJUDICABLE_VERDICT = "partial-success";
+
 const REQUIRED_FIELDS = Object.freeze([
   "id",
   "title",
@@ -160,7 +170,7 @@ function validateFrontmatter(fm) {
   }
 
   if (fm.human_adjudication !== undefined && fm.human_adjudication !== null) {
-    validateHumanAdjudication(fm.human_adjudication, errors);
+    validateHumanAdjudication(fm.human_adjudication, fm.codex, errors);
   }
 
   return { valid: errors.length === 0, errors };
@@ -264,7 +274,17 @@ function validateCodexBlock(codex, errors) {
 //
 // The reviewer's conclusion and the human's disposition are different facts and
 // are recorded separately. `last_verdict` stays whatever the reviewer said.
-function validateHumanAdjudication(adj, errors) {
+// The adjudication is validated AGAINST THE CURRENT CODEX STATE, not in
+// isolation. That cross-check is the whole hardening: without it a record
+// written when the verdict was `partial-success` stays schema-valid after the
+// review is re-run and returns something worse, and would keep authorizing
+// completion. Stale adjudication is the failure mode this guards.
+//
+// Because `validateFrontmatter` runs on every write AND is re-run by the
+// `review → done` gate, these invariants cannot be bypassed by editing the file
+// by hand — which is the point. The governed setter is a convenience, not the
+// enforcement boundary.
+function validateHumanAdjudication(adj, codex, errors) {
   if (typeof adj !== "object" || Array.isArray(adj)) {
     errors.push("human_adjudication must be an object");
     return;
@@ -282,25 +302,22 @@ function validateHumanAdjudication(adj, errors) {
     );
   }
 
-  // The verdict being adjudicated must be a real reviewer terminal. Adjudicating
-  // a verdict the reviewer never returned would be the same fabrication this
-  // block exists to prevent, wearing a different hat.
+  // ── Only `partial-success` is adjudicable ──────────────────────────────
+  //
+  // Adjudication accepts disclosed low/medium residual risk after a review that
+  // RAN TO COMPLETION. It is not a way to close out `exhausted` (budget hit with
+  // critical/high still open), `no-progress` (the fix loop stalled), `skipped`
+  // (no review happened), or `findings-reported` (report-only, nothing resolved).
+  // Each of those means the review is unfinished, and unfinished is not the same
+  // as finished-with-acceptable-residue.
   if (
     adj.adjudicated_verdict !== undefined &&
-    !CODEX_VERDICTS.includes(adj.adjudicated_verdict)
+    adj.adjudicated_verdict !== ADJUDICABLE_VERDICT
   ) {
     errors.push(
-      `invalid human_adjudication.adjudicated_verdict "${adj.adjudicated_verdict}" — ` +
-        `must be one of: ${CODEX_VERDICTS.join(", ")}`,
-    );
-  }
-
-  // Adjudicating `accepted` is meaningless and is almost certainly a mistake:
-  // there is no residual risk to accept.
-  if (adj.adjudicated_verdict === "accepted") {
-    errors.push(
-      'human_adjudication.adjudicated_verdict must not be "accepted" — ' +
-        "an accepted review needs no adjudication",
+      `human_adjudication.adjudicated_verdict must be "${ADJUDICABLE_VERDICT}", got ` +
+        `${JSON.stringify(adj.adjudicated_verdict)} — adjudication accepts disclosed low/medium ` +
+        `residual risk after a completed review, and is not a way to close an unfinished one`,
     );
   }
 
@@ -327,15 +344,95 @@ function validateHumanAdjudication(adj, errors) {
     );
   }
 
-  if (adj.remaining_findings !== undefined) {
-    if (
-      !Number.isInteger(adj.remaining_findings) ||
-      adj.remaining_findings < 0
-    ) {
+  // ── Severity distribution ──────────────────────────────────────────────
+  //
+  // M-0007 requires the record to carry the severity distribution of the
+  // remaining findings, not just a total. It is expressed as flat sibling counts
+  // rather than a nested object because the frontmatter serializer supports one
+  // level of nesting and `human_adjudication` already occupies it.
+  //
+  // Requiring low + medium to account for the WHOLE total is what makes
+  // `no_critical_or_high_remaining` mechanical rather than a self-assertion: the
+  // total is cross-checked against the reviewer's own count below, so any
+  // critical or high finding would leave the distribution unable to balance.
+  const counts = {};
+  for (const key of [
+    "remaining_findings",
+    "remaining_low",
+    "remaining_medium",
+  ]) {
+    const v = adj[key];
+    if (!Number.isInteger(v) || v < 0) {
       errors.push(
-        `human_adjudication.remaining_findings must be a non-negative integer, got ${JSON.stringify(adj.remaining_findings)}`,
+        `human_adjudication.${key} must be a non-negative integer, got ${JSON.stringify(v)}`,
       );
+    } else {
+      counts[key] = v;
     }
+  }
+
+  if (
+    counts.remaining_findings !== undefined &&
+    counts.remaining_low !== undefined &&
+    counts.remaining_medium !== undefined &&
+    counts.remaining_low + counts.remaining_medium !== counts.remaining_findings
+  ) {
+    errors.push(
+      `human_adjudication severity distribution does not account for every remaining finding: ` +
+        `remaining_low (${counts.remaining_low}) + remaining_medium (${counts.remaining_medium}) ` +
+        `!== remaining_findings (${counts.remaining_findings}). Findings that are neither low nor ` +
+        `medium cannot be adjudicated.`,
+    );
+  }
+
+  // ── Cross-checks against the live codex block ──────────────────────────
+
+  if (!codex || typeof codex !== "object" || Array.isArray(codex)) {
+    errors.push(
+      "human_adjudication requires a codex block — there is no reviewer verdict to adjudicate",
+    );
+    return;
+  }
+
+  // A completed review must actually have happened. Both fields are written by
+  // the review loop on terminal, so their absence means no review reached a
+  // terminal state for this mission.
+  if (typeof codex.last_run_at !== "string" || codex.last_run_at === "") {
+    errors.push(
+      "human_adjudication requires codex.last_run_at — adjudication presupposes a review that ran",
+    );
+  }
+  if (
+    typeof codex.last_review_path !== "string" ||
+    codex.last_review_path === ""
+  ) {
+    errors.push(
+      "human_adjudication requires codex.last_review_path — the findings being accepted must be locatable",
+    );
+  }
+
+  // THE staleness check. If the review is re-run and returns a different
+  // verdict, the existing adjudication stops validating and stops unblocking
+  // completion, rather than silently outliving the state it was written for.
+  if (codex.last_verdict !== adj.adjudicated_verdict) {
+    errors.push(
+      `human_adjudication is stale: it adjudicates "${adj.adjudicated_verdict}" but the current ` +
+        `codex.last_verdict is "${codex.last_verdict}". Re-adjudicate against the current review, ` +
+        `or remove the adjudication — never edit the verdict to match it.`,
+    );
+  }
+
+  // Same staleness argument applied to the count: a re-run that resolves or adds
+  // findings must invalidate an adjudication written against the old number.
+  if (
+    counts.remaining_findings !== undefined &&
+    Number.isInteger(codex.unresolved_findings) &&
+    codex.unresolved_findings !== counts.remaining_findings
+  ) {
+    errors.push(
+      `human_adjudication is stale: it accepts ${counts.remaining_findings} remaining finding(s) but ` +
+        `codex.unresolved_findings is ${codex.unresolved_findings}`,
+    );
   }
 }
 
@@ -417,6 +514,7 @@ module.exports = {
   STATES,
   LEVEL_IDS,
   CODEX_VERDICTS,
+  ADJUDICABLE_VERDICT,
   validateFrontmatter,
   migrateFrontmatter,
 };

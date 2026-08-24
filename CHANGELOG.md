@@ -44,12 +44,39 @@ exactly what the reviewer said. The reviewer's conclusion and the human's
 disposition are different facts and are recorded separately — which is also why
 the block sits outside `codex` rather than inside it.
 
-Schema requires `no_critical_or_high_remaining` to be exactly `true` and
-`accepted_obligations` to be non-empty: adjudication accepts **disclosed
-low/medium** residual risk, never unresolved critical or high findings, and
-accepting risk requires naming what is being accepted.
+### Invariants, and where they are enforced
 
-13 regression tests added.
+All of them live in `validateFrontmatter`, which runs on every write **and** is
+re-run by the `review → done` gate. A hand-edited mission file therefore cannot
+bypass them: the governed setter is a convenience, not the enforcement boundary.
+
+- **Only `partial-success` is adjudicable.** That verdict means the review _ran
+  to completion_ and left only low/medium findings. Every other non-accepted
+  terminal means the review is **unfinished** — `exhausted` hit the budget with
+  critical/high still open, `no-progress` stalled, `skipped` never ran,
+  `findings-reported` resolved nothing — and unfinished is not the same as
+  finished-with-acceptable-residue.
+- **Stale adjudication fails closed.** `adjudicated_verdict` must equal the
+  current `codex.last_verdict`, and `remaining_findings` must equal the current
+  `codex.unresolved_findings`. If the review is re-run and comes back different,
+  the existing record stops validating and stops unblocking completion, instead
+  of silently outliving the state it was written for. The remedy is to
+  re-adjudicate against the current review — never to edit the verdict to match
+  the adjudication.
+- **A completed review must exist.** `codex.last_run_at` and
+  `codex.last_review_path` are both required: adjudication presupposes a review
+  that ran, and the findings being accepted must be locatable.
+- **The severity distribution is required and must balance.** `remaining_low +
+remaining_medium` must equal `remaining_findings`. Because the total is itself
+  cross-checked against the reviewer's own count, a critical or high finding
+  would leave the distribution unable to balance — which is what makes
+  `no_critical_or_high_remaining` mechanical rather than a self-assertion.
+- `no_critical_or_high_remaining` must be exactly `true`, and
+  `accepted_obligations` must be non-empty. Adjudication accepts **disclosed**
+  low/medium residual risk, never unresolved critical or high findings, and
+  accepting risk requires naming what is being accepted.
+
+23 regression tests added.
 
 ## [3.6.0] — 2026-08-08
 

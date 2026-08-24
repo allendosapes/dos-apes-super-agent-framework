@@ -92,17 +92,37 @@ with no legitimate exit, and would harden the trap rather than fix it.
 - `framework/skills/missions.md` and `framework/skills/cross-model-review.md`
   state the **same** rule for what `codex.required: true` gates, on which
   transitions, and with which exits.
-- A `codex.human_adjudication` block exists, is schema-validated, and is
-  **additive**: recording it never mutates `last_verdict`, `unresolved_findings`,
-  `last_review_path`, or any other reviewer-reported field.
+- A **top-level** `human_adjudication` block exists — a sibling of `codex`, not a
+  field inside it — is schema-validated, and is **additive**: recording it never
+  mutates `last_verdict`, `unresolved_findings`, `last_review_path`, or any other
+  reviewer-reported field.
 - The adjudication record carries at minimum: actor, ISO-8601 timestamp, the
   verdict being adjudicated, the count and severity distribution of remaining
   findings, an explicit assertion that no critical or high findings remain, the
   accepted residual obligations, and a reference to where those obligations are
   recorded.
-- `MissionTracker` exposes a governed way to write that record, and refuses to
-  write one asserting `no_critical_or_high_remaining` when the recorded findings
-  contradict it.
+  - **Severity distribution shape.** Expressed as flat sibling counts
+    `remaining_low` and `remaining_medium`, not a nested object: the frontmatter
+    serializer supports one level of nesting and `human_adjudication` already
+    occupies it. Both are **required**, and `remaining_low + remaining_medium`
+    must equal `remaining_findings`.
+- **The invariants are enforced in the schema, not only in the setter**, so a
+  hand-edited mission file cannot bypass them:
+  - only `partial-success` is adjudicable;
+  - `adjudicated_verdict` must equal the current `codex.last_verdict`;
+  - `remaining_findings` must equal the current `codex.unresolved_findings`;
+  - `codex.last_run_at` and `codex.last_review_path` must both be present, so the
+    adjudication corresponds to a review that actually completed and whose
+    findings are locatable;
+  - the severity distribution must balance against the total.
+- **Stale adjudication fails closed.** If the review is re-run and returns a
+  different verdict or a different finding count, the existing adjudication stops
+  validating and stops unblocking `review → done`. The remedy is to re-adjudicate
+  against the current review, never to edit the verdict to match the record.
+- `MissionTracker` exposes a governed way to write that record. It derives the
+  total from the reviewer's own count and refuses a caller-supplied total that
+  contradicts it, refuses a non-`partial-success` verdict, and refuses to write
+  without the severity distribution.
 - `canTransition()` and `moveMission()` both enforce the `review → done`
   precondition, so the CLI and any programmatic caller behave identically:
   `codex.required !== true` **OR** `last_verdict === 'accepted'` **OR** a valid

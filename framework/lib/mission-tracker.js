@@ -414,6 +414,30 @@ class MissionTracker {
         `setHumanAdjudication: ${id} already has an accepted review; adjudication would be meaningless`,
       );
     }
+    if (codex.last_verdict !== schema.ADJUDICABLE_VERDICT) {
+      throw new Error(
+        `setHumanAdjudication: ${id} has verdict "${codex.last_verdict}"; only ` +
+          `"${schema.ADJUDICABLE_VERDICT}" is adjudicable. Every other non-accepted terminal means ` +
+          `the review is unfinished — exhausted hit the budget with critical/high open, no-progress ` +
+          `stalled, skipped never ran, findings-reported resolved nothing — and unfinished is not ` +
+          `the same as finished-with-acceptable-residue.`,
+      );
+    }
+    // Adjudication presupposes a review that reached a terminal state and left
+    // locatable findings. Both fields are written by the loop on terminal.
+    if (typeof codex.last_run_at !== "string" || codex.last_run_at === "") {
+      throw new Error(
+        `setHumanAdjudication: ${id} has no codex.last_run_at — adjudication presupposes a review that ran`,
+      );
+    }
+    if (
+      typeof codex.last_review_path !== "string" ||
+      codex.last_review_path === ""
+    ) {
+      throw new Error(
+        `setHumanAdjudication: ${id} has no codex.last_review_path — the findings being accepted must be locatable`,
+      );
+    }
 
     // Guard against the caller quietly laundering a verdict through this path.
     for (const reserved of [
@@ -441,11 +465,32 @@ class MissionTracker {
           `the recorded reviewer verdict "${codex.last_verdict}"`,
       );
     }
-    if (
-      record.remaining_findings === undefined &&
-      Number.isInteger(codex.unresolved_findings)
-    ) {
+    // The total is DERIVED from the reviewer's own count, never taken from the
+    // caller. A caller-supplied total that disagrees is a contradiction, not a
+    // preference, so it is refused rather than silently overwritten.
+    if (Number.isInteger(codex.unresolved_findings)) {
+      if (
+        record.remaining_findings !== undefined &&
+        record.remaining_findings !== codex.unresolved_findings
+      ) {
+        throw new Error(
+          `setHumanAdjudication: remaining_findings ${record.remaining_findings} contradicts ` +
+            `codex.unresolved_findings ${codex.unresolved_findings} — the reviewer's count governs`,
+        );
+      }
       record.remaining_findings = codex.unresolved_findings;
+    }
+
+    // The severity distribution must be supplied by the human: the reviewer
+    // records a total, not a breakdown, so this is the part only a person
+    // reading the findings can fill in. Schema then checks it balances.
+    for (const key of ["remaining_low", "remaining_medium"]) {
+      if (!Number.isInteger(record[key]) || record[key] < 0) {
+        throw new Error(
+          `setHumanAdjudication: ${key} must be a non-negative integer — M-0007 requires the ` +
+            `severity distribution of the remaining findings, not just a total`,
+        );
+      }
     }
 
     return this.updateFrontmatter(id, { human_adjudication: record });
