@@ -16,7 +16,7 @@ Missions replace:
 - **Manual phase tracking** in spreadsheets or whiteboards — phase membership is encoded in the mission's `phase` field; the filesystem is the source of truth.
 - **In-conversation task lists** that vanish when the session ends — missions persist across sessions, agents, and humans.
 
-Each mission is a single markdown file with YAML frontmatter (machine-readable metadata) and a markdown body (human-readable narrative). The file's *location on disk* encodes its lifecycle state. Transitions are `git mv` operations, so the audit trail is the git history of the file path.
+Each mission is a single markdown file with YAML frontmatter (machine-readable metadata) and a markdown body (human-readable narrative). The file's _location on disk_ encodes its lifecycle state. Transitions are `git mv` operations, so the audit trail is the git history of the file path.
 
 A mission is small enough to be held in one head and finished in a bounded number of agent iterations. If a mission grows past that, split it.
 
@@ -26,25 +26,25 @@ Missions follow the canonical template at `framework/templates/mission-template.
 
 Frontmatter summary (full spec lives in the template):
 
-| Field | Required | Notes |
-|---|---|---|
-| `id` | yes | `M-NNNN`, zero-padded, never reused |
-| `schema_version` | no | Frontmatter shape version. Defaults to `1` for missions written before versioning; the library auto-migrates on read. New missions ship at the current version (see `mission-schema.js`). |
-| `title` | yes | One-line imperative summary |
-| `state` | yes | `todo` \| `doing` \| `review` \| `done` \| `canceled` |
-| `priority` | no | 1–5, default 3 |
-| `created` | yes | ISO 8601 date |
-| `updated` | yes | ISO 8601 date — bump on every material edit |
-| `phase` | no | Phase ID from `ROADMAP.md`, or omitted for standalone |
-| `depends_on` | no | Array of mission IDs |
-| `labels` | no | Free-form tags |
-| `acceptance` | no | Array of testable criteria |
-| `verification.required_levels` | no | Pyramid levels that must pass |
-| `verification.optional_levels` | no | Pyramid levels that are nice-to-have |
-| `workspace.branch` | no | Defaults to `feat/m-nnnn-<slug>` |
-| `workspace.worktree` | no | Defaults to `.worktrees/M-NNNN` |
-| `max_iterations` | no | Default 50 |
-| `codex` | no | L8 cross-model review state (added by L8 on first run, or up-front for opt-in). See [Codex review state](#codex-review-state). |
+| Field                          | Required | Notes                                                                                                                                                                                     |
+| ------------------------------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                           | yes      | `M-NNNN`, zero-padded, never reused                                                                                                                                                       |
+| `schema_version`               | no       | Frontmatter shape version. Defaults to `1` for missions written before versioning; the library auto-migrates on read. New missions ship at the current version (see `mission-schema.js`). |
+| `title`                        | yes      | One-line imperative summary                                                                                                                                                               |
+| `state`                        | yes      | `todo` \| `doing` \| `review` \| `done` \| `canceled`                                                                                                                                     |
+| `priority`                     | no       | 1–5, default 3                                                                                                                                                                            |
+| `created`                      | yes      | ISO 8601 date                                                                                                                                                                             |
+| `updated`                      | yes      | ISO 8601 date — bump on every material edit                                                                                                                                               |
+| `phase`                        | no       | Phase ID from `ROADMAP.md`, or omitted for standalone                                                                                                                                     |
+| `depends_on`                   | no       | Array of mission IDs                                                                                                                                                                      |
+| `labels`                       | no       | Free-form tags                                                                                                                                                                            |
+| `acceptance`                   | no       | Array of testable criteria                                                                                                                                                                |
+| `verification.required_levels` | no       | Pyramid levels that must pass                                                                                                                                                             |
+| `verification.optional_levels` | no       | Pyramid levels that are nice-to-have                                                                                                                                                      |
+| `workspace.branch`             | no       | Defaults to `feat/m-nnnn-<slug>`                                                                                                                                                          |
+| `workspace.worktree`           | no       | Defaults to `.worktrees/M-NNNN`                                                                                                                                                           |
+| `max_iterations`               | no       | Default 50                                                                                                                                                                                |
+| `codex`                        | no       | L8 cross-model review state (added by L8 on first run, or up-front for opt-in). See [Codex review state](#codex-review-state).                                                            |
 
 Body sections (in order, all four required):
 
@@ -111,26 +111,31 @@ canceled│         ┌─────────┐       │
 Allowed transitions and their preconditions:
 
 ### `todo` → `doing` (start)
+
 - Every mission ID in `depends_on` is present in `.planning/missions/done/`.
 - A workspace exists (branch + worktree per `workspace.*` fields). See `worktrees.md`.
 - The mission's frontmatter `state` is updated to `doing` and `updated` is bumped in the same commit as the `git mv`.
 
 ### `doing` → `review` (submit)
+
 - Implementation work is committed on the mission's branch.
 - An evidence packet has been produced (see `evidence-packets.md`) demonstrating that all `verification.required_levels` pass.
 - All items in `acceptance` are claimed met in the `## Workpad` section (with the format in [Acceptance criteria](#acceptance-criteria)).
 
 ### `review` → `done` (approve)
+
 - A reviewer (human or agent in reviewer role) has confirmed every acceptance criterion against the evidence packet.
 - All `verification.required_levels` are green; `verification.optional_levels` are reported (pass or fail) but do not block.
 - The mission's branch has been merged to the integration branch.
 
 ### `review` → `doing` (rejected revision)
+
 - The reviewer rejects one or more acceptance criteria or finds a verification gap.
 - The rejection is recorded as a workpad entry with the specific failure(s).
 - The file moves back to `doing/`; no other state is allowed as a rejection target.
 
 ### Any state → `canceled` (abandon)
+
 - A workpad entry MUST record the reason for cancellation and the date.
 - Canceled missions are never reopened — if work resumes, allocate a new mission ID and reference the canceled one in `depends_on` only if the prior work is genuinely a prerequisite.
 
@@ -152,9 +157,9 @@ Rules:
 
 Examples:
 
-| `id` | `title` | Filename |
-|---|---|---|
-| `M-0001` | Add POST /todos endpoint | `M-0001-add-post-todos-endpoint.md` |
+| `id`     | `title`                               | Filename                                          |
+| -------- | ------------------------------------- | ------------------------------------------------- |
+| `M-0001` | Add POST /todos endpoint              | `M-0001-add-post-todos-endpoint.md`               |
 | `M-0042` | Fix race condition in session refresh | `M-0042-fix-race-condition-in-session-refresh.md` |
 
 ## Dependency resolution
@@ -170,7 +175,7 @@ Resolution algorithm (used by tooling and reviewers):
 
 Forward references are allowed: a mission may declare a dependency on an ID that does not yet exist. The mission stays in `todo` until the dependency is created and completed.
 
-Dependencies are advisory at the *implementation* layer — they describe ordering, not access control. A mission that touches files outside its scope is a separate problem (review catches it).
+Dependencies are advisory at the _implementation_ layer — they describe ordering, not access control. A mission that touches files outside its scope is a separate problem (review catches it).
 
 ## Phase relationship
 
@@ -181,7 +186,7 @@ Missions optionally belong to a roadmap phase via the `phase` frontmatter field.
 - A phase is "complete" when every mission claiming it is in `done` (or `canceled` with a justification). There is no separate phase-completion artifact.
 - Re-assigning a mission to a different phase is allowed; bump `updated` and record the reason in the workpad.
 
-The roadmap defines *intent*; missions define *execution*. The two are deliberately decoupled so a roadmap shuffle does not disturb in-flight work.
+The roadmap defines _intent_; missions define _execution_. The two are deliberately decoupled so a roadmap shuffle does not disturb in-flight work.
 
 ## Workpad protocol
 
@@ -193,7 +198,7 @@ Rules:
 2. **Timestamp every entry.** Use the heading format `### YYYY-MM-DD HH:MM — <agent-role>` (24-hour UTC).
 3. **One entry per work session.** Don't slice a single session into a dozen micro-entries.
 4. **Be terse.** What was tried, what worked, what's blocked, what's next. No essays.
-5. **Record decisions and their reasons.** A future agent should be able to reconstruct *why* the implementation looks the way it does.
+5. **Record decisions and their reasons.** A future agent should be able to reconstruct _why_ the implementation looks the way it does.
 
 Example:
 
@@ -203,11 +208,13 @@ Example:
 <!-- Updated by agent during execution. Append timestamped entries; do not delete prior entries. -->
 
 ### 2026-05-01 14:22 — builder
+
 - Scaffolded route in `src/routes/todos.ts`; followed thin-handler pattern from `backend.md`.
 - Validation schema in `src/schemas/todo.ts` using Zod (matches existing convention).
 - Blocked: existing test fixture loader doesn't support POST bodies. Patched it; will discuss in review.
 
 ### 2026-05-01 16:10 — tester
+
 - Added 6 unit tests for the route (happy + 5 validation cases). All green.
 - L0/L1/L2/L2.5 pass locally. Evidence packet at `.planning/evidence/M-0001/`.
 ```
@@ -222,6 +229,7 @@ To mark criteria as met, append a checklist to the workpad in the entry that sub
 
 ```markdown
 ### 2026-05-01 16:10 — tester
+
 - [x] "Endpoint POST /todos returns 201 with created todo body" — verified by `todos.test.ts:42`
 - [x] "Validation error returns 400 with field-level error messages" — verified by `todos.test.ts:71`
 - [x] "New unit tests cover happy path and validation failure" — coverage report in evidence packet
@@ -247,14 +255,76 @@ or override the global per-mission iteration cap (`max_rounds`).
 
 ### Block fields
 
-| Field                  | Type     | Default      | Meaning |
-|------------------------|----------|--------------|---------|
-| `required`             | boolean  | `false`      | When `true`, the mission cannot transition to `done` without `last_verdict: accepted`, and the loop refuses to terminate with `skipped` (it exits non-zero instead). |
-| `max_rounds`           | integer  | `3`          | Per-mission override of the global `max_iterations` config. |
-| `last_verdict`         | enum     | `none`       | Most recent loop terminal state — see table below. |
-| `last_review_path`     | string   | (unset)      | Repo-relative path to the most recent `review.json` for quick lookup. |
-| `unresolved_findings`  | integer  | `0`          | Count of high/critical findings still open (for `partial-success`, the count of low/medium findings). |
-| `last_run_at`          | string   | (unset)      | ISO 8601 datetime of the most recent L8 run. Bumped at each iteration start AND on terminal. |
+| Field                 | Type    | Default | Meaning                                                                                                                                                                                                                                          |
+| --------------------- | ------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `required`            | boolean | `false` | When `true`, an adversarial review must actually happen: the loop refuses to terminate with `skipped` (it exits non-zero instead), and `review → done` is gated. See [The `required: true` completion gate](#the-required-true-completion-gate). |
+| `max_rounds`          | integer | `3`     | Per-mission override of the global `max_iterations` config.                                                                                                                                                                                      |
+| `last_verdict`        | enum    | `none`  | Most recent loop terminal state — see table below.                                                                                                                                                                                               |
+| `last_review_path`    | string  | (unset) | Repo-relative path to the most recent `review.json` for quick lookup.                                                                                                                                                                            |
+| `unresolved_findings` | integer | `0`     | Count of high/critical findings still open (for `partial-success`, the count of low/medium findings).                                                                                                                                            |
+| `last_run_at`         | string  | (unset) | ISO 8601 datetime of the most recent L8 run. Bumped at each iteration start AND on terminal.                                                                                                                                                     |
+
+### The `required: true` completion gate
+
+`codex.required: true` means **an adversarial review must actually happen**. It
+gates two different things, and they are easy to conflate:
+
+| Transition       | What `required: true` does                                                                                                                             |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `doing → review` | The loop refuses to terminate `skipped` and exits non-zero; the build flow catches that and does not advance the mission. See `cross-model-review.md`. |
+| `review → done`  | Enforced by `MissionTracker.canTransition()` (and therefore `moveMissionState()`). Passes on **either** of the two conditions below.                   |
+
+**`review → done` passes when either holds:**
+
+1. `codex.last_verdict === 'accepted'` — the reviewer signed off; or
+2. a valid top-level **`human_adjudication`** record is present — a human
+   explicitly accepted the disclosed residual findings.
+
+**Route 2 exists because otherwise there is no honest way out.** When the review
+budget is exhausted, all critical/high findings are resolved, and only disclosed
+low/medium caveats remain, the reviewer's verdict is `partial-success` — and the
+only ways to reach `done` were to rewrite the verdict, re-run the review until
+the wording improved, or bypass the transition. All three falsify the record. A
+gate whose only escapes are falsification is defective, not strict.
+
+**The adjudication never rewrites the reviewer verdict.** It is a **top-level
+sibling of `codex`**, not a field inside it, because `codex` holds what the
+machine reviewer reported and human authority is a different fact.
+`last_verdict` stays exactly what the reviewer said, forever.
+
+```yaml
+codex:
+  required: true
+  last_verdict: partial-success # unchanged, and stays unchanged
+  unresolved_findings: 4
+human_adjudication:
+  actor: allen
+  at: 2026-08-24T04:00:00Z
+  adjudicated_verdict: partial-success
+  no_critical_or_high_remaining: true
+  remaining_findings: 4
+  accepted_obligations:
+    - per-runtime execution-surface inventories before qualification
+    - network-side observation before a provider may claim network denial
+  rationale_ref: .planning/missions/review/M-0004/adversarial-review-findings.md
+```
+
+Write it through `MissionTracker.setHumanAdjudication(id, record)`, never by
+hand. That method refuses to touch any reviewer-reported field, refuses a
+verdict that does not match what the reviewer actually returned, and refuses to
+adjudicate a review that never ran or that was already `accepted`.
+
+**Constraints worth stating plainly:**
+
+- `no_critical_or_high_remaining` must be exactly `true`. Adjudication accepts
+  **disclosed low/medium residual risk**; it never accepts unresolved critical or
+  high findings, and it is not a way to close an `exhausted` review.
+- `accepted_obligations` must be non-empty. Accepting residual risk requires
+  naming what is being accepted.
+- **The residual findings stay in the evidence packet.** Adjudication accepts
+  risk; it does not delete it.
+- This is a **human authority record**. Treat it the way a governed approval is
+  treated — not as a field to set because a gate is inconvenient.
 
 ### `last_verdict` values
 
@@ -262,15 +332,15 @@ The verdict reflects the loop's terminal state from the most recent
 run. Single-shot reviews (`codex-review.js`) only produce three;
 loop runs (`codex-review-loop.js`) can produce all six.
 
-| Value                | Meaning                                                                                       |
-|----------------------|-----------------------------------------------------------------------------------------------|
-| `none`               | No L8 run has occurred yet.                                                                   |
-| `accepted`           | Reviewer signed off (single-shot `accept` or loop converged on `accept`).                     |
-| `partial-success`    | Loop terminated with only low/medium findings (none loop-eligible).                           |
-| `findings-reported`  | Findings reported without a fix attempt — single-shot `revise`/`reject`, or loop with `--no-fix`. |
-| `exhausted`          | Loop hit `max_rounds` with high/critical findings still open.                                 |
-| `no-progress`        | Loop fix step ran but HEAD did not advance — Claude couldn't make a fix.                      |
-| `skipped`            | Codex was unavailable, disabled, the diff was empty, or the config was missing or defective (`config-absent`, `config-unparseable`, `config-invalid`). |
+| Value               | Meaning                                                                                                                                                |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `none`              | No L8 run has occurred yet.                                                                                                                            |
+| `accepted`          | Reviewer signed off (single-shot `accept` or loop converged on `accept`).                                                                              |
+| `partial-success`   | Loop terminated with only low/medium findings (none loop-eligible).                                                                                    |
+| `findings-reported` | Findings reported without a fix attempt — single-shot `revise`/`reject`, or loop with `--no-fix`.                                                      |
+| `exhausted`         | Loop hit `max_rounds` with high/critical findings still open.                                                                                          |
+| `no-progress`       | Loop fix step ran but HEAD did not advance — Claude couldn't make a fix.                                                                               |
+| `skipped`           | Codex was unavailable, disabled, the diff was empty, or the config was missing or defective (`config-absent`, `config-unparseable`, `config-invalid`). |
 
 The full enum is exported as `CODEX_VERDICTS` from
 `framework/lib/mission-schema.js`. Any value not on that list will be
@@ -341,12 +411,12 @@ These are forbidden. CI hooks, reviewers, and skills should refuse to participat
 
 Every rule in this skill — ID format, FSM transitions, dependency resolution, workpad append format, frontmatter validation — is **enforced by a library**. Scripts and slash commands MUST go through that library; do not hand-roll parsing or `git mv` against mission files.
 
-| Layer | File | Purpose |
-|-------|------|---------|
-| Library | `framework/lib/mission-tracker.js` | `MissionTracker` class — identity, state, deps, workpad, active-mission, authoring. The canonical Node API. |
-| Library | `framework/lib/mission-parser.js` | Frontmatter ↔ body splitting, scalar / list / nested-field accessors, acceptance-checkbox parsing, workpad-entry parsing. |
-| Library | `framework/lib/mission-schema.js` | Frozen `STATES`, `LEVEL_IDS`, `CURRENT_SCHEMA_VERSION`; `validateFrontmatter`, `migrateFrontmatter`. |
-| CLI | `framework/scripts/mission-cli.js` | Thin shell-friendly wrapper. Every verb (`list`, `show`, `move`, `workpad`, `update`, `deps`, `active`, `set-active`, `clear-active`, `create`, `next-id`, `can-transition`) prints exactly one JSON object to stdout. Errors prefix `mission-cli:` to stderr. Exit codes: `0` ok, `1` invalid input, `2` not found, `3` precondition failed. |
+| Layer   | File                               | Purpose                                                                                                                                                                                                                                                                                                                                       |
+| ------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Library | `framework/lib/mission-tracker.js` | `MissionTracker` class — identity, state, deps, workpad, active-mission, authoring. The canonical Node API.                                                                                                                                                                                                                                   |
+| Library | `framework/lib/mission-parser.js`  | Frontmatter ↔ body splitting, scalar / list / nested-field accessors, acceptance-checkbox parsing, workpad-entry parsing.                                                                                                                                                                                                                     |
+| Library | `framework/lib/mission-schema.js`  | Frozen `STATES`, `LEVEL_IDS`, `CURRENT_SCHEMA_VERSION`; `validateFrontmatter`, `migrateFrontmatter`.                                                                                                                                                                                                                                          |
+| CLI     | `framework/scripts/mission-cli.js` | Thin shell-friendly wrapper. Every verb (`list`, `show`, `move`, `workpad`, `update`, `deps`, `active`, `set-active`, `clear-active`, `create`, `next-id`, `can-transition`) prints exactly one JSON object to stdout. Errors prefix `mission-cli:` to stderr. Exit codes: `0` ok, `1` invalid input, `2` not found, `3` precondition failed. |
 
 **Use the library, not direct file manipulation.** Reading frontmatter with a one-off regex, computing the next mission ID by listing a directory, hand-writing a workpad block — every shape that previously appeared inline in scripts and slash commands now has a tested method on `MissionTracker`. Reaching past the library to `fs.readFileSync` a mission file is an anti-pattern: it bypasses validation, schema migration, and the FSM.
 
@@ -360,10 +430,10 @@ Example (Node, in-process):
 const { MissionTracker } = require("./framework/lib/mission-tracker.js");
 const t = new MissionTracker({ root: ".planning/missions" });
 
-const id = t.generateNextId();              // → "M-0042"
+const id = t.generateNextId(); // → "M-0042"
 t.createMission({ id, title: "Add POST /todos endpoint" });
 t.appendWorkpadEntry(id, "scaffolded route");
-const blockers = t.resolveUnmetDependencies(id);  // → []
+const blockers = t.resolveUnmetDependencies(id); // → []
 ```
 
 Example (shell, JSON-shaped):

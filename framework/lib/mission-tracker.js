@@ -35,6 +35,7 @@
 //   t.getCodexState(id)                         → object | null
 //   t.setCodexState(id, partial)                → newPath  (shallow merge into block; creates if absent)
 //   t.clearCodexState(id)                       → newPath  (removes the block entirely)
+//   t.setHumanAdjudication(id, adj)             → newPath  (additive; never touches reviewer fields)
 //
 //   // Dependencies
 //   t.getDependencies(id)                       → [mission IDs]
@@ -92,10 +93,10 @@ const MISSION_ID_REGEX = /^M-\d{4}$/;
 //   canceled → (terminal)
 
 const TRANSITIONS = Object.freeze({
-  todo:     Object.freeze(["doing", "canceled"]),
-  doing:    Object.freeze(["review", "canceled"]),
-  review:   Object.freeze(["done", "doing", "canceled"]),
-  done:     Object.freeze([]),
+  todo: Object.freeze(["doing", "canceled"]),
+  doing: Object.freeze(["review", "canceled"]),
+  review: Object.freeze(["done", "doing", "canceled"]),
+  done: Object.freeze([]),
   canceled: Object.freeze([]),
 });
 
@@ -152,8 +153,11 @@ class MissionTracker {
       const dir = path.join(this.root, state);
       if (!fs.existsSync(dir)) continue;
       let entries;
-      try { entries = fs.readdirSync(dir); }
-      catch (_) { continue; }
+      try {
+        entries = fs.readdirSync(dir);
+      } catch (_) {
+        continue;
+      }
       for (const f of entries) {
         const m = f.match(/^M-(\d{4})-/);
         if (m) max = Math.max(max, parseInt(m[1], 10));
@@ -174,7 +178,7 @@ class MissionTracker {
       if (found) {
         if (hit) {
           throw new Error(
-            `mission ${id} appears in both ${hit.state}/ and ${state}/ — fix by hand`
+            `mission ${id} appears in both ${hit.state}/ and ${state}/ — fix by hand`,
           );
         }
         hit = found;
@@ -186,7 +190,9 @@ class MissionTracker {
   findMissionByIdInState(id, state) {
     if (!this.isValidId(id)) return null;
     if (!STATES.includes(state)) {
-      throw new Error(`invalid state "${state}"; must be one of: ${STATES.join(", ")}`);
+      throw new Error(
+        `invalid state "${state}"; must be one of: ${STATES.join(", ")}`,
+      );
     }
     return this._locateInState(id, state);
   }
@@ -195,14 +201,17 @@ class MissionTracker {
     const dir = path.join(this.root, state);
     if (!fs.existsSync(dir)) return null;
     let entries;
-    try { entries = fs.readdirSync(dir); }
-    catch (_) { return null; }
+    try {
+      entries = fs.readdirSync(dir);
+    } catch (_) {
+      return null;
+    }
     const matches = entries.filter(
-      (f) => f.startsWith(`${id}-`) && f.endsWith(".md")
+      (f) => f.startsWith(`${id}-`) && f.endsWith(".md"),
     );
     if (matches.length > 1) {
       throw new Error(
-        `multiple mission files for ${id} in ${state}/: ${matches.join(", ")}`
+        `multiple mission files for ${id} in ${state}/: ${matches.join(", ")}`,
       );
     }
     if (matches.length === 0) return null;
@@ -217,24 +226,35 @@ class MissionTracker {
 
   listMissionsByState(state) {
     if (!STATES.includes(state)) {
-      throw new Error(`invalid state "${state}"; must be one of: ${STATES.join(", ")}`);
+      throw new Error(
+        `invalid state "${state}"; must be one of: ${STATES.join(", ")}`,
+      );
     }
     const dir = path.join(this.root, state);
     if (!fs.existsSync(dir)) return [];
     let entries;
-    try { entries = fs.readdirSync(dir); }
-    catch (_) { return []; }
+    try {
+      entries = fs.readdirSync(dir);
+    } catch (_) {
+      return [];
+    }
 
     const out = [];
     for (const f of entries) {
       if (!/^M-\d{4}-.*\.md$/.test(f)) continue;
       const filePath = path.join(dir, f);
       let text;
-      try { text = fs.readFileSync(filePath, "utf8"); }
-      catch (_) { continue; }
+      try {
+        text = fs.readFileSync(filePath, "utf8");
+      } catch (_) {
+        continue;
+      }
       let parsed;
-      try { parsed = parser.parseFrontmatter(text); }
-      catch (_) { continue; }
+      try {
+        parsed = parser.parseFrontmatter(text);
+      } catch (_) {
+        continue;
+      }
       out.push({
         id: parsed.frontmatter.id || f.match(/^M-\d{4}/)[0],
         title: parsed.frontmatter.title || "(no title)",
@@ -257,17 +277,21 @@ class MissionTracker {
 
   validateStateTransition(currentState, targetState) {
     if (!STATES.includes(currentState)) {
-      throw new Error(`invalid current state "${currentState}"; must be one of: ${STATES.join(", ")}`);
+      throw new Error(
+        `invalid current state "${currentState}"; must be one of: ${STATES.join(", ")}`,
+      );
     }
     if (!STATES.includes(targetState)) {
-      throw new Error(`invalid target state "${targetState}"; must be one of: ${STATES.join(", ")}`);
+      throw new Error(
+        `invalid target state "${targetState}"; must be one of: ${STATES.join(", ")}`,
+      );
     }
     if (!TRANSITIONS[currentState].includes(targetState)) {
       const allowed = TRANSITIONS[currentState];
       const allowedStr = allowed.length ? allowed.join(", ") : "(terminal)";
       throw new Error(
         `transition ${currentState} → ${targetState} is not allowed ` +
-        `(allowed from ${currentState}: ${allowedStr})`
+          `(allowed from ${currentState}: ${allowedStr})`,
       );
     }
   }
@@ -288,11 +312,143 @@ class MissionTracker {
       const allowedStr = allowed.length ? allowed.join(", ") : "(terminal)";
       return {
         allowed: false,
-        reason: `${m.state} → ${targetState} is not allowed ` +
-                `(allowed from ${m.state}: ${allowedStr})`,
+        reason:
+          `${m.state} → ${targetState} is not allowed ` +
+          `(allowed from ${m.state}: ${allowedStr})`,
       };
     }
+
+    const codexGate = this._checkCodexCompletionGate(m, targetState);
+    if (codexGate) return codexGate;
+
     return { allowed: true, reason: "ok" };
+  }
+
+  // The `review → done` completion gate for missions that require L8 (M-0007).
+  //
+  // Returns a refusal object, or null when the gate does not apply or is
+  // satisfied. Consulted by both canTransition() and moveMission() so the CLI
+  // and any programmatic caller behave identically — previously this rule lived
+  // only in `missions.md` and nothing enforced it, so `codex.required: true`
+  // carried no completion guarantee at all.
+  //
+  // Three ways past, and exactly three:
+  //   1. the mission does not require L8;
+  //   2. the reviewer returned `accepted`;
+  //   3. a human recorded an adjudication accepting disclosed residual risk.
+  //
+  // (3) exists because without it the only exits were falsification: rewrite the
+  // reviewer's verdict, re-roll the review until the wording improves, or bypass
+  // the transition. Adjudication records the human's disposition ALONGSIDE the
+  // reviewer's conclusion and never overwrites it.
+  _checkCodexCompletionGate(mission, targetState) {
+    if (targetState !== "done") return null;
+
+    const codex = mission.frontmatter && mission.frontmatter.codex;
+    if (!codex || codex.required !== true) return null;
+    if (codex.last_verdict === "accepted") return null;
+
+    const adj = mission.frontmatter.human_adjudication;
+    if (adj && typeof adj === "object" && !Array.isArray(adj)) {
+      const validation = schema.validateFrontmatter(mission.frontmatter);
+      if (validation.valid) return null;
+      return {
+        allowed: false,
+        reason:
+          `${mission.id}: human_adjudication is present but invalid — ` +
+          validation.errors.join("; "),
+      };
+    }
+
+    const verdict = codex.last_verdict || "none";
+    return {
+      allowed: false,
+      reason:
+        `${mission.id}: codex.required is true and the reviewer verdict is "${verdict}", not "accepted". ` +
+        `Either obtain an accepted review, or record a human adjudication ` +
+        `(human_adjudication) accepting the disclosed residual findings. ` +
+        `Do not rewrite last_verdict — the reviewer's conclusion is a separate fact from the human's disposition.`,
+    };
+  }
+
+  // Record a human adjudication of a non-`accepted` reviewer verdict (M-0007).
+  //
+  // Deliberately a separate method from setCodexState, and deliberately narrow:
+  // it writes ONLY the adjudication block and refuses to touch any
+  // reviewer-reported field. A caller that wants to change `last_verdict` has to
+  // say so somewhere else, in code that is obviously doing that.
+  //
+  // This is a human authority record. The Framework treats it the way a governed
+  // approval is treated — not as a field to set because a gate is inconvenient.
+  setHumanAdjudication(id, adjudication) {
+    if (
+      adjudication == null ||
+      typeof adjudication !== "object" ||
+      Array.isArray(adjudication)
+    ) {
+      throw new Error(
+        "setHumanAdjudication: adjudication must be a plain object",
+      );
+    }
+
+    const m = this.readMission(id);
+    const codex =
+      m.frontmatter.codex &&
+      typeof m.frontmatter.codex === "object" &&
+      !Array.isArray(m.frontmatter.codex)
+        ? m.frontmatter.codex
+        : null;
+
+    if (!codex) {
+      throw new Error(
+        `setHumanAdjudication: ${id} has no codex block — there is no reviewer verdict to adjudicate`,
+      );
+    }
+    if (codex.last_verdict === undefined || codex.last_verdict === "none") {
+      throw new Error(
+        `setHumanAdjudication: ${id} has no reviewer verdict yet — run the review before adjudicating it`,
+      );
+    }
+    if (codex.last_verdict === "accepted") {
+      throw new Error(
+        `setHumanAdjudication: ${id} already has an accepted review; adjudication would be meaningless`,
+      );
+    }
+
+    // Guard against the caller quietly laundering a verdict through this path.
+    for (const reserved of [
+      "last_verdict",
+      "unresolved_findings",
+      "last_review_path",
+      "last_run_at",
+      "required",
+      "max_rounds",
+    ]) {
+      if (Object.prototype.hasOwnProperty.call(adjudication, reserved)) {
+        throw new Error(
+          `setHumanAdjudication: refusing to write reviewer-reported field "${reserved}" — ` +
+            `adjudication is additive and must not overwrite what the reviewer said`,
+        );
+      }
+    }
+
+    const record = { ...adjudication };
+    if (record.adjudicated_verdict === undefined)
+      record.adjudicated_verdict = codex.last_verdict;
+    if (record.adjudicated_verdict !== codex.last_verdict) {
+      throw new Error(
+        `setHumanAdjudication: adjudicated_verdict "${record.adjudicated_verdict}" does not match ` +
+          `the recorded reviewer verdict "${codex.last_verdict}"`,
+      );
+    }
+    if (
+      record.remaining_findings === undefined &&
+      Number.isInteger(codex.unresolved_findings)
+    ) {
+      record.remaining_findings = codex.unresolved_findings;
+    }
+
+    return this.updateFrontmatter(id, { human_adjudication: record });
   }
 
   // Any tracked content at or under p (file or directory)? Untracked
@@ -340,12 +496,14 @@ class MissionTracker {
     if (!validation.valid) {
       throw new Error(
         `mission-tracker: refusing to write invalid frontmatter to ${destFile}:\n  - ` +
-        validation.errors.join("\n  - ") +
-        `\n  (nothing moved — validation runs before any filesystem effect)`
+          validation.errors.join("\n  - ") +
+          `\n  (nothing moved — validation runs before any filesystem effect)`,
       );
     }
     if (fs.existsSync(destFile)) {
-      throw new Error(`moveMissionState: destination already exists: ${destFile} — nothing moved`);
+      throw new Error(
+        `moveMissionState: destination already exists: ${destFile} — nothing moved`,
+      );
     }
 
     const companionSrc = path.join(this.root, m.state, id);
@@ -363,7 +521,7 @@ class MissionTracker {
         if (fs.existsSync(path.join(companionDst, e))) {
           throw new Error(
             `moveMissionState: companion entry collides with pre-existing destination: ` +
-            `${path.join(companionDst, e)} — nothing moved`
+              `${path.join(companionDst, e)} — nothing moved`,
           );
         }
       }
@@ -397,7 +555,9 @@ class MissionTracker {
             fs.renameSync(step.dst, step.src);
           }
         } catch (e) {
-          problems.push(`${step.dst || step.src}: not restored (${e.message.split("\n")[0]})`);
+          problems.push(
+            `${step.dst || step.src}: not restored (${e.message.split("\n")[0]})`,
+          );
         }
       }
       return problems;
@@ -418,15 +578,20 @@ class MissionTracker {
       }
       this._writeFile(destFile, { frontmatter: newFm, body: m.body });
     } catch (err) {
-      const msg = err && err.stderr ? String(err.stderr).trim() : (err && err.message) || String(err);
+      const msg =
+        err && err.stderr
+          ? String(err.stderr).trim()
+          : (err && err.message) || String(err);
       const problems = rollback();
       if (problems.length) {
         throw new Error(
           `moveMissionState: failed (${msg}) AND rollback was incomplete — partial state, fix by hand:\n  ` +
-          problems.join("\n  ")
+            problems.join("\n  "),
         );
       }
-      throw new Error(`moveMissionState: failed — all completed steps rolled back. Cause: ${msg}`);
+      throw new Error(
+        `moveMissionState: failed — all completed steps rolled back. Cause: ${msg}`,
+      );
     }
     return destFile;
   }
@@ -456,7 +621,7 @@ class MissionTracker {
     }
     if (frontmatter.id !== m.frontmatter.id) {
       throw new Error(
-        `writeMission: refusing to change id (mission IDs are immutable; was "${m.frontmatter.id}", got "${frontmatter.id}")`
+        `writeMission: refusing to change id (mission IDs are immutable; was "${m.frontmatter.id}", got "${frontmatter.id}")`,
       );
     }
     this._writeFile(m.path, { frontmatter, body });
@@ -464,11 +629,17 @@ class MissionTracker {
   }
 
   updateFrontmatter(id, partial) {
-    if (partial == null || typeof partial !== "object" || Array.isArray(partial)) {
+    if (
+      partial == null ||
+      typeof partial !== "object" ||
+      Array.isArray(partial)
+    ) {
       throw new Error("updateFrontmatter: partial must be a plain object");
     }
     if (Object.prototype.hasOwnProperty.call(partial, "id")) {
-      throw new Error("updateFrontmatter: cannot change `id` (mission IDs are immutable)");
+      throw new Error(
+        "updateFrontmatter: cannot change `id` (mission IDs are immutable)",
+      );
     }
     const m = this.readMission(id);
     const merged = { ...m.frontmatter, ...partial };
@@ -519,13 +690,20 @@ class MissionTracker {
   }
 
   setCodexState(id, partialUpdate) {
-    if (partialUpdate == null || typeof partialUpdate !== "object" || Array.isArray(partialUpdate)) {
+    if (
+      partialUpdate == null ||
+      typeof partialUpdate !== "object" ||
+      Array.isArray(partialUpdate)
+    ) {
       throw new Error("setCodexState: partialUpdate must be a plain object");
     }
     const m = this.readMission(id);
-    const existing = (m.frontmatter.codex && typeof m.frontmatter.codex === "object" && !Array.isArray(m.frontmatter.codex))
-      ? m.frontmatter.codex
-      : {};
+    const existing =
+      m.frontmatter.codex &&
+      typeof m.frontmatter.codex === "object" &&
+      !Array.isArray(m.frontmatter.codex)
+        ? m.frontmatter.codex
+        : {};
     const merged = { ...existing, ...partialUpdate };
     // Routes through updateFrontmatter so validation runs and `updated` bumps.
     return this.updateFrontmatter(id, { codex: merged });
@@ -594,8 +772,11 @@ class MissionTracker {
     const p = this._activeMissionPath();
     if (!fs.existsSync(p)) return null;
     let text;
-    try { text = fs.readFileSync(p, "utf8"); }
-    catch (_) { return null; }
+    try {
+      text = fs.readFileSync(p, "utf8");
+    } catch (_) {
+      return null;
+    }
     const id = text.trim().split(/\s+/)[0] || "";
     return this.isValidId(id) ? id : null;
   }
@@ -645,7 +826,11 @@ class MissionTracker {
     if (!title) throw new Error("createMission: title is required");
 
     if (opts.priority !== undefined) {
-      if (!Number.isInteger(opts.priority) || opts.priority < 1 || opts.priority > 5) {
+      if (
+        !Number.isInteger(opts.priority) ||
+        opts.priority < 1 ||
+        opts.priority > 5
+      ) {
         throw new Error("createMission: priority must be an integer 1–5");
       }
     }
@@ -729,7 +914,7 @@ class MissionTracker {
     if (!validation.valid) {
       throw new Error(
         `mission-tracker: refusing to write invalid frontmatter to ${filePath}:\n  - ` +
-        validation.errors.join("\n  - ")
+          validation.errors.join("\n  - "),
       );
     }
     const fmText = parser.serializeFrontmatter(frontmatter);
